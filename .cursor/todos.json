@@ -1,0 +1,32 @@
+[
+  {
+    "id": "schema-audit",
+    "content": "Update Prisma schema with CommentActionLog model and automation fields",
+    "status": "completed"
+  },
+  {
+    "id": "logging-utils",
+    "content": "Create action logging utility functions",
+    "status": "completed"
+  },
+  {
+    "id": "integrate-logging-webhooks",
+    "content": "Integrate action logging into webhooks",
+    "status": "completed"
+  },
+  {
+    "id": "integrate-logging-fetch",
+    "content": "Integrate action logging into fetch API",
+    "status": "completed"
+  },
+  {
+    "id": "manual-endpoints",
+    "content": "Create manual override API endpoints",
+    "status": "completed"
+  },
+  {
+    "id": "migration-audit",
+    "content": "Create migration script",
+    "status": "completed"
+  }
+]

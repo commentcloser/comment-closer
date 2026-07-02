@@ -1,0 +1,196 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #171717;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+.dark {
+  --background: #000000;
+  --foreground: #ededed;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@layer utilities {
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
+  }
+}
+
+/* Custom Scrollbar Styles */
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 10px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.5);
+    border-radius: 10px;
+    transition: background 0.2s ease;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(156, 163, 175, 0.8);
+  }
+  
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(75, 85, 99, 0.5);
+  }
+  
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(75, 85, 99, 0.8);
+  }
+  
+  /* Firefox */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+  }
+  
+  .dark .custom-scrollbar {
+    scrollbar-color: rgba(75, 85, 99, 0.5) transparent;
+  }
+
+  /* Modern Modal Scrollbar */
+  .modal-scrollbar::-webkit-scrollbar {
+    width: 10px;
+  }
+  
+  .modal-scrollbar::-webkit-scrollbar-track {
+    background: rgba(243, 244, 246, 0.5);
+    border-radius: 10px;
+    margin: 8px 0;
+  }
+  
+  .modal-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(147, 197, 253, 0.6) 0%, rgba(96, 165, 250, 0.6) 100%);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: all 0.2s ease;
+  }
+  
+  .modal-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(96, 165, 250, 0.8) 0%, rgba(59, 130, 246, 0.8) 100%);
+    background-clip: padding-box;
+  }
+  
+  .modal-scrollbar::-webkit-scrollbar-thumb:active {
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.9) 0%, rgba(37, 99, 235, 0.9) 100%);
+    background-clip: padding-box;
+  }
+  
+  .dark .modal-scrollbar::-webkit-scrollbar-track {
+    background: rgba(17, 24, 39, 0.5);
+  }
+  
+  .dark .modal-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(99, 102, 241, 0.6) 0%, rgba(79, 70, 229, 0.6) 100%);
+    background-clip: padding-box;
+  }
+  
+  .dark .modal-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(79, 70, 229, 0.8) 0%, rgba(67, 56, 202, 0.8) 100%);
+    background-clip: padding-box;
+  }
+  
+  .dark .modal-scrollbar::-webkit-scrollbar-thumb:active {
+    background: linear-gradient(180deg, rgba(67, 56, 202, 0.9) 0%, rgba(55, 48, 163, 0.9) 100%);
+    background-clip: padding-box;
+  }
+
+  /* Instagram Modal Scrollbar */
+  .modal-scrollbar-instagram::-webkit-scrollbar {
+    width: 10px;
+  }
+  
+  .modal-scrollbar-instagram::-webkit-scrollbar-track {
+    background: rgba(243, 244, 246, 0.5);
+    border-radius: 10px;
+    margin: 8px 0;
+  }
+  
+  .modal-scrollbar-instagram::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(251, 113, 133, 0.6) 0%, rgba(219, 39, 119, 0.6) 50%, rgba(249, 115, 22, 0.6) 100%);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: all 0.2s ease;
+  }
+  
+  .modal-scrollbar-instagram::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(219, 39, 119, 0.8) 0%, rgba(192, 38, 211, 0.8) 50%, rgba(249, 115, 22, 0.8) 100%);
+    background-clip: padding-box;
+  }
+  
+  .modal-scrollbar-instagram::-webkit-scrollbar-thumb:active {
+    background: linear-gradient(180deg, rgba(192, 38, 211, 0.9) 0%, rgba(168, 85, 247, 0.9) 50%, rgba(234, 88, 12, 0.9) 100%);
+    background-clip: padding-box;
+  }
+  
+  .dark .modal-scrollbar-instagram::-webkit-scrollbar-track {
+    background: rgba(17, 24, 39, 0.5);
+  }
+  
+  .dark .modal-scrollbar-instagram::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(251, 113, 133, 0.6) 0%, rgba(219, 39, 119, 0.6) 50%, rgba(249, 115, 22, 0.6) 100%);
+    background-clip: padding-box;
+  }
+  
+  .dark .modal-scrollbar-instagram::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(219, 39, 119, 0.8) 0%, rgba(192, 38, 211, 0.8) 50%, rgba(249, 115, 22, 0.8) 100%);
+    background-clip: padding-box;
+  }
+  
+  .dark .modal-scrollbar-instagram::-webkit-scrollbar-thumb:active {
+    background: linear-gradient(180deg, rgba(192, 38, 211, 0.9) 0%, rgba(168, 85, 247, 0.9) 50%, rgba(234, 88, 12, 0.9) 100%);
+    background-clip: padding-box;
+  }
+
+  /* Firefox scrollbar support */
+  .modal-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(96, 165, 250, 0.6) transparent;
+  }
+  
+  .dark .modal-scrollbar {
+    scrollbar-color: rgba(99, 102, 241, 0.6) transparent;
+  }
+
+  .modal-scrollbar-instagram {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(219, 39, 119, 0.6) transparent;
+  }
+  
+  .dark .modal-scrollbar-instagram {
+    scrollbar-color: rgba(219, 39, 119, 0.6) transparent;
+  }
+}

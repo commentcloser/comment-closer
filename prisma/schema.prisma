@@ -1,0 +1,230 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  role          Role      @default(USER)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  connectedPages ConnectedPage[]
+
+  @@index([role, createdAt])    // Admin: new users this week/month
+  @@index([role, lastLoginAt])  // Admin: recent active users
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  refresh_token_expires_at Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model ConnectedPage {
+  id                    String    @id @default(cuid())
+  userId                String
+  pageId                String    // Facebook Page ID (or IG Business Account ID for backward compat)
+  pageName              String
+  pageAccessToken       String    // Long-lived access token for the page (empty when disconnected)
+  adAccountId           String?   // Facebook Ad Account ID (optional, for fetching ad comments)
+  instagramUserId       String?   // Instagram Business Account ID (for webhook matching)
+  provider              String    @default("facebook") // "facebook" or "instagram"
+  disconnectedAt        DateTime? // When set, page is disconnected; comments preserved for re-add
+  needsReconnect        Boolean   @default(false) // True when API calls fail with auth errors (token revoked/expired at provider side)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  lastCommentsFetchedAt DateTime? // Timestamp of last successful comment fetch
+  profileImageUrl       String?   // Cached profile/picture URL from Meta (so dbOnly can return it)
+  
+  // AI Reply Settings - Generation
+  autoReplyEnabled      Boolean   @default(true)  // Master switch for auto-reply
+  autoReplyPositive     Boolean   @default(true)  // Auto-reply to positive comments
+  autoReplyNeutral      Boolean   @default(true)  // Auto-reply to neutral comments
+  brandTone             String    @default("professional") // "professional", "friendly", "casual", "enthusiastic"
+  emojisEnabled         Boolean   @default(true)  // Include emojis in replies
+  ctaText               String?   // Call-to-action text (e.g., "Visit our website!")
+  replyLanguage         String    @default("auto") // "auto" (match comment), "en", "el", etc.
+  maxReplyLength        Int       @default(1000)  // Max characters for AI reply
+  customReplyPrompt     String?   // Optional custom system prompt for reply generation; when set, used for both positive and neutral. Empty = use default templates.
+  webSourceUrl          String?   // Optional website URL for web_search; when set and webSourceEnabled, AI uses this site for price/info (always when enabled)
+  webSourceEnabled      Boolean   @default(false) // "Use website for answers" toggle
+  replyDelaySeconds     Int       @default(0)     // Delay before posting AI replies (seconds; 0 = no delay)
+  manualReviewEnabled   Boolean   @default(false) // When true, AI replies require manual approval before posting
+
+  // AI Reply Settings - Rules & Conditions
+  replyUserCooldownMinutes  Int     @default(0)     // Min minutes between replies to same user (0 = disabled)
+  replyOnlyFirstComment     Boolean @default(false) // Only reply to user's first comment on this page
+  replyMinCommentLength     Int     @default(2)     // Minimum comment length to reply (chars)
+  replyBlocklistKeywords    String? // JSON array of blocked keywords (case-insensitive)
+  replyAllowlistKeywords    String? // JSON array of required keywords (case-insensitive)
+  replyAllowlistEnabled     Boolean @default(false) // If true, only reply to comments with allowlist keywords
+
+  // Auto-Moderation Settings
+  autoModerationEnabled     Boolean @default(true)  // Master switch for auto-moderation
+  autoHideNegativeEnabled   Boolean @default(true)  // Auto-hide comments classified as negative
+  autoNegativeAction        String  @default("hide") // Action for negative comments: "hide" | "delete"
+  autoModerateReplies       Boolean @default(false) // Auto-moderate negative replies (sentiment + hide/delete)
+  
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments              Comment[]
+  tiktokStats           TikTokAccountStats?
+
+  @@unique([userId, pageId, provider])
+  @@index([instagramUserId])
+  @@index([userId, disconnectedAt]) // Dashboard: user's active pages
+}
+
+model Comment {
+  id                String        @id @default(cuid())
+  pageId            String        // Reference to ConnectedPage
+  connectedPage     ConnectedPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  commentId         String        // Facebook comment ID
+  postId            String        // Facebook post ID or Ad ID
+  message           String
+  authorName        String
+  authorId          String?
+  createdAt         DateTime      // When comment was created on Facebook
+  fetchedAt         DateTime      @default(now())
+  replied           Boolean       @default(false)
+  replyMessage      String?
+  status            String        @default("pending") // "pending", "ai_generating", "ai_generated", "replied", "ignored", "ai_failed"
+  sentiment         String?       // AI-analyzed sentiment: "positive", "neutral", "negative"
+  isFromAd          Boolean       @default(false) // Whether this comment is from an ad
+  adId              String?       // Facebook Ad ID (if comment is from an ad)
+  adName            String?       // Ad name for display purposes
+  adAccountId       String?       // Ad Account ID (if comment is from an ad)
+  source            String?       // Source of comment: "instagram_ad", "facebook_ad", "organic", etc.
+  
+  // Reply Detection
+  isReply           Boolean       @default(false) // Whether this is a reply to another comment (not top-level)
+  parentCommentId   String?       // Parent comment ID if this is a reply
+  
+  // AI Reply Fields
+  aiGeneratedReply  String?       // AI-generated reply text
+  aiPromptVersion   String?       // Prompt template version used (e.g., "v1.0-positive")
+  aiModel           String?       // Model used (e.g., "gpt-5")
+  aiConfidence      Float?        // Confidence score (0.0-1.0) - reserved for future use
+  aiGeneratedAt     DateTime?     // When AI reply was generated
+  aiError           String?       // Error message if AI generation failed
+  aiSkipReason      String?       // Why AI reply was skipped (e.g., "cooldown_active", "already_replied")
+  
+  // Automation State Tracking
+  automationStatus  String?       // "pending" | "replied" | "skipped" | "failed"
+  repliedAt         DateTime?     // When reply was successfully posted
+  hiddenAt          DateTime?     // When comment was hidden
+  deletedAt         DateTime?     // When comment was deleted
+  scheduledPostAt   DateTime?     // When to post the AI reply (null = immediate or already posted)
+  needsReview       Boolean       @default(false) // Flag for manual review
+  attemptCount      Int           @default(0)     // Number of automation attempts
+  lastAttemptAt     DateTime?     // Last automation attempt timestamp
+  lastError         String?       // Last error message
+
+  // Relations
+  actionLogs        CommentActionLog[]
+
+  @@unique([pageId, commentId])
+  @@index([pageId, status])
+  @@index([pageId, isFromAd])
+  @@index([pageId, sentiment])
+  @@index([pageId, isReply])
+  @@index([pageId, authorId, createdAt]) // For cooldown queries
+  @@index([pageId, needsReview]) // For review queue
+  @@index([pageId, automationStatus]) // For automation monitoring
+  @@index([scheduledPostAt, status]) // For cron scheduled reply queries
+  @@index([createdAt])                   // Dashboard: global comment ordering
+  @@index([pageId, sentiment, createdAt]) // Sentiment chart with date filter
+  @@index([postId, isFromAd, pageId])    // Webhook: ad detection lookup
+}
+
+model TikTokAccountStats {
+  id              String        @id @default(cuid())
+  connectedPageId String        @unique
+  connectedPage   ConnectedPage @relation(fields: [connectedPageId], references: [id], onDelete: Cascade)
+  openId          String
+  username        String?
+  displayName     String?
+  avatarUrl       String?
+  followerCount   Int?
+  followingCount  Int?
+  likesCount      Int?
+  videoCount      Int?
+  updatedAt       DateTime      @updatedAt
+}
+
+model CommentActionLog {
+  id              String   @id @default(cuid())
+  commentId       String   // Reference to Comment
+  connectedPageId String   // Page this action belongs to
+  provider        String   // "facebook" | "instagram"
+  actionType      String   // "REPLY" | "HIDE" | "DELETE" | "SKIP" | "MANUAL_REPLY" | "MANUAL_HIDE" | "MANUAL_IGNORE"
+  status          String   // "PENDING" | "SUCCESS" | "FAILED" | "SKIPPED"
+  reason          String?  // Human-readable explanation
+  ruleTriggered   String?  // Decision rule ID (e.g., "cooldown_active")
+  aiPromptVersion String?  // AI prompt version if applicable
+  aiModel         String?  // AI model used if applicable
+  aiReplyText     String?  // AI-generated reply text
+  metaResponse    Json?    // Meta API response (for debugging)
+  errorMessage    String?  // Error details if failed
+  webUsed         Boolean? // true when reply used web_search
+  webDomain       String?  // domain used (e.g. eyeplex.gr)
+  promptSource    String?  // "override" | "global"
+  createdAt       DateTime @default(now())
+  
+  comment         Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  
+  @@index([commentId])
+  @@index([connectedPageId])
+  @@index([createdAt])
+  @@index([actionType, status])
+  @@unique([commentId, actionType], name: "unique_comment_action") // Prevent duplicate actions
+}

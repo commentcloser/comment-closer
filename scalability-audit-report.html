@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scalability Audit Report — AI Comment MVP</title>
+<style>
+  @page { margin: 1.5cm 2cm; size: A4; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #1a1a2e;
+    padding: 40px 60px;
+    max-width: 1000px;
+    margin: 0 auto;
+    background: #fff;
+  }
+  h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #0f0f23;
+    border-bottom: 3px solid #2563eb;
+    padding-bottom: 10px;
+    margin-bottom: 6px;
+  }
+  .subtitle {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 30px;
+  }
+  h2 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-top: 28px;
+    margin-bottom: 10px;
+    border-left: 4px solid #2563eb;
+    padding-left: 10px;
+  }
+  h3 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #334155;
+    margin-top: 18px;
+    margin-bottom: 6px;
+  }
+  h4 {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #475569;
+    margin-top: 14px;
+    margin-bottom: 4px;
+  }
+  p, li { font-size: 11px; color: #334155; margin-bottom: 4px; }
+  ul, ol { padding-left: 18px; margin-bottom: 8px; }
+  code {
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    background: #f1f5f9;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 10px;
+    color: #7c3aed;
+  }
+  pre {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 9.5px;
+    overflow-x: auto;
+    margin: 8px 0 12px 0;
+    line-height: 1.6;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0 14px 0;
+    font-size: 10px;
+  }
+  th {
+    background: #1e3a5f;
+    color: #fff;
+    font-weight: 600;
+    text-align: left;
+    padding: 6px 8px;
+    font-size: 9.5px;
+  }
+  td {
+    border: 1px solid #e2e8f0;
+    padding: 5px 8px;
+    vertical-align: top;
+  }
+  tr:nth-child(even) { background: #f8fafc; }
+  tr:hover { background: #eff6ff; }
+  .critical { background: #fef2f2 !important; }
+  .warning { background: #fffbeb !important; }
+  .ok { background: #f0fdf4 !important; }
+  .badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+  .badge-orange { background: #ffedd5; color: #9a3412; }
+  .badge-yellow { background: #fef9c3; color: #854d0e; }
+  .badge-green { background: #dcfce7; color: #166534; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .file-ref { color: #2563eb; font-family: monospace; font-size: 10px; }
+  .section-divider {
+    border: none;
+    border-top: 2px solid #e2e8f0;
+    margin: 24px 0;
+  }
+  .toc {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 14px 20px;
+    margin: 16px 0 24px 0;
+  }
+  .toc-title { font-weight: 700; font-size: 12px; margin-bottom: 6px; color: #1e3a5f; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 2px; font-size: 10.5px; }
+  .toc a { color: #2563eb; text-decoration: none; }
+  .page-break { page-break-before: always; }
+  .highlight-box {
+    border-left: 4px solid #f59e0b;
+    background: #fffbeb;
+    padding: 10px 14px;
+    margin: 10px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .danger-box {
+    border-left: 4px solid #ef4444;
+    background: #fef2f2;
+    padding: 10px 14px;
+    margin: 10px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .footer {
+    margin-top: 40px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 9px;
+    color: #94a3b8;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<h1>Scalability Audit Report</h1>
+<p class="subtitle">AI Comment MVP &mdash; Full Infrastructure &amp; Performance Analysis &bull; March 2026</p>
+
+<div class="toc">
+  <div class="toc-title">Table of Contents</div>
+  <ol>
+    <li><a href="#db">Database (Prisma/PostgreSQL)</a></li>
+    <li><a href="#webhooks">Webhook Processing (Meta/Facebook/Instagram)</a></li>
+    <li><a href="#ai">AI Reply Generation (OpenAI)</a></li>
+    <li><a href="#cron">Cron Jobs (Scheduled Replies)</a></li>
+    <li><a href="#dashboard">Dashboard / Client</a></li>
+    <li><a href="#summary">Bottleneck Summary Table</a></li>
+    <li><a href="#ranked">Ranked Bottlenecks</a></li>
+    <li><a href="#action">Priority Action Plan</a></li>
+  </ol>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="db">1. Database (Prisma/PostgreSQL)</h2>
+<!-- ============================================================ -->
+
+<h3>1.1 Connection Pooling: Not Configured</h3>
+<p><span class="file-ref">lib/prisma.ts:10-14</span> &mdash; bare <code>new PrismaClient()</code> with no connection pool settings. On Vercel serverless, each cold-started function opens its own connection. Default Prisma pool is 5 connections per function instance.</p>
+
+<div class="danger-box">
+  <strong>Vercel limits:</strong> ~500 concurrent serverless executions on Pro, each holding up to 5 Prisma connections = theoretical 2,500 DB connections. Most PostgreSQL providers cap at 20&ndash;100 direct connections.
+</div>
+
+<h3>1.2 Prisma Operations Per Webhook (Worst Case)</h3>
+<p>Per single Facebook comment arriving via webhook (<span class="file-ref">app/api/webhooks/facebook/route.ts</span>):</p>
+
+<table>
+  <tr><th>Step</th><th>DB Ops</th><th>External Calls</th><th>Line(s)</th></tr>
+  <tr><td>Find ConnectedPage</td><td>1 <code>findFirst</code></td><td>&mdash;</td><td>:59</td></tr>
+  <tr><td>Check existing ad comment</td><td>1 <code>findFirst</code></td><td>&mdash;</td><td>:137</td></tr>
+  <tr><td>Check promotion status (Graph API)</td><td>&mdash;</td><td>1-2 <code>fetch</code></td><td>:156, :180</td></tr>
+  <tr><td>Fetch user Account token</td><td>1 <code>findFirst</code></td><td>&mdash;</td><td>:175</td></tr>
+  <tr><td>Upsert Comment</td><td>1 <code>upsert</code></td><td>&mdash;</td><td>:196</td></tr>
+  <tr><td>Sentiment Analysis</td><td>&mdash;</td><td>1 OpenAI call</td><td>:236</td></tr>
+  <tr><td>Save sentiment</td><td>1 <code>update</code></td><td>&mdash;</td><td>:240</td></tr>
+  <tr><td>Auto-moderation check</td><td>1 <code>findFirst</code> + 1 <code>create</code></td><td>0-1 <code>fetch</code></td><td>commentModerator :70, :81</td></tr>
+  <tr><td>Decision engine (cooldown)</td><td>1 <code>findMany</code></td><td>&mdash;</td><td>replyDecisionEngine :238</td></tr>
+  <tr><td>Decision engine (first-comment)</td><td>1 <code>count</code></td><td>&mdash;</td><td>replyDecisionEngine :284</td></tr>
+  <tr><td>Claim comment</td><td>1 <code>updateMany</code></td><td>&mdash;</td><td>:380</td></tr>
+  <tr><td>Fetch post caption</td><td>&mdash;</td><td>1 <code>fetch</code></td><td>:405</td></tr>
+  <tr><td>Generate AI reply</td><td>&mdash;</td><td>1 OpenAI call</td><td>:434</td></tr>
+  <tr><td>Store AI reply</td><td>1 <code>update</code></td><td>&mdash;</td><td>:476</td></tr>
+  <tr><td>Log reply attempt</td><td>2 <code>update</code> + 1 <code>create</code></td><td>&mdash;</td><td>actionLogger</td></tr>
+  <tr><td>Post reply to Meta</td><td>&mdash;</td><td>1 <code>fetch</code></td><td>:538</td></tr>
+  <tr><td>Log success</td><td>1 <code>update</code> (log) + 1 <code>update</code> (comment)</td><td>&mdash;</td><td>actionLogger</td></tr>
+  <tr class="critical"><td><strong>TOTAL</strong></td><td><strong>~15 DB ops</strong></td><td><strong>~5&ndash;7 external calls</strong></td><td></td></tr>
+</table>
+
+<h3>1.3 Queries That Degrade at Scale</h3>
+
+<table>
+  <tr><th>Query</th><th>Location</th><th>10K Rows</th><th>100K</th><th>1M</th><th>Issue</th></tr>
+  <tr class="critical">
+    <td><code>message: { contains, mode: 'insensitive' }</code></td>
+    <td><span class="file-ref">comments/all:117</span></td>
+    <td>OK</td><td>Slow (~500ms)</td><td>Very slow (2&ndash;5s)</td>
+    <td><code>ILIKE '%term%'</code> = full table scan, no index can help</td>
+  </tr>
+  <tr class="critical">
+    <td><code>prisma.user.findMany</code> (ALL users)</td>
+    <td><span class="file-ref">admin/users:145</span></td>
+    <td>OK</td><td>Slow</td><td>OOM crash</td>
+    <td>Loads entire User table into memory for growth timeline</td>
+  </tr>
+  <tr class="critical">
+    <td><code>prisma.comment.findMany</code> (ALL comment dates)</td>
+    <td><span class="file-ref">admin/users:166</span></td>
+    <td>OK</td><td>Slow (~2s)</td><td>OOM crash</td>
+    <td>Loads 30 days of comment timestamps into Node.js memory</td>
+  </tr>
+  <tr class="warning">
+    <td><code>groupBy(['sentiment'])</code> with date filter</td>
+    <td><span class="file-ref">comments/all:57</span></td>
+    <td>OK</td><td>OK</td><td>Slow (~1s)</td>
+    <td>Composite index <code>[pageId, sentiment, createdAt]</code> missing</td>
+  </tr>
+  <tr class="warning">
+    <td>7x parallel <code>Promise.all</code> queries</td>
+    <td><span class="file-ref">comments/all:126</span></td>
+    <td>OK</td><td>Moderate</td><td>7 concurrent scans tax connection pool</td>
+    <td>Each holds a connection</td>
+  </tr>
+  <tr class="warning">
+    <td>10x parallel <code>Promise.all</code> metric queries</td>
+    <td><span class="file-ref">admin/users:131</span></td>
+    <td>OK</td><td>Slow</td><td>Very slow</td>
+    <td>10 concurrent aggregate queries</td>
+  </tr>
+  <tr class="ok">
+    <td><code>findFirst</code> on <code>instagramUserId</code></td>
+    <td><span class="file-ref">instagram/route.ts:72</span></td>
+    <td>OK</td><td>OK</td><td>OK</td>
+    <td>Has <code>@@index([instagramUserId])</code></td>
+  </tr>
+  <tr class="ok">
+    <td>Cooldown <code>findMany</code> by authorId</td>
+    <td><span class="file-ref">replyDecisionEngine:238</span></td>
+    <td>OK</td><td>OK</td><td>OK</td>
+    <td>Has <code>@@index([pageId, authorId, createdAt])</code></td>
+  </tr>
+  <tr class="ok">
+    <td>Scheduled replies <code>findMany</code></td>
+    <td><span class="file-ref">cron:15</span></td>
+    <td>OK</td><td>OK</td><td>OK</td>
+    <td>Has <code>@@index([scheduledPostAt, status])</code></td>
+  </tr>
+</table>
+
+<h3>1.4 Missing Indexes</h3>
+
+<table>
+  <tr><th>Table</th><th>Missing Index</th><th>Why Needed</th></tr>
+  <tr><td>Comment</td><td><code>[createdAt]</code> standalone</td><td>Global ordering in comments/all <code>orderBy: { createdAt: 'desc' }</code></td></tr>
+  <tr><td>Comment</td><td><code>[pageId, sentiment, createdAt]</code></td><td>Sentiment chart queries with date filter</td></tr>
+  <tr><td>ConnectedPage</td><td><code>[userId, disconnectedAt]</code></td><td>Every user dashboard query filters by <code>userId + disconnectedAt: null</code></td></tr>
+  <tr><td>Comment</td><td><code>[postId, isFromAd, pageId]</code></td><td>Ad detection <code>findFirst</code> in webhook (<span class="file-ref">facebook:137</span>)</td></tr>
+  <tr><td>User</td><td><code>[role, lastLoginAt]</code></td><td>Admin "recent active users" count</td></tr>
+  <tr><td>User</td><td><code>[role, createdAt]</code></td><td>Admin "new users" counts</td></tr>
+</table>
+
+<hr class="section-divider">
+
+<!-- ============================================================ -->
+<h2 id="webhooks">2. Webhook Processing (Meta/Facebook/Instagram)</h2>
+<!-- ============================================================ -->
+
+<h3>2.1 Throughput Analysis</h3>
+<p>Each webhook invocation processes comments <strong>sequentially</strong> inside nested <code>for</code> loops:</p>
+
+<pre>for (entry of body.entry)        &rarr; sequential
+  for (change of entry.changes)  &rarr; sequential
+    await handleFeedComment()    &rarr; blocking</pre>
+
+<p><span class="file-ref">app/api/webhooks/facebook/route.ts:57-78</span></p>
+
+<h4>Per-comment processing time (estimated):</h4>
+<table>
+  <tr><th>Operation</th><th>Time</th></tr>
+  <tr><td>DB operations (~15 ops)</td><td>~150ms</td></tr>
+  <tr><td>OpenAI sentiment analysis</td><td>~500&ndash;2,000ms</td></tr>
+  <tr><td>OpenAI reply generation</td><td>~1,000&ndash;5,000ms (up to 28s with web search)</td></tr>
+  <tr><td>Meta Graph API calls (3&ndash;5)</td><td>~500&ndash;1,500ms</td></tr>
+  <tr class="critical"><td><strong>Total per comment</strong></td><td><strong>~2&ndash;8 seconds</strong> (without web search)</td></tr>
+</table>
+
+<div class="danger-box">
+  <strong>Vercel function timeout:</strong> 10s default, no <code>maxDuration</code> export on webhook routes. If Meta sends a batch with 3+ comments, the function will timeout.
+</div>
+
+<h3>2.2 Burst Handling (100 webhooks in 1 second)</h3>
+<p>Meta batches multiple changes into a single webhook payload, but can also send separate requests. With 100 concurrent requests:</p>
+<ol>
+  <li>Vercel spawns ~100 serverless function instances</li>
+  <li>Each opens up to 5 DB connections = <strong>500 connections</strong> (exceeds most DB provider limits of 20&ndash;100)</li>
+  <li>100 concurrent OpenAI API calls hit rate limits</li>
+  <li>100 concurrent Meta Graph API calls hit per-app rate limits</li>
+  <li><strong>Result: Mass connection failures, 429s from OpenAI, degraded Meta API responses</strong></li>
+</ol>
+
+<h3>2.3 Race Conditions</h3>
+<p><strong>Duplicate webhook for same comment</strong> &mdash; two instances both run <code>upsert</code> at <span class="file-ref">facebook/route.ts:196</span>. Both succeed (upsert is safe). But then both proceed to sentiment analysis and reply generation. The <code>updateMany</code> claim at <span class="file-ref">line 380</span> catches this &mdash; only one will get <code>count: 1</code>. <span class="badge badge-green">Correctly handled.</span></p>
+
+<div class="danger-box">
+  <strong>Missing HMAC signature verification</strong> &mdash; webhooks don't verify the <code>X-Hub-Signature-256</code> header. Any party can send fake webhooks to trigger AI reply generation and Meta API calls.
+</div>
+
+<hr class="section-divider">
+
+<!-- ============================================================ -->
+<h2 id="ai">3. AI Reply Generation (OpenAI)</h2>
+<!-- ============================================================ -->
+
+<h3>3.1 OpenAI Rate Limits</h3>
+<p>Using <code>gpt-5</code> (<span class="file-ref">openai.ts:93</span>, <span class="file-ref">aiReplyEngine.ts:588</span>):</p>
+
+<table>
+  <tr><th>Limit Type</th><th>Typical Tier 1</th><th>Typical Tier 3</th><th>Impact</th></tr>
+  <tr><td>RPM (requests/min)</td><td>500</td><td>5,000</td><td>At 200 users with active pages, ~100 comments/min = 200 OpenAI calls/min (sentiment + reply)</td></tr>
+  <tr><td>TPM (tokens/min)</td><td>30K</td><td>300K</td><td>Each sentiment ~100 tokens, each reply ~300 tokens</td></tr>
+</table>
+
+<div class="highlight-box">
+  <strong>No retry logic</strong> &mdash; when rate-limited (429), the reply silently fails with <code>'Rate limit exceeded'</code> at <span class="file-ref">aiReplyEngine.ts:623</span>. The comment is marked <code>ai_failed</code> with no automatic retry.
+</div>
+
+<h3>3.2 Meta Graph API Rate Limits</h3>
+<p>Meta imposes per-app and per-page limits:</p>
+<ul>
+  <li><strong>200 calls/user/hour</strong> for non-whitelisted apps</li>
+  <li>Posting replies counts against the limit</li>
+  <li>Webhook handler makes 2&ndash;4 Graph API reads + 1 write per comment</li>
+</ul>
+<p>At 50 users with 5 pages each = ~250 pages. If each page gets 10 comments/hour = 2,500 comments &times; 3&ndash;5 API calls = <strong>7,500&ndash;12,500 Graph API calls/hour</strong>. This will hit rate limits.</p>
+
+<h3>3.3 Queue Backlog</h3>
+<div class="danger-box">
+  <strong>There is no queue.</strong> Everything is processed synchronously in the webhook handler. If OpenAI is slow or down:
+  <ul>
+    <li>Webhook handler blocks until timeout</li>
+    <li>Meta receives a timeout/error and <strong>retries the webhook</strong> (up to 3 times with exponential backoff)</li>
+    <li>This creates a cascade: retries arrive while the system is already overloaded</li>
+  </ul>
+</div>
+
+<hr class="section-divider">
+
+<!-- ============================================================ -->
+<h2 id="cron">4. Cron Jobs (Scheduled Replies)</h2>
+<!-- ============================================================ -->
+
+<p><span class="file-ref">app/api/cron/post-scheduled-replies/route.ts</span></p>
+
+<h3>4.1 Processing Capacity</h3>
+<table>
+  <tr><th>Parameter</th><th>Value</th><th>Implication</th></tr>
+  <tr><td><code>take: 20</code></td><td>Line 33</td><td>Max 20 comments per tick</td></tr>
+  <tr><td><code>maxDuration: 60</code></td><td>Line 6</td><td>60 second timeout</td></tr>
+  <tr><td>Processing</td><td>Sequential <code>for</code> loop (line 46)</td><td>~500&ndash;1,500ms per reply</td></tr>
+  <tr class="warning"><td><strong>Max throughput</strong></td><td colspan="2"><strong>20 replies / 5 minutes = 4 replies/minute</strong></td></tr>
+</table>
+
+<h3>4.2 Overlap Risk</h3>
+<p>GitHub Actions cron runs every 5 minutes. If a tick takes &gt;5 minutes (e.g., Meta API is slow), the next tick starts while the previous is still running. Both fetch the same comments (no locking).</p>
+
+<div class="highlight-box">
+  The query only checks <code>status: 'ai_generated'</code>, so comments won't be double-processed during normal operation. However, if the cron posts the reply but fails to update the DB before timeout, the next tick will try again (idempotency gap).
+</div>
+
+<hr class="section-divider">
+
+<!-- ============================================================ -->
+<h2 id="dashboard">5. Dashboard / Client</h2>
+<!-- ============================================================ -->
+
+<h3>5.1 Admin Dashboard: Memory Bomb</h3>
+<p><span class="file-ref">admin/users/route.ts:145-179</span>:</p>
+
+<pre>const allUsers = await prisma.user.findMany({
+  where: userFilter,
+  select: { createdAt: true },
+  orderBy: { createdAt: 'asc' },
+});
+// ... then JavaScript loop with .filter() per day for 30 days</pre>
+
+<div class="danger-box">
+  This loads ALL users into memory, then runs 60 <code>.filter()</code> calls (30 days &times; 2 filters). Same for comments. At 10K users + 100K comments, this route will use ~200MB of heap and take 5&ndash;10 seconds.
+</div>
+
+<h3>5.2 Comments Dashboard</h3>
+<p><span class="file-ref">comments/all/route.ts:126</span> &mdash; 7 parallel queries is efficient but multiplied by concurrent dashboard users. With 20 users refreshing comments simultaneously = 140 concurrent DB queries.</p>
+
+<h3>5.3 No Caching</h3>
+<p>Zero caching anywhere. Every dashboard load = fresh queries. No Redis, no ISR, no stale-while-revalidate.</p>
+
+<hr class="section-divider">
+
+<!-- ============================================================ -->
+<div class="page-break"></div>
+<h2 id="summary">6. Bottleneck Summary Table</h2>
+<!-- ============================================================ -->
+
+<table>
+  <tr>
+    <th>#</th><th>Component</th><th>Current Limit</th><th>10 Users</th><th>50 Users</th><th>200 Users</th><th>1000 Users</th><th>Breaking Point</th>
+  </tr>
+  <tr class="critical">
+    <td>1</td>
+    <td><strong>DB connections</strong> (no pooling)</td>
+    <td>~20&ndash;100 (provider limit)</td>
+    <td>OK</td><td>Spikes during bursts</td>
+    <td>Connection exhaustion</td>
+    <td>Constant failures</td>
+    <td><strong>~30&ndash;50 concurrent webhook requests</strong></td>
+  </tr>
+  <tr class="critical">
+    <td>2</td>
+    <td><strong>Webhook processing</strong> (sync, no queue)</td>
+    <td>10s Vercel timeout</td>
+    <td>OK</td><td>Timeouts on multi-comment batches</td>
+    <td>Cascading timeouts + Meta retries</td>
+    <td>Total failure</td>
+    <td><strong>~5&ndash;10 comments per webhook batch</strong></td>
+  </tr>
+  <tr class="critical">
+    <td>3</td>
+    <td><strong>Admin dashboard</strong> (loads all rows)</td>
+    <td>Serverless memory (1&ndash;3GB)</td>
+    <td>OK</td><td>OK (~500 users)</td>
+    <td>Slow (3&ndash;5s)</td>
+    <td>OOM crash</td>
+    <td><strong>~5K users or ~50K comments</strong></td>
+  </tr>
+  <tr class="warning">
+    <td>4</td>
+    <td><strong>OpenAI rate limits</strong> (no retry/queue)</td>
+    <td>500&ndash;5000 RPM</td>
+    <td>OK</td><td>Occasional 429s</td>
+    <td>Frequent 429s</td>
+    <td>Sustained failures</td>
+    <td><strong>~250 comments/min</strong></td>
+  </tr>
+  <tr class="warning">
+    <td>5</td>
+    <td><strong>Meta Graph API</strong> limits</td>
+    <td>200 calls/user/hour</td>
+    <td>OK</td><td>Rate limits during bursts</td>
+    <td>Frequent rate limits</td>
+    <td>Blocked</td>
+    <td><strong>~100 pages with active comments</strong></td>
+  </tr>
+  <tr class="warning">
+    <td>6</td>
+    <td><strong>Cron throughput</strong> (20/tick, sequential)</td>
+    <td>4 replies/min</td>
+    <td>OK</td><td>Backlog if &gt;20 scheduled</td>
+    <td>Growing backlog</td>
+    <td>Hours-long delay</td>
+    <td><strong>&gt;20 scheduled replies per 5 min</strong></td>
+  </tr>
+  <tr>
+    <td>7</td>
+    <td><strong>ILIKE search</strong> (full scan)</td>
+    <td>N/A</td>
+    <td>OK</td><td>OK</td>
+    <td>Slow (1&ndash;3s)</td>
+    <td>Unusable (10s+)</td>
+    <td><strong>~100K comments</strong></td>
+  </tr>
+  <tr>
+    <td>8</td>
+    <td><strong>Dashboard queries</strong> (7 parallel, no cache)</td>
+    <td>~20 concurrent users</td>
+    <td>OK</td><td>Mild contention</td>
+    <td>Connection pool exhaustion</td>
+    <td>DB overload</td>
+    <td><strong>~30&ndash;50 concurrent dashboard users</strong></td>
+  </tr>
+</table>
+
+<hr class="section-divider">
+
+<!-- ============================================================ -->
+<h2 id="ranked">7. Ranked Bottlenecks (Will Break First &rarr; Last)</h2>
+<!-- ============================================================ -->
+
+<h3>1. DB Connection Exhaustion During Webhook Bursts</h3>
+<p><span class="badge badge-red">Breaks at: ~30&ndash;50 concurrent requests</span></p>
+<p><strong>Fix:</strong> Use Prisma Accelerate or PgBouncer for connection pooling. Set <code>connection_limit</code> in Prisma config.</p>
+<p><strong>Effort:</strong> <span class="badge badge-green">Easy</span> (1&ndash;2 hours). Add <code>?pgbouncer=true&amp;connection_limit=5</code> to DATABASE_URL, or switch to Prisma Accelerate.</p>
+
+<h3>2. Webhook Timeout (Synchronous Processing)</h3>
+<p><span class="badge badge-red">Breaks at: ~3 comments per batch, or any web-search reply</span></p>
+<p><strong>Fix:</strong> Return <code>200</code> immediately to Meta, push work to a background queue (Inngest, QStash, or Vercel Background Functions). Process asynchronously.</p>
+<p><strong>Effort:</strong> <span class="badge badge-red">Hard</span> (2&ndash;3 days). Requires architectural change to decouple ingestion from processing.</p>
+
+<h3>3. Missing Webhook HMAC Verification</h3>
+<p><span class="badge badge-red">Breaks at: First attacker</span></p>
+<p><strong>Fix:</strong> Verify <code>X-Hub-Signature-256</code> header against <code>FACEBOOK_APP_SECRET</code> before processing.</p>
+<p><strong>Effort:</strong> <span class="badge badge-green">Easy</span> (30 minutes). Add HMAC check at top of POST handler.</p>
+
+<h3>4. Admin Dashboard OOM (Loading All Rows)</h3>
+<p><span class="badge badge-orange">Breaks at: ~5K users or ~50K comments</span></p>
+<p><strong>Fix:</strong> Replace JavaScript <code>.filter()</code> timeline computation with SQL <code>GROUP BY DATE_TRUNC('day', createdAt)</code> aggregate queries at <span class="file-ref">admin/users:145-179</span>.</p>
+<p><strong>Effort:</strong> <span class="badge badge-green">Easy</span> (1&ndash;2 hours).</p>
+
+<h3>5. OpenAI Rate Limits (No Retry)</h3>
+<p><span class="badge badge-orange">Breaks at: ~250 comments/minute</span></p>
+<p><strong>Fix:</strong> Add exponential backoff retry (3 attempts) on 429 responses. Implement a token bucket limiter.</p>
+<p><strong>Effort:</strong> <span class="badge badge-yellow">Medium</span> (half day).</p>
+
+<h3>6. Meta Graph API Rate Limits</h3>
+<p><span class="badge badge-orange">Breaks at: ~100 active pages</span></p>
+<p><strong>Fix:</strong> Cache <code>promotion_status</code> results (the 2 Graph API calls at <span class="file-ref">facebook/route.ts:154-194</span> for ad detection are often redundant). Remove unnecessary <code>fetch</code> calls when the webhook payload already provides <code>promotion_status</code>.</p>
+<p><strong>Effort:</strong> <span class="badge badge-yellow">Medium</span> (half day). Also batch Graph API calls where possible.</p>
+
+<h3>7. Cron Throughput (4 replies/min)</h3>
+<p><span class="badge badge-yellow">Breaks at: &gt;20 scheduled replies per 5 minutes</span></p>
+<p><strong>Fix:</strong> Increase <code>take</code> to 100, parallelize with <code>Promise.allSettled</code> (batch of 5&ndash;10), add distributed lock.</p>
+<p><strong>Effort:</strong> <span class="badge badge-green">Easy</span> (1&ndash;2 hours).</p>
+
+<h3>8. ILIKE Full Table Scan</h3>
+<p><span class="badge badge-yellow">Breaks at: ~100K comments</span></p>
+<p><strong>Fix:</strong> Add PostgreSQL <code>pg_trgm</code> extension + GIN index on <code>message</code> and <code>authorName</code>. Or use full-text search (<code>tsvector</code>).</p>
+<p><strong>Effort:</strong> <span class="badge badge-yellow">Medium</span> (half day for migration + testing).</p>
+
+<h3>9. Dashboard Query Contention</h3>
+<p><span class="badge badge-blue">Breaks at: ~30&ndash;50 concurrent users</span></p>
+<p><strong>Fix:</strong> Add Redis/Vercel KV caching for metrics (5&ndash;60s TTL). Metrics don't need to be real-time.</p>
+<p><strong>Effort:</strong> <span class="badge badge-yellow">Medium</span> (1 day).</p>
+
+<h3>10. Missing Indexes</h3>
+<p><span class="badge badge-blue">Breaks at: Gradual degradation from 50K rows</span></p>
+<p><strong>Fix:</strong> Add the 6 missing indexes listed in Section 1.4 via Prisma migration.</p>
+<p><strong>Effort:</strong> <span class="badge badge-green">Easy</span> (30 minutes).</p>
+
+<hr class="section-divider">
+
+<!-- ============================================================ -->
+<h2 id="action">8. Priority Action Plan</h2>
+<!-- ============================================================ -->
+
+<table>
+  <tr><th>Priority</th><th>Fix</th><th>Effort</th><th>Impact</th></tr>
+  <tr class="critical">
+    <td><span class="badge badge-red">P0</span></td>
+    <td>Add DB connection pooling (Prisma Accelerate or PgBouncer)</td>
+    <td><span class="badge badge-green">Easy</span></td>
+    <td>Prevents crashes under any concurrent load</td>
+  </tr>
+  <tr class="critical">
+    <td><span class="badge badge-red">P0</span></td>
+    <td>Add webhook HMAC signature verification</td>
+    <td><span class="badge badge-green">Easy</span></td>
+    <td>Security &mdash; prevents spoofed webhooks</td>
+  </tr>
+  <tr class="critical">
+    <td><span class="badge badge-red">P0</span></td>
+    <td>Fix admin dashboard to use SQL aggregates instead of loading all rows</td>
+    <td><span class="badge badge-green">Easy</span></td>
+    <td>Prevents OOM at ~5K users</td>
+  </tr>
+  <tr class="warning">
+    <td><span class="badge badge-orange">P1</span></td>
+    <td>Add <code>maxDuration</code> export to webhook routes (set to 60s)</td>
+    <td><span class="badge badge-green">Easy</span></td>
+    <td>Prevents 10s default timeout</td>
+  </tr>
+  <tr class="warning">
+    <td><span class="badge badge-orange">P1</span></td>
+    <td>Background queue for webhook processing</td>
+    <td><span class="badge badge-red">Hard</span></td>
+    <td>Removes the single biggest architectural bottleneck</td>
+  </tr>
+  <tr class="warning">
+    <td><span class="badge badge-orange">P1</span></td>
+    <td>Add missing DB indexes</td>
+    <td><span class="badge badge-green">Easy</span></td>
+    <td>Free performance at scale</td>
+  </tr>
+  <tr>
+    <td><span class="badge badge-yellow">P2</span></td>
+    <td>OpenAI retry with exponential backoff</td>
+    <td><span class="badge badge-yellow">Medium</span></td>
+    <td>Reduces <code>ai_failed</code> rate</td>
+  </tr>
+  <tr>
+    <td><span class="badge badge-yellow">P2</span></td>
+    <td>Cache Meta Graph API responses for ad detection</td>
+    <td><span class="badge badge-yellow">Medium</span></td>
+    <td>Reduces API calls by ~50%</td>
+  </tr>
+  <tr>
+    <td><span class="badge badge-yellow">P2</span></td>
+    <td>Increase cron batch size + parallelize</td>
+    <td><span class="badge badge-green">Easy</span></td>
+    <td>10x throughput increase</td>
+  </tr>
+  <tr>
+    <td><span class="badge badge-blue">P3</span></td>
+    <td>Add full-text search for comments</td>
+    <td><span class="badge badge-yellow">Medium</span></td>
+    <td>Fixes search at 100K+ rows</td>
+  </tr>
+  <tr>
+    <td><span class="badge badge-blue">P3</span></td>
+    <td>Add caching layer for dashboard metrics</td>
+    <td><span class="badge badge-yellow">Medium</span></td>
+    <td>Supports 50+ concurrent users</td>
+  </tr>
+</table>
+
+<div class="footer">
+  Scalability Audit Report &bull; AI Comment MVP &bull; Generated March 2026 &bull; Powered by Claude
+</div>
+
+</body>
+</html>

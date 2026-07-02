@@ -1,0 +1,724 @@
+/**
+ * AI Reply Engine
+ * 
+ * Generates natural, context-aware replies to social media comments
+ * using OpenAI's GPT models and customizable prompt templates.
+ * When web source is enabled, uses Responses API with web_search restricted to page domain.
+ */
+
+import OpenAI from 'openai';
+import {
+  PromptVariables,
+  getTemplateForSentiment,
+} from './promptTemplates';
+import { getDomainFromWebSourceUrl } from './validators';
+
+// Lazy initialization to avoid build-time errors
+let openai: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI | null {
+  if (!process.env.OPENAI_API_KEY) return null;
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openai;
+}
+
+/**
+ * Configuration for AI reply generation
+ */
+export interface AIReplyConfig {
+  // From ConnectedPage settings
+  brandTone: string;
+  emojisEnabled: boolean;
+  ctaText?: string;
+  language: string;
+  maxLength: number;
+  
+  // Comment context
+  commentText: string;
+  authorName: string;
+  sentiment: 'positive' | 'neutral' | 'negative';
+  
+  // Optional context
+  postCaption?: string;
+  threadContext?: string; // Previous replies in conversation
+
+  // Per-page override: when set, used as system prompt for both positive and neutral
+  customReplyPrompt?: string | null;
+  // Web search: when enabled and URL set, use Responses API with web_search (always when enabled)
+  webSourceUrl?: string | null;
+  webSourceEnabled?: boolean;
+}
+
+/**
+ * Result from AI reply generation
+ */
+export interface AIReplyResult {
+  success: boolean;
+  reply?: string;
+  error?: string;
+  promptVersion?: string;
+  model?: string;
+  confidence?: number; // Reserved for future use
+  tokensUsed?: number;
+  generationTimeMs?: number;
+  webUsed?: boolean;
+  webDomain?: string;
+  /** Set when web search was used for price extraction */
+  priceFound?: boolean;
+  /** Extracted price text when found (for logging/debug) */
+  extractedPrice?: string | null;
+}
+
+/**
+ * Detect if the comment is asking about pricing.
+ * Triggers structured price search when true (with web source enabled).
+ */
+export function isPricingQuestion(commentText: string): boolean {
+  if (!commentText?.trim()) return false;
+  const lower = commentText.trim().toLowerCase();
+  const greek = /τιμή|τιμές|κόστος|χρέωση|πόσο/i;
+  const english = /\b(price|pricing|cost|how much)\b/i;
+  const symbol = /€/;
+  return greek.test(commentText) || english.test(lower) || symbol.test(commentText);
+}
+
+const WEB_RESPONSE_TIMEOUT_MS = 28000;
+
+const WEB_FALLBACK_MESSAGE =
+  'Μπορείτε να δείτε τις ενημερωμένες τιμές και πληροφορίες στο {url} ή να μας στείλετε μήνυμα.';
+
+/** System-level output rules (not editable by user). Enforced in all reply generation. */
+const SYSTEM_OUTPUT_RULES = `IMPORTANT:
+Do NOT include any URLs, citations, references, markdown links, or source formatting in the reply.
+Return plain text only.
+Do not mention the website explicitly.
+
+Return ONLY the final reply text. No parentheses. No brackets. No source references.`;
+
+const languageRule = `
+Match the language of the comment (Greek, English, German, etc.).
+If the comment is written in Greeklish (Greek words using Latin letters), reply in proper Greek.
+`;
+
+const HARD_MAX_LENGTH = 1000;
+
+function cleanReplyText(reply: string, maxLength: number): string {
+  let cleaned = reply.trim();
+  if (
+    (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+    (cleaned.startsWith("'") && cleaned.endsWith("'"))
+  ) {
+    cleaned = cleaned.slice(1, -1);
+  }
+  const limit = Math.min(maxLength, HARD_MAX_LENGTH);
+  if (cleaned.length > limit) {
+    // Try to cut at last sentence boundary within limit
+    const segment = cleaned.substring(0, limit);
+    const lastSentence = Math.max(
+      segment.lastIndexOf('.'),
+      segment.lastIndexOf('!'),
+      segment.lastIndexOf('?')
+    );
+    if (lastSentence > limit * 0.5) {
+      cleaned = segment.substring(0, lastSentence + 1);
+    } else {
+      // Cut at last word boundary
+      const lastSpace = segment.lastIndexOf(' ');
+      cleaned = lastSpace > 0 ? segment.substring(0, lastSpace) + '...' : segment;
+    }
+  }
+  return cleaned;
+}
+
+interface WebSearchReplyParams {
+  commentText: string;
+  authorName: string;
+  language: string;
+  maxLength: number;
+  customReplyPrompt?: string | null;
+  webSourceUrl: string;
+  domain: string;
+  requestId?: string;
+}
+
+interface PriceExtractionResult {
+  found_price: boolean;
+  price_text: string | null;
+}
+
+function parsePriceExtractionResponse(rawText: string): PriceExtractionResult | null {
+  const trimmed = rawText?.trim() ?? '';
+  if (!trimmed) return null;
+  try {
+    let jsonStr = trimmed;
+    const firstBrace = trimmed.indexOf('{');
+    const lastBrace = trimmed.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      jsonStr = trimmed.slice(firstBrace, lastBrace + 1);
+    }
+    const parsed = JSON.parse(jsonStr) as unknown;
+    if (parsed && typeof parsed === 'object' && 'found_price' in parsed) {
+      return {
+        found_price: Boolean((parsed as PriceExtractionResult).found_price),
+        price_text: typeof (parsed as PriceExtractionResult).price_text === 'string'
+          ? (parsed as PriceExtractionResult).price_text
+          : null,
+      };
+    }
+  } catch {
+    // treat as parse failure
+  }
+  return null;
+}
+
+/**
+ * Step 1: Structured web search to extract price only. Returns JSON-shaped result.
+ * Uses tool_choice required so the model must run web search.
+ */
+async function runStructuredPriceSearch(
+  client: OpenAI,
+  params: { commentText: string; domain: string; requestId?: string },
+  startTime: number
+): Promise<{ result: PriceExtractionResult | null; rawOutput: string; generationTimeMs: number }> {
+  const { commentText, domain, requestId = '' } = params;
+  const rid = requestId ? ` [${requestId}]` : '';
+
+  const instructions = `You MUST run web search queries in this exact order:
+1) site:${domain} (τιμή OR τιμές OR κόστος OR χρέωση OR πόσο OR price OR pricing OR cost OR how much OR €)
+2) site:${domain} (product or service name if mentioned in the comment)
+Extract the first exact numeric price found (e.g. "10€", "15.99 EUR").
+Return JSON only in this format, no other text:
+{"found_price": boolean, "price_text": string | null}
+Do not write any natural language explanation. Never invent a price. If no price found, set found_price to false and price_text to null.`;
+
+  const userInput = `Comment: "${commentText}"
+Output only valid JSON: {"found_price": true|false, "price_text": "<exact price string or null>"}`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), WEB_RESPONSE_TIMEOUT_MS);
+
+  try {
+    const response = await client.responses.create(
+      {
+        model: 'gpt-5',
+        reasoning: { effort: 'low' },
+        instructions,
+        input: userInput,
+        tools: [{ type: 'web_search_preview' }],
+        tool_choice: 'required' as const,
+      },
+      { signal: controller.signal, timeout: WEB_RESPONSE_TIMEOUT_MS }
+    );
+    clearTimeout(timeoutId);
+    const rawOutput = (response as { output_text?: string }).output_text ?? '';
+    const generationTimeMs = Date.now() - startTime;
+    const result = parsePriceExtractionResponse(rawOutput);
+    return { result, rawOutput, generationTimeMs };
+  } catch (err) {
+    clearTimeout(timeoutId);
+    const generationTimeMs = Date.now() - startTime;
+    console.info(`${LOG_PREFIX}${rid}     Structured price search failed: ${err instanceof Error ? err.message : String(err)}`);
+    return { result: null, rawOutput: '', generationTimeMs };
+  }
+}
+
+/**
+ * Step 2: Generate final reply using the extracted price (no web search). Never invent price.
+ */
+async function generateReplyWithExtractedPrice(
+  client: OpenAI,
+  params: {
+    commentText: string;
+    authorName: string;
+    extractedPrice: string;
+    language: string;
+    maxLength: number;
+    customReplyPrompt?: string | null;
+    webSourceUrl: string;
+    requestId?: string;
+  },
+  startTime: number
+): Promise<AIReplyResult> {
+  const {
+    commentText,
+    authorName,
+    extractedPrice,
+    language,
+    maxLength,
+    customReplyPrompt,
+    webSourceUrl,
+    requestId = '',
+  } = params;
+
+  const rid = requestId ? ` [${requestId}]` : '';
+
+  const systemPrompt = [
+    customReplyPrompt?.trim() || 'You are a friendly social media assistant.',
+    'Use the exact price provided below. Do not modify it. Do not invent any other price.',
+    'Keep the reply to 1–2 sentences.',
+    languageRule.trim(),
+    SYSTEM_OUTPUT_RULES,
+  ].join('\n');
+
+  const userPrompt = [
+    `Comment: "${commentText}"`,
+    `From: ${authorName}`,
+    `Extracted price (use exactly): ${extractedPrice}`,
+    language !== 'auto' ? `Language: ${language}.` : "Match the comment's language.",
+    'Return ONLY the reply text, no quotes or extra explanation.',
+  ].join('\n');
+
+  try {
+    const completion = await client.chat.completions.create({
+      model: 'gpt-5',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+    });
+    const generationTimeMs = Date.now() - startTime;
+    const rawReply = completion.choices[0]?.message?.content?.trim();
+    const reply = cleanReplyText(rawReply || WEB_FALLBACK_MESSAGE.replace('{url}', webSourceUrl), maxLength);
+    console.info(`${LOG_PREFIX}${rid}     Reply-with-price done in ${generationTimeMs}ms`);
+    return {
+      success: true,
+      reply,
+      promptVersion: customReplyPrompt ? 'override' : 'global',
+      model: 'gpt-5',
+      generationTimeMs,
+      webUsed: true,
+      webDomain: undefined,
+      priceFound: true,
+      extractedPrice,
+    };
+  } catch (err) {
+    const generationTimeMs = Date.now() - startTime;
+    const fallbackReply = cleanReplyText(WEB_FALLBACK_MESSAGE.replace('{url}', webSourceUrl), maxLength);
+    console.info(`${LOG_PREFIX}${rid}     Reply-with-price failed, using fallback: ${err instanceof Error ? err.message : String(err)}`);
+    return {
+      success: true,
+      reply: fallbackReply,
+      promptVersion: customReplyPrompt ? 'override' : 'global',
+      model: 'gpt-5',
+      generationTimeMs,
+      webUsed: true,
+      priceFound: true,
+      extractedPrice,
+    };
+  }
+}
+
+/**
+ * Generate a reply using Responses API with web_search restricted to the page domain.
+ * On timeout or API error returns success with fallback message and webUsed/webDomain set.
+ */
+async function generateWebSearchReply(
+  client: OpenAI,
+  params: WebSearchReplyParams,
+  startTime: number
+): Promise<AIReplyResult> {
+  const {
+    commentText,
+    authorName,
+    language,
+    maxLength,
+    customReplyPrompt,
+    webSourceUrl,
+    domain,
+    requestId = '',
+  } = params;
+
+  const rid = requestId ? ` [${requestId}]` : '';
+
+  const baseInstructions = [
+    'You are a social media assistant.',
+    `IMPORTANT: Restrict your answer to information from the website ${domain} only. Prefer searching or referring only to ${domain}; do not use or cite other sources.`,
+    'Keep the reply to 1–2 sentences.',
+    languageRule.trim(),
+  ].join(' ');
+  const instructions = customReplyPrompt?.trim()
+    ? `${baseInstructions}\n\nAdditional instructions: ${customReplyPrompt}\n\n${SYSTEM_OUTPUT_RULES}`
+    : `${baseInstructions}\n\n${SYSTEM_OUTPUT_RULES}`;
+
+  const userInput = [
+    `Comment to reply to: "${commentText}"`,
+    `From: ${authorName}`,
+    language !== 'auto' ? `Language: ${language}.` : "Match the comment's language.",
+    'Return ONLY the reply text, no quotes or extra explanation.',
+  ].join('\n');
+
+  const fallbackReply = WEB_FALLBACK_MESSAGE.replace('{url}', webSourceUrl);
+
+  console.info(`${LOG_PREFIX}${rid} 4/5 Calling OpenAI Responses API (web_search, domain: ${domain})...`);
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), WEB_RESPONSE_TIMEOUT_MS);
+
+    // Note: filters.allowed_domains is not supported by all API versions; we rely on instructions to restrict to domain
+    const response = await client.responses.create(
+      {
+        model: 'gpt-5',
+        reasoning: { effort: 'low' },
+        instructions,
+        input: userInput,
+        tools: [{ type: 'web_search_preview' }],
+      },
+      { signal: controller.signal, timeout: WEB_RESPONSE_TIMEOUT_MS }
+    );
+    clearTimeout(timeoutId);
+
+    const generationTime = Date.now() - startTime;
+    const rawText = (response as { output_text?: string }).output_text ?? '';
+    const hasRealContent = rawText.trim().length > 20;
+
+    if (!hasRealContent) {
+      console.info(`${LOG_PREFIX}${rid}     Web search returned EMPTY or very short text (${rawText.length} chars) → using fallback message (no real price/info from site)`);
+    } else {
+      console.info(`${LOG_PREFIX}${rid}     Web search OK: got ${rawText.length} chars, ${generationTime}ms`);
+    }
+
+    const reply = cleanReplyText(rawText.trim() || fallbackReply, maxLength);
+    return {
+      success: true,
+      reply,
+      promptVersion: customReplyPrompt ? 'override' : 'global',
+      model: 'gpt-5',
+      generationTimeMs: generationTime,
+      webUsed: true,
+      webDomain: domain,
+    };
+  } catch (err: unknown) {
+    const generationTime = Date.now() - startTime;
+    const msg = err instanceof Error ? err.message : String(err);
+    console.info(`${LOG_PREFIX}${rid}     Web search FAILED (using fallback): ${msg.slice(0, 120)}`);
+    return {
+      success: true,
+      reply: cleanReplyText(fallbackReply, maxLength),
+      promptVersion: customReplyPrompt ? 'override' : 'global',
+      model: 'gpt-5',
+      generationTimeMs: generationTime,
+      webUsed: true,
+      webDomain: domain,
+    };
+  }
+}
+
+/**
+ * Generate an AI reply for a comment
+ * 
+ * @param config - Configuration including comment and brand settings
+ * @returns AIReplyResult with generated reply or error
+ */
+const LOG_PREFIX = '[AI Reply]';
+
+function shortRequestId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+export async function generateAIReply(
+  config: AIReplyConfig
+): Promise<AIReplyResult> {
+  const requestId = shortRequestId();
+  const rid = ` [${requestId}]`;
+  const startTime = Date.now();
+  const commentPreview = config.commentText?.trim().slice(0, 50) ?? '';
+  console.info(`${LOG_PREFIX}${rid} 1/5 Starting reply generation for: "${commentPreview}${(config.commentText?.length ?? 0) > 50 ? '...' : ''}"`);
+
+  // Validate inputs
+  if (!config.commentText?.trim()) {
+    console.info(`${LOG_PREFIX}${rid} Aborted: comment text required`);
+    return {
+      success: false,
+      error: 'Comment text is required',
+    };
+  }
+
+  if (config.sentiment === 'negative') {
+    console.info(`${LOG_PREFIX}${rid} Aborted: negative sentiment (no reply)`);
+    return {
+      success: false,
+      error: 'Auto-reply not allowed for negative sentiment',
+    };
+  }
+
+  // Get OpenAI client
+  const client = getOpenAIClient();
+  if (!client) {
+    console.info(`${LOG_PREFIX}${rid} Aborted: OpenAI client not configured`);
+    return {
+      success: false,
+      error: 'OpenAI client not configured',
+    };
+  }
+
+  const webUrl = config.webSourceUrl?.trim();
+  const webEnabled = config.webSourceEnabled === true;
+  const useWebPath = webEnabled && !!webUrl;
+
+  console.info(`${LOG_PREFIX}${rid} 2/5 Web settings: enabled=${webEnabled}, url=${webUrl ? 'set' : 'none'} => useWebPath=${useWebPath}`);
+
+  if (useWebPath) {
+    const domain = getDomainFromWebSourceUrl(webUrl);
+    if (domain) {
+      const pricingIntent = isPricingQuestion(config.commentText);
+      if (pricingIntent) {
+        // Structured price path: extract price first, then generate reply with exact price
+        console.info(`${LOG_PREFIX}${rid} 3/5 Using STRUCTURED PRICE path (domain: ${domain})`);
+        const extractStart = Date.now();
+        const { result: priceResult, rawOutput, generationTimeMs: extractMs } = await runStructuredPriceSearch(
+          client,
+          { commentText: config.commentText, domain, requestId },
+          extractStart
+        );
+
+        const parsed = priceResult ?? parsePriceExtractionResponse(rawOutput);
+        const foundPrice = parsed?.found_price === true && typeof parsed?.price_text === 'string' && parsed.price_text.trim().length > 0;
+        const extractedPrice = foundPrice ? (parsed!.price_text!.trim()) : null;
+
+        console.info(`${LOG_PREFIX}${rid}     price_found=${foundPrice}, extracted_price=${extractedPrice ?? 'null'}, web_used=true, extract_ms=${extractMs}`);
+
+        if (foundPrice && extractedPrice) {
+          const replyResult = await generateReplyWithExtractedPrice(
+            client,
+            {
+              commentText: config.commentText,
+              authorName: config.authorName,
+              extractedPrice,
+              language: config.language,
+              maxLength: config.maxLength,
+              customReplyPrompt: config.customReplyPrompt,
+              webSourceUrl: webUrl,
+              requestId,
+            },
+            startTime
+          );
+          replyResult.webDomain = domain;
+          console.info(`${LOG_PREFIX}${rid} 5/5 Done (structured price). web_used=true, price_found=true, extracted_price=${extractedPrice}`);
+          return replyResult;
+        }
+
+        // No price found or parse failed → safe fallback, never invent
+        const fallbackReply = cleanReplyText(WEB_FALLBACK_MESSAGE.replace('{url}', webUrl), config.maxLength);
+        const totalMs = Date.now() - startTime;
+        console.info(`${LOG_PREFIX}${rid} 5/5 Done (structured price fallback). web_used=true, price_found=false, no invention`);
+        return {
+          success: true,
+          reply: fallbackReply,
+          promptVersion: config.customReplyPrompt ? 'override' : 'global',
+          model: 'gpt-5',
+          generationTimeMs: totalMs,
+          webUsed: true,
+          webDomain: domain,
+          priceFound: false,
+          extractedPrice: null,
+        };
+      }
+
+      console.info(`${LOG_PREFIX}${rid} 3/5 Using WEB SEARCH path (domain: ${domain}, non-pricing)`);
+      const webResult = await generateWebSearchReply(
+        client,
+        {
+          commentText: config.commentText,
+          authorName: config.authorName,
+          language: config.language,
+          maxLength: config.maxLength,
+          customReplyPrompt: config.customReplyPrompt,
+          webSourceUrl: webUrl,
+          domain,
+          requestId,
+        },
+        startTime
+      );
+      console.info(`${LOG_PREFIX}${rid} 5/5 Done (web search). webUsed=true, domain=${webResult.webDomain}, ${webResult.generationTimeMs}ms`);
+      return webResult;
+    }
+    console.info(`${LOG_PREFIX}${rid} 3/5 Web URL invalid or no domain, falling back to CHAT path`);
+  } else {
+    console.info(`${LOG_PREFIX}${rid} 3/5 Using CHAT path (no web search)`);
+  }
+
+  const customSystemPrompt = config.customReplyPrompt?.trim();
+  let systemPrompt: string;
+  let userPrompt: string;
+  let promptVersion: string;
+
+  if (customSystemPrompt) {
+    // Per-page custom prompt: use as system instructions and build minimal user message with context
+    systemPrompt = customSystemPrompt;
+    const parts: string[] = [
+      `Reply to this comment: "${config.commentText}"`,
+      `From: ${config.authorName}`,
+      `Max length: ${config.maxLength} characters.`,
+      config.language !== 'auto' ? `Language: ${config.language}.` : "Match the comment's language.",
+    ];
+    if (config.postCaption) {
+      parts.push(`Post context: "${config.postCaption.substring(0, 150)}${config.postCaption.length > 150 ? '...' : ''}"`);
+    }
+    if (config.threadContext) {
+      parts.push(`Previous replies: ${config.threadContext}`);
+    }
+    parts.push('Return ONLY the reply text, no quotes or extra explanation.');
+    userPrompt = parts.join('\n');
+    promptVersion = 'custom';
+  } else {
+    // Default: use template for this sentiment
+    const template = getTemplateForSentiment(config.sentiment);
+    if (!template) {
+      return {
+        success: false,
+        error: `No template available for sentiment: ${config.sentiment}`,
+      };
+    }
+    const promptVars: PromptVariables = {
+      brandTone: config.brandTone,
+      emojisEnabled: config.emojisEnabled,
+      ctaText: config.ctaText,
+      language: config.language,
+      maxLength: config.maxLength,
+      commentText: config.commentText,
+      authorName: config.authorName,
+      postCaption: config.postCaption,
+      threadContext: config.threadContext,
+    };
+    systemPrompt = template.systemPrompt;
+    userPrompt = template.userPrompt(promptVars);
+    promptVersion = template.version;
+  }
+
+  console.info(`${LOG_PREFIX}${rid} 4/5 Calling OpenAI Chat Completions (no web search)...`);
+  try {
+    const completion = await client.chat.completions.create({
+      model: 'gpt-5',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+    });
+
+    const generationTime = Date.now() - startTime;
+    const reply = completion.choices[0]?.message?.content?.trim();
+
+    if (!reply) {
+      return {
+        success: false,
+        error: 'Empty response from OpenAI',
+        promptVersion,
+        model: 'gpt-5',
+        generationTimeMs: generationTime,
+      };
+    }
+
+    const cleanedReply = cleanReplyText(reply, config.maxLength);
+
+    console.info(`${LOG_PREFIX}${rid} 5/5 Done (chat). webUsed=false, ${generationTime}ms`);
+    return {
+      success: true,
+      reply: cleanedReply,
+      promptVersion,
+      model: 'gpt-5',
+      confidence: 0.85,
+      tokensUsed: completion.usage?.total_tokens,
+      generationTimeMs: generationTime,
+    };
+  } catch (error: any) {
+    const generationTime = Date.now() - startTime;
+    let errorMessage = 'Failed to generate reply';
+    if (error?.status === 429) {
+      errorMessage = 'Rate limit exceeded - too many requests';
+    } else if (error?.status === 401) {
+      errorMessage = 'Invalid OpenAI API key';
+    } else if (error?.status === 500 || error?.status === 503) {
+      errorMessage = 'OpenAI service temporarily unavailable';
+    } else if (error?.code === 'ENOTFOUND' || error?.code === 'ECONNREFUSED') {
+      errorMessage = 'Network error - cannot reach OpenAI';
+    } else if (error?.message) {
+      errorMessage = error.message.substring(0, 200);
+    }
+    return {
+      success: false,
+      error: errorMessage,
+      promptVersion,
+      model: 'gpt-5',
+      generationTimeMs: generationTime,
+    };
+  }
+}
+
+/**
+ * Check if auto-reply should be generated for a comment
+ * 
+ * @param sentiment - Comment sentiment
+ * @param pageSettings - ConnectedPage auto-reply settings
+ * @returns true if should auto-reply, false otherwise
+ */
+export function shouldAutoReply(
+  sentiment: string | null,
+  pageSettings: {
+    autoReplyEnabled: boolean;
+    autoReplyPositive: boolean;
+    autoReplyNeutral: boolean;
+  }
+): boolean {
+  if (!pageSettings.autoReplyEnabled) {
+    return false;
+  }
+  
+  if (!sentiment) {
+    return false;
+  }
+  
+  if (sentiment === 'positive' && pageSettings.autoReplyPositive) {
+    return true;
+  }
+  
+  if (sentiment === 'neutral' && pageSettings.autoReplyNeutral) {
+    return true;
+  }
+  
+  // Never auto-reply to negative sentiment
+  return false;
+}
+
+/**
+ * Detect language from comment text (basic heuristic)
+ * Returns 'en', 'el', or 'auto'
+ */
+export function detectCommentLanguage(text: string): string {
+  // Check for Greek characters (Cyrillic)
+  const greekChars = /[\u0370-\u03FF\u1F00-\u1FFF]/;
+  if (greekChars.test(text)) {
+    return 'el';
+  }
+  
+  // Check for common Greek words in Greeklish (Latin script)
+  const greeklishWords = /\b(efharisto|efxaristo|kalimera|kalinixta|yassou|geia|wraia|ωραια|kala|nai|oxi|poli|para)\b/i;
+  if (greeklishWords.test(text)) {
+    return 'el';
+  }
+  
+  // Default to English
+  return 'en';
+}
+
+/**
+ * Example usage of the AI Reply Engine
+ */
+export async function exampleUsage() {
+  const config: AIReplyConfig = {
+    brandTone: 'professional',
+    emojisEnabled: true,
+    ctaText: 'Visit our store!',
+    language: 'auto',
+    maxLength: 100,
+    commentText: 'This is amazing! Love it 😍',
+    authorName: 'Sarah',
+    sentiment: 'positive',
+    postCaption: 'Check out our new summer collection!',
+  };
+  
+  return await generateAIReply(config);
+}

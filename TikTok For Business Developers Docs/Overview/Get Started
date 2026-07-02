@@ -1,0 +1,527 @@
+Get Started
+Welcome to TikTok For Business Developers! With developers in mind, we make accessing and using our API For Business very easy. Only a few simple steps are required to gain access and start managing ads. Below are the steps needed to take before making your first API call and some useful resources to help you quickly integrate with TikTok API for Business.
+
+Step-by-step workflow
+Note
+The specific steps required for authorization and authentication will vary depending on the type of API you are using.
+
+Create a TikTok For Business account.
+Register as a developer.
+Create a developer app.
+Authorization.
+Authentication.
+Make your first API call: You can use TikTok API for Business Postman collection to easily test your integration without impacting your real TikTok for Business account.
+Note
+You can use either API endpoints or SDK to make your first calls. See SDK to learn more details.
+
+API endpoints
+To learn about available endpoints, see API Reference.
+
+SDK
+To learn about SDK, see SDK. To find the SDK code, check out this GitHub link.
+
+Rate limits
+To learn about global and endpoint-specific rate limits, see here.
+
+Update app permissions
+To learn about how to update your developer app permission, see here.
+
+Postman collection
+To learn about the Postman collection for our API endpoints, see here.
+
+Sandbox accounts
+To test your integration without impacting your real TikTok For Business account, see here.
+
+Concepts
+To learn about the common concepts used in TikTok API For Business documentation, see here.
+
+Account structure
+To learn about the account structure and the relationships between advertiser accounts and developer accounts, see here.
+
+Estimated Integration time
+To learn about the estimated integration time needed for some common API integration use cases, see here.
+
+Error codes
+To learn about the return codes for unsuccessful calls, see here.
+
+
+Create a TikTok for Business account
+Before you can use TikTok API for Business, you need to sign up at the TikTok for Business Developers portal. Complete the following steps to create a TikTok for Business account.
+
+Steps
+Go to the TikTok for Business Developers homepage and click the registration button.
+TikTok for Business Developers homepage
+
+On the page that pops up, fill in your email address (or phone number), password, check the box to indicate that you agree to the terms, conditions, and privacy policy, and click Sign Up.
+For email, we recommend using an alias such as mailto:developers+tiktok@company.com and sharing the login credentials with all the developers on your team after registration to ensure everyone has access to the TikTok for Business account.
+TikTok for Business account signup
+
+Fill in the verification code that is sent to your phone or email. Your account is now created.
+TikTok for Business account signup verification\
+
+
+Register as a developer
+Before you can create an app and start development, you need to register as a developer. Complete the following steps to register as a developer.
+
+Steps
+Log in to TikTok for Business Developers portal. Click Become a Developer.
+Become a Developer
+Fill in your name and communication email. For email, we recommend using an alias like developers+tiktok@company.com and sharing the login credentials with all the developers on your team to ensure everyone has access to the developer account.
+Note that communication email must be a verified company domain email. You will be rejected if you are using a personal email or a temporary email. In this case, revise your information and re-submit the application.
+
+Click Send Code to send a verification code to your email address. Copy the verification code and paste it to the Verification Code text field.
+
+Select the user type that best describes your company, and click Next to move to the next step. Ensure that the type you selected matches the information you provide, otherwise your profile might be rejected.
+
+Technology Company
+Direct Advertiser
+Agency
+Fill in your company name. Your company name should:
+
+Be a valid brand name or a legit entity name.
+Be relevant to the email domain or company website. If it does not match, please provide proof of relevancy in the description section below.
+Fill in your company website. Your website should:
+
+Be publicly accessible.
+Be valid, functioning, fully developed and professionally presented.
+Present relevant business content that is accessible without requiring login, detailing your product and company information.
+Match the email domain you have provided.
+Be hosted on a domain that is owned by your company. It should not contain domain names associated with social media platforms, third-party hosting companies, e-commerce platforms, etc.
+Be the actual domain of your company website. Shortened links are not accepted.
+Be a company website, rather than a personal website. Currently, we are unable to onboard personal accounts or individual developers. If you are part of a company, please use your company website.
+Select your Primary Developer Location. It should be the primary location of the development team in your company, rather than the place where you run your business. For example, if your company is doing business in Singapore, but the developer is based in China, select China in this case.
+
+Note
+For China-outbound developers, please choose China as Primary Developer Location, regardless of the location where your company operates business.
+
+Specify other information about your company and businesses, and click Submit. Please note these questions will differ depending on the type of developer you are.
+For the question about how you plan to use TikTok data and API, please be as descriptive as possible, otherwise your profile might be rejected. Your description should explain the use cases selected in the previous question and the purpose of registering as a developer. Here is an example for your reference:
+[company name] is a e-commerce company headquartered in [country/region], operating the brand [brand name] and e-commerce website in [country/region]. We are the product and development team, and we develop tools integrating Marketing APIs to support our marketing team.
+
+Note
+You can also use the description field to include additional information you want to specify.
+
+You will be notified of the review result in three business days.
+
+Next step
+Create a developer app
+
+
+Create a developer app
+Before you can start integration, you need to create a developer app. Complete the following steps to create a developer app.
+
+Note
+Before you apply for a developer app, ensure that your developer profile has been approved. Otherwise, an error will occur. See here for more information about registration.
+
+Steps
+Log in to TikTok For Business Developers portal and click Create an App.
+
+Specify a descriptive name for your application. For example, "Video Upload Tool", "TikTok Media Buy Platform", etc.
+Note
+This is the name of your developer app, rather than the name of a mobile app. If you integrate API to manage TikTok ads promoting multiple mobile apps, you can manage within one developer app, and don't have to create multiple developer apps for them.
+
+
+Under App description, provide information about the intended uses of the application, as well as any advertisers that you may be working with. We recommend that your information is in the format below:
+
+Intended Uses: Describe the key intended functions and usage scenarios of the developer App. Explain what core permissions are technically required to enable the main functions.
+Developer App Access Controls: Clarify whether the developer App access is limited only to internal organizational use, or shared with other external accounts or organizations as well.
+Here is an example for your reference:
+This developer app serves as our in-house TikTok ad buying tool, which will be used by our user acquisition team. By integrating TikTok's APIs for ad creation, creative upload and reporting, this app improves the efficiency of ad operations.
+
+Specify an advertiser redirect URL. After the advertiser approves the authorization, they will be redirected to the redirect URL that is configured here. The authentication code will be appended to the redirect URL. Ensure your URL is valid.
+
+Note
+You can configure up to 10 advertiser redirect URLs, including localhost. Once a new redirect URL is added, you can generate a new advertiser authorization URL.
+
+Under Scope of permission, select the permissions that you'll need in your application. The permissions determine the API endpoints you have access to. Ensure that your selected scope of permission is relevant to your app description. You can find the scope of permission of every endpoint in the last column of the List of available endpoints table.
+
+Note
+To ensure proper use of the Accounts API, starting March 20, 2026 at 00:00 (GMT+0), developers must complete the Accounts API Access Application Form before submitting a new developer app or requesting a scope increase that includes the "TikTok Accounts" permission scope. Please follow the instructions carefully and provide clear, accurate information to help facilitate the application review process. For more details on Accounts API use cases, please refer to the Accounts API documentation.
+
+After you select all permissions that you need, click Confirm.
+
+You have now submitted your developer application for review. The review may take 2 to 3 business days.
+
+To check the status of your Application, click the red button on the top right, navigate to My Apps and check under Verification Status. If your application is rejected, you can edit the request and submit it again. Once the app is approved, you can use the authorization code to get a long-term access token.
+
+If you need to create more than one developer application, you can navigate to My Apps and click Create App. Each developer can have up to five developer applications.
+Next step
+Authorization
+
+
+
+
+Authorization
+After your developer application is approved, you need to get authorization from your advertiser, TikTok accounts, TikTok Creator Marketplace (TTCM) accounts, or TikTok One (TTO) Creator Marketplace accounts to manage the accounts.
+
+The specific steps required for authorization will vary depending on the type of API you are using. Please refer to the following topics for detailed instructions on how to complete authorization：
+
+Marketing API authorization: Refer to Marketing API authorization to learn how to get authorization from advertisers to manage their accounts.
+Accounts API / Mentions API authorization: Refer to Accounts API authorization or Mentions API authorization to learn how to get authorization from TikTok account users to manage their accounts.
+TTO API authorization:
+Refer to Obtain authorization from the TTO Creator Marketplace account to learn how to get authorization from TTO Creator Marketplace account users. This access token does not expire.
+Creator Marketplace API authorization:
+Refer to Obtain authorization from the TTCM account to learn how to get authorization from TTCM account users to manage their accounts.
+Refer to Get authorization from Creators to learn how to get authorization from Creators.
+Discovery API authorization: Refer to Discovery API authorization to learn how to get authorization from advertisers or TikTok account users to manage their accounts.
+Spark Ads Recommendation API authorization: Get authorization from TikTok account users or TTCM account users to manage their accounts.
+Comparing authorization for different APIs
+The table below outlines the differences in the authorization processes for Marketing API, Accounts API, Mentions API, Creator Marketplace API, TTO API, Discovery API, and Spark Ads Recommendation API.
+
+Marketing API	Accounts API/Mentions API	TikTok Creator Marketplace API	TTO API	Discovery API	Spark Ads Recommendation API
+Description	The authorization for Marketing API is performed via TikTok For Business advertiser.	The authorization for Accounts API/Mentions API is performed via TikTok organic account.	The authorization for TikTok Creator Marketplace (TTCM) API is performed via TTCM account and TikTok organic account.
+
+Note: TikTok Creator Marketplace API is in closed beta. You need to apply for access first.
+
+The authorization for TTO API is performed via TTO Creator Marketplace account.	The authorization for Discovery API is performed via TikTok For Business advertiser or TikTok organic account.	The authorization for Spark Ads Recommendation API is performed via TTCM account or TikTok organic account.
+Authorization URL	Advertiser authorization URL on My Apps. See Authorization - Step 1.	TikTok account holder authorization URL on My Apps. See Accounts - Authorization.	
+TTCM account authorization: Advertiser authorization URL on My Apps. See Obtain authorization and authentication from your TTCM account.
+Creator authorization: TikTok account holder authorization URL on My Apps. See Get authorization from Creators - Step 1.
+Advertiser authorization URL on My Apps. See Obtain authorization and authentication from your TTO Creator Marketplace account.	
+Advertiser authorization (when the endpoint is related to hashtags): Advertiser authorization URL on My Apps. See Authorization - Step 1 for detailed steps.
+TikTok account user authorization (when the endpoint is related to tracks): TikTok account holder authorization URL on My Apps. See Accounts API Authorization.
+TTCM account authorization (for /spark_ad/recommend/): Advertiser authorization URL on My Apps. See Obtain authorization and authentication from your TTCM account.
+TikTok account user authorization (for /business/video/recommend/): TikTok account holder authorization URL on My Apps. See Accounts API Authorization.
+Authorization code expiry	Valid for one hour and can be used only once. After the auth_code expires, you need to start over and perform the authorization steps again.	Valid for 10 minutes and can be used only once. After the auth_code expires, you need to start over and perform the authorization steps again.	
+TTCM account authorization code: Valid for one hour and can be used only once.
+Creator authorization code: Valid for 10 minutes and can be used only once. After the auth_code expires, you need to start over and perform the authorization steps again.
+Valid for one hour and can be used only once. After the auth_code expires, you need to start over and perform the authorization steps again.
+
+
+
+
+TikTok account holder redirect URL configuration
+The redirect URL is a critical component in the OAuth 2.0 authorization framework, designed to ensure that authorization responses are securely delivered to a specified URL. Proper registration of redirect URLs helps prevent open redirector vulnerabilities, which can be exploited in phishing attacks and other malicious activities.
+
+A TikTok account holder redirect URL is a URL where the TikTok account user is redirected after authorizing your developer app with TikTok account permissions. After the TikTok account user grants authorization, the redirect URL will be appended with an auth_code for generating a short-term access token. Developers can configure the redirect URL as a URL hosted on the developer's server to automatically parse the auth_code, eliminating the need for the TikTok account user to manually locate and share the auth_code with the developer.
+
+You can configure up to 10 TikTok account holder redirect URLs per developer app. Each activated TikTok account holder redirect URL automatically generates a new TikTok account holder authorization URL. The system maintains one active URL at a time, marked in red. When only one TikTok account holder redirect URL exists, it becomes active by default. For multiple redirect URLs, activate a different one by clicking your desired URL.
+
+TikTok account holder redirect URL
+Formatting rules for redirect URLs
+When defining a TikTok account holder redirect URL for your developer app, follow these formatting rules to ensure proper functionality:
+
+Rules	Correct example	Bad example
+URLs must be absolute and end with /.
+https://dev.example.com/auth/callback/
+https://dev.example.com/auth/callback
+missing trailing /
+/auth/callback/
+missing scheme and domain
+URLs should be static, while parameters are denied and should be ignored.
+https://dev.example.com/auth/callback/
+https://dev.example.com/auth/callback/?id=1
+contains query parameter ?id=1
+URLs cannot include anchors #.
+https://dev.example.com/auth/callback/
+https://dev.example.com/auth/callback/#1
+contains anchor #1
+URLs must start with https://.
+https://dev.example.com/auth/callback/
+http://dev.example.com/auth/callback/
+uses http instead of https
+URLs cannot include ports.
+https://dev.example.com/auth/callback/
+https://dev.example.com:3000/auth/callback/
+contains port number :3000
+The length of the registered URI should fall within the range of 10 to 512 characters.
+N/A
+N/A
+Otherwise, you will receive the error message as follows. You can edit your redirect URL accordingly.
+
+error message
+Migration instructions for redirect URL
+To migrate your TikTok account holder redirect URL, follow these steps:
+
+(1) Modify your redirect URL by removing any query parameters (indicated by the ? symbol) or fragments (indicated by the # symbol) that may be present at the end of the path. Your URL should end with a forward slash (/).
+
+(2) If you remove query parameters from the redirect URL but want to achieve the same effect, use a state parameter in the TikTok account holder authorization URL. This involves encoding the query parameters as a JSON object and including them as the value of the state parameter in the authorization URL. Here are some examples of how to encode query parameters as a state parameter:
+
+Example 1:
+
+Original TikTok account holder redirect URL: https://www.tiktok.com/photo?source=tiktok
+Query parameters: ?source=tiktok
+Encoded state parameter to be added into the TikTok account holder authorization URL: &state={"source":"tiktok"}
+Example 2:
+
+Original URL TikTok account holder redirect URL: https://www.tiktok.com/photo?source=tiktok&platform=web
+Query parameters: ?source=tiktok&platform=web
+Encoded state parameter to be added into the TikTok account holder authorization URL: &state={"source":"tiktok","platform":"web"}
+(3) Once you have received an authorization code in the redirect URL, extract the query parameter values from the state parameter in the TikTok account holder authorization URL. This involves decoding the JSON-encoded string from the state parameter into a dictionary or object, and then accessing the values of specific keys within that dictionary.
+
+Here's an example of how to decode the state parameter in Python:
+
+import json
+from urllib.parse import unquote
+
+state_value = '%7B%22source%22%3A%22tiktok%22%7D'
+state = unquote(state_value)
+state_dict = json.loads(state)
+source = state_dict.get('source')
+print(state_dict)
+
+# Output: {'source': 'tiktok'}
+
+
+
+Authentication
+After you get auth_code from advertisers, TikTok account users, TikTok Creator Marketplace (TTCM) accounts, or TikTok One (TTO) Creator Marketplace accounts, you can use it to generate an access token for subsequent API requests.
+
+The specific steps required for authentication will vary depending on the type of API you are using. Please refer to the following topics for detailed instructions on how to complete authentication：
+
+Marketing API authentication: Refer to Marketing API authentication to learn how to generate a long-term access token. This access token does not expire.
+Accounts API / Mentions API authentication: Refer to Accounts API authentication or Mentions API authentication to learn how to generate an access token. The access token is valid for one day. Once an access token has expired, you need to renew the access token via /tt_user/oauth2/refresh_token/.
+TTO API authentication:
+Refer to Obtain authentication from the TTO Creator Marketplace account to learn how to generate an access token for TTO Creator Marketplace accounts. This access token does not expire.
+Creator Marketplace API authentication:
+Refer to TTCM account authentication to learn how to generate an access token for TTCM accounts. This access token does not expire.
+Refer to Get authorization from Creators - Step 3 to learn how to generate a Creator access token. It is valid for one day. Once an access token has expired, you need to renew the access token via /tt_user/oauth2/refresh_token/.
+Discovery API authentication: Refer to Discovery API authentication to learn how to generate an advertiser access token or TikTok account access token. This advertiser access token does not expire while the TikTok account access token is valid for one day. Once the TikTok account access token has expired, you need to renew the access token via /tt_user/oauth2/refresh_token/..
+Spark Ads Recommendation API authentication: Generate a TTCM account access token or TikTok account access token. This TTCM account access token does not expire while the TikTok account access token is valid for one day. Once the TikTok account access token has expired, you need to renew the access token via /tt_user/oauth2/refresh_token/.
+Comparing authentication for different APIs
+The table below outlines the differences in the authentication processes for Marketing API, Accounts API, Mentions API, Creator Marketplace API, TTO API, Discovery API, and Spark Ads Recommendation API.
+
+Marketing API	Accounts API/Mentions API	TikTok Creator Marketplace API	TTO API	Discovery API	Spark Ads Recommendation API
+Authentication endpoint	/oauth2/access_token/ (Advertiser access token)	/tt_user/oauth2/token/ (TikTok account access token)	
+/oauth2/access_token/ (TTCM account access token)
+/tt_user/oauth2/token/ (Creator access token)
+/oauth2/access_token/ (TTO access token)	
+/oauth2/access_token/ (Advertiser access token)
+/tt_user/oauth2/token/ (TikTok account access token)
+/oauth2/access_token/ (TTCM access token)
+/tt_user/oauth2/token/ (TikTok account access token)
+Access token expiry	The advertiser access token does not expire. If you want to invalidate the token, use /oauth2/revoke_token/.	The TikTok account access token is valid for one day. Once an access token has expired, you need to renew the access token via /tt_user/oauth2/refresh_token/.	
+TTCM account access token: It does not expire. If you want to invalidate the token, use /oauth2/revoke_token/.
+Creator access token: It is valid for one day. Once an access token has expired, you need to renew the access token via /tt_user/oauth2/refresh_token/.
+TTO account access token: It does not expire. If you want to invalidate the token, use /oauth2/revoke_token/.	
+Advertiser access token (when the endpoint is related to hashtags): It does not expire. If you want to invalidate the token, use /oauth2/revoke_token/.
+TikTok account access token (when the endpoint is related to tracks): It is valid for one day. Once the access token has expired, you need to renew the access token via /tt_user/oauth2/refresh_token/.
+TTCM access token (for /spark_ad/recommend/): It does not expire. If you want to invalidate the token, use /oauth2/revoke_token/.
+TikTok account access token (for /business/video/recommend/): It is valid for one day. Once the access token has expired, you need to renew the access token via /tt_user/oauth2/refresh_token/.
+
+
+
+
+Rate limits
+To ensure service availability and performance, we have global and endpoint-specific rate limits.
+
+Global rate limits apply to API requests to all endpoints by a developer application.
+
+Endpoint-specifc rate limits apply to API requests to a certain endpoint or endpoint group. Rate limits for different endpoints are independent. For example, if the rate limits for /campaign/get endpoint are reached for a developer app, the developer app can still make requests to /ad/get/ endpoint.
+
+Global rate limits
+We set four different call limit levels for each developer application, and each level includes three different types, QPS Limit (Queries-Per-Second Rate Limiting), QPM Limit (Queries-Per-Minute Rate Limiting) and QPD Limit (Queries-Per-Day Rate Limiting).
+
+Once the rate limit is met, the server returns "code": 40100, which means your request was throttled. You will need to suspend calls to that interface for a period of time and resume calls after the suspension has been lifted. The suspension time depends on the type of rate limit set. For QPM limit, you need to wait 5 minutes before you can make API requests again. For QPD limit, you need to wait until the next day (UTC+0 time) to make API requests again. Note that the QPD limit resets at 00:00:00 UTC+0 time every day.
+
+Rate limit levels
+Level	QPS	QPM	QPD
+Basic	10	600	864,000
+Advanced	20	1,200	1,728,000
+Premium	30	1,800	2,592,000
+Ultimate	50	3,000	4,320,000
+Note
+
+All apps are set to Basic level by default. To change your QPS limit, please apply through My Apps > App Detail > Authorization.
+We can only increase API rate limiting one level at a time (from Basic to Advanced / from Advanced to Premium / from Premium to Ultimate). When applying, provide the reason for API rate limit increase. Here is an example for your reference:
+The current API Rate Limit is not sufficient in the reporting use case, where we encounter errors occasionally. Therefore, we are applying for rate limit increase.
+You don't need to apply for rate limit level change for Events API, because the rate limit is the same for all levels.
+
+Endpoint-specific rate limits
+Note
+Unique rate limits apply to the TTO API endpoints, including /tto/creator/authorized/, /tto/creator/authorized/video/list/, /tto/tcm/creator/public/, /tto/tcm/creator/public/video/list/, /tto/tcm/rank/, and /tto/tcm/creator/discover/. Refer to Rate limits for TTO API documentation for more details.
+
+Endpoint	Basic	Advanced	Premium	Ultimate
+Limit type	QPS	QPM	QPD	QPS	QPM	QPD	QPS	QPM	QPD	QPS	QPM	QPD
+/creative/quick_optimization/create/	1	30	5,000	2	60	10,000	3	180	15,000	3	180	15,000
+/creative/smart_video/create/	1	30	5,000	2	60	10,000	3	180	15,000	3	180	15,000
+/ad/create/	5	150	86,400	10	200	86,400	10	300	86,400	15	300	86,400
+/video_template/task/create/	1	30	5,000	2	60	10,000	3	180	15,000	3	180	15,000
+/catalog/product/file/	5
+300	432,000	5	300	432,000	10	600	864,000	10	600	864,000
+/catalog/product/upload/	5
+300	432,000	5	300	432,000	10	600	864,000	10	600	864,000
+/catalog/product/update/	2	120	172,800	2	120	172,800	5	300	432,000	5	300	432,000
+/catalog/product/delete/	2	120	172,800	2	120	172,800	5	300	432,000	5	300	432,000
+Asynchronous reports
+(/report/task/create/ with POST method)	2	60	4,500	2	60	4,500	2	60	4,500	2	60	4,500
+/event/track/	1,000	600,000	86,400,000	1,000	600,000	86,400,000	1,000	600,000	86,400,000	1,000	600,000	86,400,000
+App Events (/app/track/ with POST method)	1,000	600,000	86,400,000	1,000	600,000	86,400,000	1,000	600,000	86,400,000	1,000	600,000	86,400,000
+/app/batch/ with POST method	1,000	600,000	86,400,000	1,000	600,000	86,400,000	1,000	600,000	86,400,000	1,000	600,000	86,400,000
+Web Events (/pixel/track/ with POST method)	1,000	600,000	86,400,000	1,000	600,000	86,400,000	1,000	600,000	86,400,000	1,000	600,000	86,400,000
+/pixel/batch/ with POST method	1,000	600,000	86,400,000	1,000	600,000	86,400,000	1,000	600,000	86,400,000	1,000	600,000	86,400,000
+Offline Events(/offline/track/ with POST method)	1,000	600,000	86,400,000	1,000	600,000	86,400,000	1,000	600,000	86,400,000	1,000	600,000	86,400,000
+/offline/batch/ with POST method	1,000	600,000	86,400,000	1,000	600,000	86,400,000	1,000	600,000	86,400,000	1,000	600,000	86,400,000
+Streaming API	10,000	600,000	864,000,000	20,000	1,200,000	1,728,000,000	30,000	1,800,000	2,592,000,000	50,000	3,000,000	4,320,000,000
+/campaign/copy/task/create/	1	30	432,000	1	30	432,000	1	30	432,000	1	30	432,000
+/campaign/copy/task/check/	2	60	864,000	2	60	864,000	2	60	864,000	2	60	864,000
+/gmv_max/report/get/	8	240	20,000	12	360	30,000	20	600	50,000	20	600	50,000
+Best practices
+To avoid your request being throttled and better utilize the resources, you can send requests in bulk and limit the number of concurrent requests.
+
+1. Make bulk requests
+The read (get) type of endpoints allows bulk requests. With one request, you can operate on multiple data at the same time rather than operating on one data per request. This reduces the number of calls you make.
+
+For example, you can Get multiple ad groups by passing in multiple adgroup_ids instead of making multiple requests and passing in only one adgroup_ids per request.
+
+Recommended:
+
+curl --get -H "Access-Token:xxx" \
+--data-urlencode "advertiser_id={{ADVERTISER_ID}}" \
+--data-urlencode "filtering={\"adgroup_ids\": [ADGROUP_ID1,ADGROUP_ID2,ADGROUP_ID3,...]" \
+--data-urlencode "page=1" \
+--data-urlencode "page_size=100" \
+https://ads.tiktok.com/open_api/2/adgroup/get/
+Not recommended:
+
+for ADGROUP_ID in {ADGROUP_ID1,ADGROUP_ID2,ADGROUP_ID3,...} do
+  curl --get -H "Access-Token:xxx" \
+  --data-urlencode "advertiser_id={{ADVERTISER_ID}}" \
+  --data-urlencode "filtering={\"adgroup_ids\": [$ADGROUP_ID1]" \
+  --data-urlencode "page=1" \
+  --data-urlencode "page_size=1" \
+  https://ads.tiktok.com/open_api/2/adgroup/get/ \
+2. Limit the number of concurrent requests
+For time-synchronized data, if a large number of API interfaces are called at the same time, the request may be throttled.
+
+In this case, you can implement Rate Limiting on the client side, to control the number of concurrent requests. An example is the Token Bucket Algorithm. Tokens are issued according to the rate limit rules (for example, 10 tokens are issued per second). Before making a request, try to obtain the token, if there are no token currently available, wait for a period of time, then try again.
+
+A more robust implementation is to use Message Queuing. The timing script is not directly responsible for requesting the API, but uses a producer-consumer Model. Push the requested task to the message queue, and a dedicated consumer takes the task from the queue for consumption (through an API request). You can limit the number of concurrent users by limiting the number of concurrent consumers for a certain type of task or using a rate limit. Tasks that fail to execute, can be pushed back into the queue (and set a certain delay) to retry.
+
+
+
+App permissions
+Refer to API reference to see the list of all available endpoints and their corresponding permissions.
+
+Update app permissions
+If you need to make adjustments to your permission, you do not need to create a new developer application or submit a ticket at Developer Ticket Platform. You can update these yourself.
+
+To do this, please follow the steps below:
+
+Once logged in, click My Apps and click the developer application name you would like to update.
+Once selected, click Scope of permission.
+Click the edit icon and select the new permissions you would like to apply for.
+Please fill in the reason why you would like to update your permission and click Submit. Ensure that the reasoning provided for the scope increase align with your newly selected scopes. Here is an example for your reference:
+Our campaign managers spend a lot of time uploading creative assets to ad accounts manually. We want to integrate API for creative upload, and produce the capability of automatic creative upload to save campaign managers' time.
+Your application will now be reviewed by the team. Please note that this process may take between two and three business days.
+
+
+
+Sandbox accounts
+With TikTok API for Business sandbox accounts, you can easily test your integration without impacting your real TikTok For Business account.
+
+Note
+If you have created a sandbox account before November 4th, 2020, you must create a new sandbox account as old advertiser IDs and access tokens are no longer valid.
+
+With TikTok sandbox accounts, developers can:
+
+Use most of the API endpoints that are currently provided in the production environment of the TikTok API for Business. See here for endpoints supported in sandbox accounts.
+Pull mock reporting data.
+Create a sandbox account for each developer application created.
+Note
+
+Sandbox account permissions you have at the application level will be automatically reflected as the permissions on the sandbox account.
+In the sandbox environment, the rate limits for each endpoint are as follows: one QPS (Queries Per Second), 30 QPM (Queries Per Minute), and 1000 QPD (Queries Per Day). For example, if you make requests to five different endpoints, you can send a maximum of 5 requests (one request to each endpoint) within one second.
+Base URL for the sandbox environment
+The URL for API endpoints are in the format of <base_url>/<api_version>/<endpoint>/
+
+The base URL for the Sandbox environment is https://sandbox-ads.tiktok.com/open_api
+
+The base URL for the Production environment is https://business-api.tiktok.com/open_api
+
+The base URL for the Production environment is used in the description of each endpoint. To make requests to Sandbox endpoints, replace the base URL with the Sandbox base URL.
+
+After you set up your Sandbox account, you can make API calls to the endpoints in the Sandbox environment.
+
+Setting up your sandbox account
+Setting up your Sandbox Account is easy. As mentioned above, Sandbox Accounts can be created for each Application you have created through the TikTok API for Business. To create a Sandbox account, follow the instructions below.
+
+Navigate to the TikTok API for Business Homepage and click Go to my apps.
+
+Click your Developer Application you would like to create a Sandbox Account under.
+
+Click Create a Sandbox Ad Account.
+
+Specify the details for your sandbox account, including name, ad account country, ad account currency, and ad account timezone. Then click Create.
+
+Once created, developers can generate access tokens and see your advertiser ID.
+
+Mock data for synchronous reporting
+To make it easier for developers to test our Reporting capabilities, we populated mock data in all sandbox accounts.
+
+The mock data is only for testing and demonstration purposes. The data format is the same as real data, but the data is not based on your actual ad campaign settings. For example, when running an audience report to get country codes for locations that have spend data, the returned locations may be different from the locations where the ads were actually deployed.
+
+Note that the mock data does not support asynchronous reports.
+
+To use the mock data, make a GET request to the https://sandbox-ads.tiktok.com/open_api/v1.3/report/integrated/get/ endpoint. We recommend that you have at least one campaign, one ad group and one ad in your sandbox account. The mock data may only return default values (for instance "0") for the queried metrics or return empty results ("list": []).
+
+Supported settings
+Time range: 2020/12/08 - 2020/12/19.
+service_type: AUCTION.
+report_type: BASIC, AUDIENCE.
+data_level: AUCTION_CAMPAIGN, AUCTION_ADGROUP, AUCTION_AD.
+dimensions: All dimensions supported for the report_type.
+metrics：All metrics supported for the report_type. Some metrics may return 0 or -.
+filters：All filters supported for the report_type.
+lifetime: true is supported.
+order_field & order_type: Ordering is NOT supported.
+Example
+Request
+
+curl --location --request POST 'https://sandbox-ads.tiktok.com/open_api/v1.3/report/integrated/get/?advertiser_id={{advertiser_id}}&report_type=BASIC&dimensions=["adgroup_id"]&service_type=AUCTION&data_level=AUCTION_ADGROUP&start_date=2022-12-11&end_date=2023-12-11&metrics=["spend"]&page_size=1' \
+--header 'Access-Token: {{Access-Token}}'
+Response
+
+HTTPS/1.1 200 OK
+{
+    "code": 0,
+    "message": "OK",
+    "request_id": "{{request_id}}",
+    "data": {
+        "page_info": {
+            "total_number": 1,
+            "page": 1,
+            "page_size": 1,
+            "total_page": 1
+        },
+        "list": [
+            {
+                "metrics": {
+                    "spend": "0"
+                },
+                "dimensions": {
+                    "adgroup_id": "{{adgroup_id}}"
+                }
+            }
+        ]
+    }
+}
+Endpoints supported in sandbox accounts
+The following list summarizes the supported endpoints in sandbox accounts.
+
+Note
+The sandbox environment is upgrading, and the long-term plan is to support all endpoints in sandbox accounts.
+
+Endpoints supported in sandbox accounts
+/ad/create/
+/ad/get/
+/ad/update/
+/ad/status/update/
+/adgroup/create/
+/adgroup/get/
+/adgroup/update/
+/adgroup/status/update/
+/campaign/create/
+/campaign/get/
+/campaign/update/
+/campaign/status/update/
+/file/image/ad/upload/
+/file/video/ad/upload/
+/report/integrated/get/ (GET)
+/term/check/
+/term/confirm/
+/term/get/
+/user/info/
+/identity/create/
+/identity/get/
+/identity/delete/

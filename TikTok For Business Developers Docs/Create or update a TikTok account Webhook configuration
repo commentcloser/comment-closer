@@ -1,0 +1,471 @@
+
+Webhooks
+This group consists of the following endpoints:
+
+Create or update a TikTok account Webhook configuration
+Get TikTok account Webhook configurations
+Delete a TikTok account Webhook configuration
+
+
+
+
+
+
+
+
+
+Create or update a TikTok account Webhook configuration
+Use this endpoint to create or update the configurations for Webhook events related to your TikTok account activities at the developer app level.
+
+To learn more about how to create the configurations for these Webhook events, see Subscribe to TikTok account Webhook events via Webhooks API.
+
+If you no longer wish to receive notifications, you can delete the Webhook configuration by using /business/webhook/delete/.
+
+Request
+Endpoint https://business-api.tiktok.com/open_api/v1.3/business/webhook/update/
+
+Method POST
+
+Header
+
+Field	Data Type	Description
+Content-Type
+Required
+string
+Request message type.
+Allowed format: application/json.
+Parameters
+
+Field	Data Type	Description
+app_id
+Required
+string
+ID of your developer application.
+
+You can find the App ID by navigating to My Apps > App Detail > Basic Information.
+secret
+Required
+string
+Secret of your developer application.
+
+You can find the Secret by navigating to My Apps > App Detail > Basic Information.
+event_type
+Required
+enum
+The type of Webhook event that you want to subscribe to.
+
+Enum values:
+VIDEO: Post publishing events, which provide you with real-time updates on the status of content published via specific TikTok API endpoints.
+To learn more about the schema and sample payload of the events within this event category, see Post publishing events.
+COMMENT: comment update event, including the event comment.update.
+To learn more about the schema and sample payload of the event within this event category, see Comment update event.
+callback_url
+Required
+string
+The callback URL.
+item_list
+string[]
+Valid only when event_type is COMMENT.
+Ignored when event_type is DEFAULT or VIDEO.
+
+The IDs of the specific TikTok posts that you want to receive comment update event notifications for.
+
+Max size: 100.
+
+To obtain the IDs of TikTok posts under a TikTok account, use /business/video/list/.
+
+When event_type is set to COMMENT and item_list is included in the request:
+If item_list has never been configured for the developer app (app_id) previously, you will only receive notifications of comment.update events for the specified posts in item_list.
+If item_list has been configured for the developer app (app_id) before, you will receive notifications for comment.update events of all previously configured posts in addition to the newly specified posts in item_list.
+When event_type is set to COMMENT and item_list is not included in the request:
+If item_list has never been configured for the developer app (app_id) previously, you will receive notifications of comment.update events for all posts under the TikTok account or TikTok accounts that authorized the developer app (app_id).
+If item_list has been configured for the developer app (app_id) before, you will receive notifications of comment.update events for all previously configured posts. To review the specific posts configured for your developer app, check the item_list value in the response.
+Example
+Subscribe to post publishing events
+curl --location --request POST 'https://business-api.tiktok.com/open_api/v1.3/business/webhook/update/' \
+--header 'Content-Type: application/json' \
+--data '{
+    "app_id": "{{app_id}}",
+    "secret": "{{secret}}",
+    "event_type": "VIDEO",
+    "callback_url": "{{callback_url}}"
+}'
+Subscribe to the comment update event for all posts
+curl --location --request POST 'https://business-api.tiktok.com/open_api/v1.3/business/webhook/update/' \
+--header 'Content-Type: application/json' \
+--data '{
+    "app_id": "{{app_id}}",
+    "secret": "{{secret}}",
+    "event_type": "COMMENT",
+    "callback_url": "{{callback_url}}"
+}'
+Subscribe to the comment update event for specific posts
+curl --location  --request POST 'https://business-api.tiktok.com/open_api/v1.3/business/webhook/update/' \
+--header 'Content-Type: application/json' \
+--data '{
+    "app_id": "{{app_id}}",
+    "secret": "{{secret}}",
+    "event_type": "COMMENT",
+    "callback_url": "{{callback_url}}"
+    "item_list": ["{{item_id}}", "{{item_id}}"]
+}'
+Update the callback URL for post publishing events
+curl --location --request POST 'https://business-api.tiktok.com/open_api/v1.3/business/webhook/update/' \
+--header 'Content-Type: application/json' \
+--data '{
+    "app_id": "{{app_id}}",
+    "secret": "{{secret}}",
+    "event_type": "VIDEO",
+    "callback_url": "{{callback_url}}"
+}'
+Response
+Field	Type	Description
+code
+number
+Response code. For the complete list of response codes and descriptions, see Appendix-Return Code.
+message
+string
+Response message. For details, see Appendix - Return Codes.
+request_id
+string
+The log ID of a request, which uniquely identifies the request.
+data
+object
+Returned data.
+app_id
+string
+ID of your developer application.
+event_type
+string
+The type of Webhook event that you subscribe to.
+
+Enum values:
+VIDEO: Post publishing events, which provide you with real-time updates on the status of content published via specific TikTok API endpoints.
+To learn more about the schema and sample payload of the events within this event category, see Post publishing events.
+COMMENT: comment update event, including the event comment.update.
+To learn more about the schema and sample payload of the event within this event category, see Comment update event.
+callback_url
+string
+The callback URL.
+item_list
+string[]
+Returned only when event_type is COMMENT and item_list is configured for the developer app (app_id).
+
+The IDs of the specific TikTok posts that you will receive comment update event notifications for.
+Example
+Subscribe to post publishing events
+HTTPS/1.1 200 OK
+{
+    "code": 0,
+    "message": "OK",
+    "request_id": "{{request_id}}",
+    "data": {
+        "app_id": "{{app_id}}",
+        "callback_url": "{{callback_url}}",
+        "event_type": "VIDEO"
+    }
+}
+Subscribe to the comment update event for all posts
+HTTPS/1.1 200 OK
+{
+    "code": 0,
+    "message": "OK",
+    "request_id": "{{request_id}}",
+    "data": {
+        "app_id": "{{app_id}}",
+        "callback_url": "{{callback_url}}",
+        "event_type": "COMMENT"
+    }
+}
+Subscribe to the comment update event for specific posts
+HTTPS/1.1 200 OK
+{
+    "code": 0,
+    "message": "OK",
+    "request_id": "{{request_id}}",
+    "data": {
+        "app_id": "{{app_id}}",
+        "callback_url": "{{callback_url}}",
+        "event_type": "COMMENT",
+        "item_list": [
+            "{{item_id}}",
+            "{{item_id}}"
+        ]
+    }
+}
+Update the callback URL for post publishing events
+HTTPS/1.1 200 OK
+{
+    "code": 0,
+    "message": "OK",
+    "request_id": "{{request_id}}",
+    "data": {
+        "app_id": "{{app_id}}",
+        "callback_url": "{{callback_url}}",
+        "event_type": "VIDEO"
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Get TikTok account Webhook configurations
+Use this endpoint to retrieve the existing configurations for Webhook events related to your TikTok account activities at the developer app level.
+
+Request
+Endpoint https://business-api.tiktok.com/open_api/v1.3/business/webhook/list/
+
+Method GET
+
+Parameters
+
+Field	Data Type	Description
+app_id
+Required
+string
+ID of your developer application.
+
+You can find the App ID by navigating to My Apps > App Detail > Basic Information.
+secret
+Required
+string
+Secret of your developer application.
+
+You can find the Secret by navigating to My Apps > App Detail > Basic Information.
+event_type
+Required
+enum
+The type of Webhook event that you subscribe to.
+
+Enum values:
+VIDEO: Post publishing events, which provide you with real-time updates on the status of content published via specific TikTok API endpoints.
+To learn more about the schema and sample payload of the events within this event category, see Post publishing events.
+COMMENT: comment update event, including the event comment.update.
+To learn more about the schema and sample payload of the event within this event category, see Comment update event.
+Example
+Retrieve an existing Webhook configuration
+curl --location  --request GET 'https://business-api.tiktok.com/open_api/v1.3/business/webhook/list/?app_id={{app_id}}&secret={{secret}}&event_type=VIDEO'
+Retrieve an empty Webhook configuration
+curl --location --request GET 'https://business-api.tiktok.com/open_api/v1.3/business/webhook/list/?app_id={{app_id}}&secret={{secret}}&event_type=VIDEO' 
+Response
+Field	Type	Description
+code
+number
+Response code. For the complete list of response codes and descriptions, see Appendix-Return Code.
+message
+string
+Response message. For details, see Appendix - Return Codes.
+request_id
+string
+The log ID of a request, which uniquely identifies the request.
+data
+object
+Returned data.
+app_id
+string
+ID of your developer application.
+event_type
+string
+The type of Webhook event that you subscribe to.
+
+Enum values:
+VIDEO: Post publishing events, which provide you with real-time updates on the status of content published via specific TikTok API endpoints.
+To learn more about the schema and sample payload of the events within this event category, see Post publishing events.
+COMMENT: comment update event, including the event comment.update.
+To learn more about the schema and sample payload of the event within this event category, see Comment update event.
+callback_url
+string
+Returned only when the corresponding event configuration exists for your developer app.
+
+The callback URL.
+
+For example, if event_type is VIDEO and callback_url is not returned in the response, your developer app doesn't have an existing post publishing event Webhook configuration.
+item_list
+string[]
+Returned only when event_type is COMMENT and item_list is configured for the developer app (app_id).
+
+The IDs of the specific TikTok posts that you will receive comment update event notifications for.
+Example
+Retrieve an existing Webhook configuration
+HTTPS/1.1 200 OK
+{
+    "code": 0,
+    "message": "OK",
+    "request_id": "{{request_id}}",
+    "data": {
+        "app_id": "{{app_id}}",
+        "callback_url": "{{callback_url}}",
+        "event_type": "VIDEO"
+    }
+}
+Retrieve an empty Webhook configuration
+HTTPS/1.1 200 OK
+{
+    "code": 0,
+    "message": "OK",
+    "request_id": "{{request_id}}",
+    "data": {
+        "app_id": "{{app_id}}",
+        "event_type": "VIDEO"
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Delete a TikTok account Webhook configuration
+Use this endpoint to delete an existing configuration for Webhook events related to your TikTok account activities at the developer app level.
+
+Request
+Endpoint https://business-api.tiktok.com/open_api/v1.3/business/webhook/delete/
+
+Method POST
+
+Header
+
+Field	Data Type	Description
+Content-Type
+Required
+string
+Request message type.
+Allowed format: application/json.
+Parameters
+
+Field	Data Type	Description
+app_id
+Required
+string
+ID of your developer application.
+
+You can find the App ID by navigating to My Apps > App Detail > Basic Information.
+secret
+Required
+string
+Secret of your developer application.
+
+You can find the Secret by navigating to My Apps > App Detail > Basic Information.
+event_type
+Required
+enum
+The type of Webhook event configuration that you want to delete.
+
+Enum values:
+VIDEO: Post publishing events, which provide you with real-time updates on the status of content published via specific TikTok API endpoints.
+To learn more about the schema and sample payload of the events within this event category, see Post publishing events.
+COMMENT: comment update event, including the event comment.update.
+To learn more about the schema and sample payload of the event within this event category, see Comment update event.
+item_list
+string[]
+Valid only when event_type is COMMENT.
+
+The IDs of the specific TikTok posts that you no longer want to receive comment update event notifications for.
+
+Max size: 100.
+
+To obtain the IDs of TikTok posts specified for an existing comment update Webhook configuration, use /business/webhook/list/.
+If event_type is set to COMMENT and this field is provided, you will no longer receive notification of comment.update events for the specified posts under the TikTok account or TikTok accounts that authorized the developer app (app_id).
+If event_type is set to COMMENT and this field is not provided, you will no longer receive notification of comment.update events for all posts under the TikTok account or TikTok accounts that authorized the developer app (app_id).
+Example
+Delete an existing post publishing event Webhook configuration
+curl --location --request POST 'https://business-api.tiktok.com/open_api/v1.3/business/webhook/delete/' \
+--header 'Content-Type: application/json' \
+--data '{
+    "app_id": "{{app_id}}",
+    "secret": "{{secret}}",
+    "event_type": "VIDEO"
+}'
+Delete specific TikTok posts from an existing comment update event Webhook configuration
+curl --location --request POST 'https://business-api.tiktok.com/open_api/v1.3/business/webhook/delete/' \
+--header 'Content-Type: application/json' \
+--data '{
+    "app_id": "{{app_id}}",
+    "secret": "{{secret}}",
+    "event_type": "COMMENT",
+    "item_list": [
+                "{{item_id_1}}",
+                "{{item_id_2}}"]
+}'
+Response
+Field	Type	Description
+code
+number
+Response code. For the complete list of response codes and descriptions, see Appendix-Return Code.
+message
+string
+Response message. For details, see Appendix - Return Codes.
+request_id
+string
+The log ID of a request, which uniquely identifies the request.
+data
+object
+Returned data.
+app_id
+string
+ID of your developer application.
+event_type
+string
+The type of Webhook event configuration.
+
+Enum values:
+VIDEO: Post publishing events, which provide you with real-time updates on the status of content published via specific TikTok API endpoints.
+To learn more about the schema and sample payload of the events within this event category, see Post publishing events.
+COMMENT: comment update event, including the event comment.update.
+To learn more about the schema and sample payload of the event within this event category, see Comment update event.
+item_list
+string[]
+Returned only when event_type is COMMENT and item_list is configured for the developer app (app_id).
+
+The IDs of the specific TikTok posts that you will still receive comment update event notifications for.
+
+For example, if you have previously configured the item_list as ["{{item_id_1}}","{{item_id_2}}"] for your developer app and you set item_list to ["{{item_id_1}}"] in the request, the value of this field in the response will be ["{{item_id_2}}"].
+Example
+Delete an existing post publishing event Webhook configuration
+HTTPS/1.1 200 OK
+{
+    "code": 0,
+    "message": "OK",
+    "request_id": "{{request_id}}",
+    "data": {
+        "app_id": "{{app_id}}",
+        "event_type": "VIDEO"
+    }
+}
+Delete specific TikTok posts from an existing comment update event Webhook configuration
+HTTPS/1.1 200 OK
+{
+    "code": 0,
+    "message": "OK",
+    "request_id": "{{request_id}}",
+    "data": {
+        "app_id": "{{app_id}}",
+        "event_type": "COMMENT",
+        "item_list": [
+            "{{item_id_3}}",
+            "{{item_id_4}}"
+        ]
+    }
+}

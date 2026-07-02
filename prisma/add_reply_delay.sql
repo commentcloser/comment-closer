@@ -1,0 +1,3 @@
+ALTER TABLE "ConnectedPage"
+ADD COLUMN IF NOT EXISTS "replyDelaySeconds" INTEGER NOT NULL DEFAULT 0;
+
