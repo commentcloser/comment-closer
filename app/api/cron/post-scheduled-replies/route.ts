@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logReplyAttempt, logReplySuccess, logReplyFailure } from '@/lib/actionLogger';
 import { replyToTikTokAdsComment, getTikTokAdsAccessToken } from '@/lib/tiktokAdsApi';
+import { getValidTikTokAccessToken, replyToTikTokComment } from '@/lib/tiktokApi';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -65,6 +66,66 @@ async function processOneReply(comment: any): Promise<'posted' | 'failed' | 'ski
       return 'posted';
     } catch (err: any) {
       const msg = err?.message || 'TikTok Ads reply failed';
+      console.error(`[Cron] FAILED ${comment.id} - ${msg}`);
+      await logReplyFailure(actionLogId, comment.id, msg);
+      await prisma.comment.update({ where: { id: comment.id }, data: { scheduledPostAt: null } });
+      return 'failed';
+    }
+  }
+
+  // --- TikTok (organic) ---
+  // Organic TikTok replies are scheduled by the webhook (replyDelaySeconds>0).
+  // Without this branch they fell through to the Facebook Graph call below,
+  // which always failed (TikTok token posted to graph.facebook.com), so the
+  // reply was silently dropped.
+  if (provider === 'tiktok') {
+    const account = await prisma.account.findFirst({
+      where: { provider: 'tiktok', providerAccountId: connectedPage.pageId },
+      select: { id: true },
+    });
+    if (!account) {
+      console.log(`[Cron] SKIP ${comment.id} - TikTok account not found`);
+      await prisma.comment.update({
+        where: { id: comment.id },
+        data: { scheduledPostAt: null, status: 'ai_failed', aiError: 'TikTok account not found at post time' },
+      });
+      return 'skipped';
+    }
+
+    const accessToken = await getValidTikTokAccessToken(account.id);
+    if (!accessToken) {
+      console.log(`[Cron] SKIP ${comment.id} - no TikTok access token`);
+      await prisma.comment.update({
+        where: { id: comment.id },
+        data: { scheduledPostAt: null, status: 'ai_failed', aiError: 'No TikTok access token at post time' },
+      });
+      return 'skipped';
+    }
+
+    const actionLogId = await logReplyAttempt(
+      comment.id,
+      connectedPage.id,
+      'tiktok' as any,
+      comment.aiGeneratedReply,
+      comment.aiPromptVersion || 'unknown',
+      comment.aiModel || 'unknown',
+      { promptSource: connectedPage.customReplyPrompt?.trim() ? 'override' : 'global' },
+    );
+
+    try {
+      const replyCommentId = await replyToTikTokComment(
+        accessToken,
+        connectedPage.pageId,
+        comment.postId ?? '',
+        comment.commentId,
+        comment.aiGeneratedReply,
+      );
+      console.log(`[Cron] SUCCESS ${comment.id} - TikTok reply: ${replyCommentId}`);
+      await logReplySuccess(actionLogId, comment.id, comment.aiGeneratedReply, { comment_id: replyCommentId });
+      await prisma.comment.update({ where: { id: comment.id }, data: { scheduledPostAt: null } });
+      return 'posted';
+    } catch (err: any) {
+      const msg = err?.message || 'TikTok reply failed';
       console.error(`[Cron] FAILED ${comment.id} - ${msg}`);
       await logReplyFailure(actionLogId, comment.id, msg);
       await prisma.comment.update({ where: { id: comment.id }, data: { scheduledPostAt: null } });

@@ -259,7 +259,7 @@ async function handleFeedComment(value: any, connectedPage: any) {
 
     if (!isReplyComment && !savedComment.sentiment && (isLongEnough || isEmojiOnly)) {
       console.log(`[FB Webhook] 🤖 Analyzing sentiment for comment ${savedComment.id}...`);
-      const sentiment = await analyzeCommentSentiment(message);
+      const sentiment = await analyzeCommentSentiment(message, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'facebook_webhook' });
       console.log(`[FB Webhook] 📊 Sentiment result: ${sentiment || 'null'}`);
       
       if (sentiment) {
@@ -395,7 +395,7 @@ async function handleFeedComment(value: any, connectedPage: any) {
     // ============================================================
     if (isReplyComment && !isPageComment && message.trim().length >= 2) {
       console.log(`[FB Webhook] 🔍 Analyzing sentiment for reply ${savedComment.id}...`);
-      const replySentiment = await analyzeCommentSentiment(message);
+      const replySentiment = await analyzeCommentSentiment(message, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'facebook_webhook' });
       if (replySentiment) {
         await prisma.comment.update({
           where: { id: savedComment.id },
@@ -510,8 +510,8 @@ async function generateAndPostAutoReply(
       customReplyPrompt: connectedPage.customReplyPrompt ?? undefined,
       webSourceUrl: connectedPage.webSourceUrl ?? undefined,
       webSourceEnabled: connectedPage.webSourceEnabled ?? false,
-    });
-    
+    }, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'facebook_webhook' });
+
     console.log(`[FB Webhook] 🎯 AI generation result:`, {
       success: aiResult.success,
       replyLength: aiResult.reply?.length,

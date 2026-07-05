@@ -26,10 +26,10 @@ export async function POST(request: NextRequest) {
     };
 
     // Throttle reset requests per email to limit enumeration/spam.
-    if (isRateLimited(`forgot:${normalizedEmail}`).limited) {
+    if ((await isRateLimited(`forgot:${normalizedEmail}`)).limited) {
       return NextResponse.json(genericBody);
     }
-    recordFailedAttempt(`forgot:${normalizedEmail}`);
+    await recordFailedAttempt(`forgot:${normalizedEmail}`);
 
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail },

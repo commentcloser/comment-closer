@@ -6,6 +6,7 @@ import {
   isActionSafe,
 } from '@/lib/actionLogger';
 import { getValidTikTokAccessToken, replyToTikTokComment } from '@/lib/tiktokApi';
+import { getTikTokAdsAccessToken, replyToTikTokAdsComment } from '@/lib/tiktokAdsApi';
 
 export async function POST(
   request: NextRequest,
@@ -83,7 +84,42 @@ export async function POST(
       return NextResponse.json({ error: safety.reason }, { status: 400 });
     }
 
-    const provider = comment.connectedPage.provider as 'facebook' | 'instagram' | 'tiktok';
+    const provider = comment.connectedPage.provider as 'facebook' | 'instagram' | 'tiktok' | 'tiktok_ads';
+
+    // --- TikTok Ads path ---
+    // Ads comments are created by the fetch cron with status ai_generated +
+    // needsReview; without this branch they fell through to the Facebook Graph
+    // path below and every approval failed.
+    if (provider === 'tiktok_ads') {
+      const accessToken = await getTikTokAdsAccessToken(comment.connectedPage.pageId);
+      if (!accessToken) {
+        return NextResponse.json({ error: 'Could not obtain TikTok Ads access token' }, { status: 503 });
+      }
+
+      try {
+        const replyCommentId = await replyToTikTokAdsComment(accessToken, comment.connectedPage.pageId, {
+          commentId: comment.commentId,
+          adId: comment.adId ?? '',
+          tiktokItemId: comment.postId ?? '',
+          text: replyText!,
+          identityType: 'TT_USER',
+          identityId: comment.adAccountId ?? '',
+        });
+
+        await logManualAction(id, comment.connectedPage.id, 'tiktok_ads', 'MANUAL_REPLY', 'Approved AI reply posted to TikTok Ads', { comment_id: replyCommentId });
+
+        await prisma.comment.update({
+          where: { id },
+          data: { replied: true, repliedAt: new Date(), replyMessage: replyText, automationStatus: 'replied', status: 'replied', needsReview: false },
+        });
+
+        return NextResponse.json({ success: true, action: 'approved', replyId: replyCommentId });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Failed to post TikTok Ads reply';
+        await logManualAction(id, comment.connectedPage.id, 'tiktok_ads', 'MANUAL_REPLY', `Approved reply failed: ${msg}`);
+        return NextResponse.json({ error: 'Failed to post reply', details: msg }, { status: 502 });
+      }
+    }
 
     // --- TikTok path ---
     if (provider === 'tiktok') {

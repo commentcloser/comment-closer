@@ -37,7 +37,7 @@ export const authOptions = {
           // Enforce the rate limit on the server. The login page also pre-checks
           // via /api/auth/rate-limit, but a direct POST to the credentials
           // callback would otherwise bypass throttling and allow brute force.
-          if (isRateLimited(rateLimitKey).limited) {
+          if ((await isRateLimited(rateLimitKey)).limited) {
             return null;
           }
 
@@ -46,14 +46,14 @@ export const authOptions = {
           });
 
           if (!user || !user.password) {
-            recordFailedAttempt(rateLimitKey);
+            await recordFailedAttempt(rateLimitKey);
             return null;
           }
 
           const isPasswordValid = await bcrypt.compare(password, user.password);
 
           if (!isPasswordValid) {
-            recordFailedAttempt(rateLimitKey);
+            await recordFailedAttempt(rateLimitKey);
             return null;
           }
 
@@ -63,7 +63,7 @@ export const authOptions = {
           }
 
           // Reset rate limit on successful login
-          resetRateLimit(rateLimitKey);
+          await resetRateLimit(rateLimitKey);
 
           return {
             id: user.id,

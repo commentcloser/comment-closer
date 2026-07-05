@@ -1,55 +1,62 @@
+import { prisma } from './prisma';
+
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
-interface AttemptRecord {
-  count: number;
-  firstAttempt: number;
-  blockedUntil?: number;
-}
+/**
+ * Durable, cross-instance rate limiting backed by the RateLimit table.
+ *
+ * Replaces the previous in-memory Map, which reset on every serverless cold
+ * start and was not shared across concurrent instances — so in production it
+ * barely limited anything. Keyed by an opaque string, e.g. "login:<email>" or
+ * "forgot:<email>".
+ *
+ * All functions fail open on a database error: the limiter must never block a
+ * legitimate user just because it is momentarily unavailable.
+ */
+export async function isRateLimited(key: string): Promise<{ limited: boolean; retryAfterMs?: number }> {
+  try {
+    const record = await prisma.rateLimit.findUnique({ where: { key } });
+    if (!record) return { limited: false };
 
-// Use globalThis so the Map is shared across all Next.js route module instances
-const g = globalThis as typeof globalThis & { __rateLimitAttempts?: Map<string, AttemptRecord> };
-if (!g.__rateLimitAttempts) g.__rateLimitAttempts = new Map();
-const attempts = g.__rateLimitAttempts;
-
-export function isRateLimited(key: string): { limited: boolean; retryAfterMs?: number } {
-  const now = Date.now();
-  const record = attempts.get(key);
-
-  if (!record) return { limited: false };
-
-  // Window expired — reset
-  if (now - record.firstAttempt > WINDOW_MS && !record.blockedUntil) {
-    attempts.delete(key);
+    const now = Date.now();
+    if (record.blockedUntil && record.blockedUntil.getTime() > now) {
+      return { limited: true, retryAfterMs: record.blockedUntil.getTime() - now };
+    }
+    return { limited: false };
+  } catch (e) {
+    console.error('[rateLimit] isRateLimited failed:', e instanceof Error ? e.message : String(e));
     return { limited: false };
   }
-
-  if (record.blockedUntil && now < record.blockedUntil) {
-    return { limited: true, retryAfterMs: record.blockedUntil - now };
-  }
-
-  return { limited: false };
 }
 
-export function recordFailedAttempt(key: string) {
-  const now = Date.now();
-  const record = attempts.get(key);
+export async function recordFailedAttempt(key: string): Promise<void> {
+  const now = new Date();
+  try {
+    const record = await prisma.rateLimit.findUnique({ where: { key } });
 
-  // Window expired — reset
-  if (record && now - record.firstAttempt > WINDOW_MS) {
-    attempts.delete(key);
-  }
+    // No record, or the window has expired → start a fresh window.
+    if (!record || now.getTime() - record.firstAttempt.getTime() > WINDOW_MS) {
+      await prisma.rateLimit.upsert({
+        where: { key },
+        create: { key, count: 1, firstAttempt: now, blockedUntil: null },
+        update: { count: 1, firstAttempt: now, blockedUntil: null },
+      });
+      return;
+    }
 
-  const current = attempts.get(key);
-  const count = (current?.count ?? 0) + 1;
-
-  if (count >= MAX_ATTEMPTS) {
-    attempts.set(key, { count, firstAttempt: current?.firstAttempt ?? now, blockedUntil: now + WINDOW_MS });
-  } else {
-    attempts.set(key, { count, firstAttempt: current?.firstAttempt ?? now });
+    const count = record.count + 1;
+    const blockedUntil = count >= MAX_ATTEMPTS ? new Date(now.getTime() + WINDOW_MS) : null;
+    await prisma.rateLimit.update({ where: { key }, data: { count, blockedUntil } });
+  } catch (e) {
+    console.error('[rateLimit] recordFailedAttempt failed:', e instanceof Error ? e.message : String(e));
   }
 }
 
-export function resetRateLimit(key: string) {
-  attempts.delete(key);
+export async function resetRateLimit(key: string): Promise<void> {
+  try {
+    await prisma.rateLimit.deleteMany({ where: { key } });
+  } catch (e) {
+    console.error('[rateLimit] resetRateLimit failed:', e instanceof Error ? e.message : String(e));
+  }
 }

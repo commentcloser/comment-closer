@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { randomBytes } from 'crypto';
 import { sendVerificationEmail } from '@/lib/email';
+import { isRateLimited, recordFailedAttempt } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 
@@ -11,6 +12,14 @@ export async function POST(req: NextRequest) {
     if (!email) return NextResponse.json({ success: false }, { status: 400 });
 
     const normalizedEmail = email.toLowerCase().trim();
+
+    // Throttle per email so this endpoint can't be used to email-bomb an
+    // address or burn the Resend quota. Generic success either way (enumeration-safe).
+    if ((await isRateLimited(`resend:${normalizedEmail}`)).limited) {
+      return NextResponse.json({ success: true });
+    }
+    await recordFailedAttempt(`resend:${normalizedEmail}`);
+
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail },
       select: { id: true, name: true, emailVerified: true, password: true },
@@ -32,7 +41,13 @@ export async function POST(req: NextRequest) {
       data: { identifier: normalizedEmail, token, expires },
     });
 
-    await sendVerificationEmail(normalizedEmail, token, user.name || undefined);
+    try {
+      await sendVerificationEmail(normalizedEmail, token, user.name || undefined);
+    } catch (emailError) {
+      // Never surface send failures here: a different response for "send failed"
+      // vs the generic success below would leak whether the account exists.
+      console.error('[ResendVerification] Failed to send verification email:', emailError);
+    }
 
     return NextResponse.json({ success: true });
   } catch {

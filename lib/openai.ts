@@ -1,4 +1,6 @@
 import OpenAI from 'openai';
+import { AI_SENTIMENT_MODEL, AI_SENTIMENT_EFFORT, AI_SENTIMENT_MAX_TOKENS } from './aiConfig';
+import { recordAiUsage, type AiUsageContext } from './aiUsage';
 
 // Lazy initialization of OpenAI client to avoid errors during build
 let openai: OpenAI | null = null;
@@ -21,7 +23,8 @@ function getOpenAIClient(): OpenAI | null {
  * @returns "positive", "neutral", "negative", or null if analysis fails
  */
 export async function analyzeCommentSentiment(
-  text: string
+  text: string,
+  ctx?: AiUsageContext
 ): Promise<'positive' | 'neutral' | 'negative' | null> {
   // Skip if no API key is configured
   const client = getOpenAIClient();
@@ -92,8 +95,10 @@ export async function analyzeCommentSentiment(
     return 'neutral';
   }
 
-  // If none of the simple rules match, use AI for analysis
-  const model = 'gpt-5';
+  // If none of the simple rules match, use AI for analysis.
+  // Sentiment is a one-word classification, so use the cheaper model with
+  // minimal reasoning and a tiny output cap (see lib/aiConfig.ts).
+  const model = AI_SENTIMENT_MODEL;
 
   try {
     const completion = await client.chat.completions.create({
@@ -109,7 +114,11 @@ export async function analyzeCommentSentiment(
           content: text,
         },
       ],
-    });
+      reasoning_effort: AI_SENTIMENT_EFFORT,
+      max_completion_tokens: AI_SENTIMENT_MAX_TOKENS,
+    } as any);
+
+    recordAiUsage(ctx, { kind: 'sentiment', model, usage: completion.usage });
 
     const response = completion.choices[0]?.message?.content
       ?.trim()

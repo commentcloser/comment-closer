@@ -224,7 +224,7 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
     const isLongEnough = text.trim().length >= 2;
 
     if (!isReplyComment && !savedComment.sentiment && (isLongEnough || isEmojiOnly)) {
-      const sentiment = await analyzeCommentSentiment(text);
+      const sentiment = await analyzeCommentSentiment(text, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'instagram_webhook' });
 
       if (sentiment) {
         await prisma.comment.update({
@@ -332,7 +332,7 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
     // ============================================================
     if (isReplyComment && !isPageComment && text.trim().length >= 2) {
       console.log(`[IG Webhook] 🔍 Analyzing sentiment for reply ${savedComment.id}...`);
-      const replySentiment = await analyzeCommentSentiment(text);
+      const replySentiment = await analyzeCommentSentiment(text, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'instagram_webhook' });
       if (replySentiment) {
         await prisma.comment.update({
           where: { id: savedComment.id },
@@ -420,8 +420,8 @@ async function generateAndPostAutoReply(
       customReplyPrompt: connectedPage.customReplyPrompt ?? undefined,
       webSourceUrl: connectedPage.webSourceUrl ?? undefined,
       webSourceEnabled: connectedPage.webSourceEnabled ?? false,
-    });
-    
+    }, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'instagram_webhook' });
+
     if (!aiResult.success || !aiResult.reply) {
       await prisma.comment.update({
         where: { id: commentDbId },

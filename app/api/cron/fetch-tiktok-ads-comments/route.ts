@@ -330,7 +330,7 @@ async function processAdsComment(
 
   if (isReply) {
     if (message.trim().length >= 2) {
-      const sentiment = await analyzeCommentSentiment(message);
+      const sentiment = await analyzeCommentSentiment(message, { userId: advertiser.userId, connectedPageId: advertiser.id, source: 'tiktok_ads_cron' });
       if (sentiment) {
         await prisma.comment.update({ where: { id: saved.id }, data: { sentiment, status: 'ignored' } });
       }
@@ -343,7 +343,7 @@ async function processAdsComment(
     return;
   }
 
-  const sentiment = await analyzeCommentSentiment(message);
+  const sentiment = await analyzeCommentSentiment(message, { userId: advertiser.userId, connectedPageId: advertiser.id, source: 'tiktok_ads_cron' });
   if (!sentiment) return;
   await prisma.comment.update({ where: { id: saved.id }, data: { sentiment } });
 
@@ -478,7 +478,7 @@ async function generateAndPostAdsReply(opts: {
       customReplyPrompt: advertiser.customReplyPrompt ?? undefined,
       webSourceUrl: advertiser.webSourceUrl ?? undefined,
       webSourceEnabled: advertiser.webSourceEnabled ?? false,
-    });
+    }, { userId: advertiser.userId, connectedPageId: advertiser.id, source: 'tiktok_ads_cron' });
 
     if (!aiResult.success || !aiResult.reply) {
       await prisma.comment.update({

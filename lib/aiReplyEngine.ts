@@ -12,6 +12,13 @@ import {
   getTemplateForSentiment,
 } from './promptTemplates';
 import { getDomainFromWebSourceUrl } from './validators';
+import {
+  AI_REPLY_MODEL,
+  AI_REPLY_EFFORT,
+  AI_REPLY_MAX_TOKENS,
+  AI_PRICE_EXTRACT_MAX_TOKENS,
+} from './aiConfig';
+import { recordAiUsage, type AiUsageContext } from './aiUsage';
 
 // Lazy initialization to avoid build-time errors
 let openai: OpenAI | null = null;
@@ -182,7 +189,8 @@ function parsePriceExtractionResponse(rawText: string): PriceExtractionResult | 
 async function runStructuredPriceSearch(
   client: OpenAI,
   params: { commentText: string; domain: string; requestId?: string },
-  startTime: number
+  startTime: number,
+  ctx?: AiUsageContext
 ): Promise<{ result: PriceExtractionResult | null; rawOutput: string; generationTimeMs: number }> {
   const { commentText, domain, requestId = '' } = params;
   const rid = requestId ? ` [${requestId}]` : '';
@@ -204,16 +212,18 @@ Output only valid JSON: {"found_price": true|false, "price_text": "<exact price 
   try {
     const response = await client.responses.create(
       {
-        model: 'gpt-5',
-        reasoning: { effort: 'low' },
+        model: AI_REPLY_MODEL,
+        reasoning: { effort: AI_REPLY_EFFORT as 'low' },
         instructions,
         input: userInput,
         tools: [{ type: 'web_search_preview' }],
         tool_choice: 'required' as const,
-      },
+        max_output_tokens: AI_PRICE_EXTRACT_MAX_TOKENS,
+      } as any,
       { signal: controller.signal, timeout: WEB_RESPONSE_TIMEOUT_MS }
     );
     clearTimeout(timeoutId);
+    recordAiUsage(ctx, { kind: 'reply', model: AI_REPLY_MODEL, usage: (response as { usage?: unknown }).usage, webSearch: true });
     const rawOutput = (response as { output_text?: string }).output_text ?? '';
     const generationTimeMs = Date.now() - startTime;
     const result = parsePriceExtractionResponse(rawOutput);
@@ -241,7 +251,8 @@ async function generateReplyWithExtractedPrice(
     webSourceUrl: string;
     requestId?: string;
   },
-  startTime: number
+  startTime: number,
+  ctx?: AiUsageContext
 ): Promise<AIReplyResult> {
   const {
     commentText,
@@ -274,12 +285,15 @@ async function generateReplyWithExtractedPrice(
 
   try {
     const completion = await client.chat.completions.create({
-      model: 'gpt-5',
+      model: AI_REPLY_MODEL,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-    });
+      reasoning_effort: AI_REPLY_EFFORT,
+      max_completion_tokens: AI_REPLY_MAX_TOKENS,
+    } as any);
+    recordAiUsage(ctx, { kind: 'reply', model: AI_REPLY_MODEL, usage: completion.usage, webSearch: true });
     const generationTimeMs = Date.now() - startTime;
     const rawReply = completion.choices[0]?.message?.content?.trim();
     const reply = cleanReplyText(rawReply || WEB_FALLBACK_MESSAGE.replace('{url}', webSourceUrl), maxLength);
@@ -288,7 +302,7 @@ async function generateReplyWithExtractedPrice(
       success: true,
       reply,
       promptVersion: customReplyPrompt ? 'override' : 'global',
-      model: 'gpt-5',
+      model: AI_REPLY_MODEL,
       generationTimeMs,
       webUsed: true,
       webDomain: undefined,
@@ -303,7 +317,7 @@ async function generateReplyWithExtractedPrice(
       success: true,
       reply: fallbackReply,
       promptVersion: customReplyPrompt ? 'override' : 'global',
-      model: 'gpt-5',
+      model: AI_REPLY_MODEL,
       generationTimeMs,
       webUsed: true,
       priceFound: true,
@@ -319,7 +333,8 @@ async function generateReplyWithExtractedPrice(
 async function generateWebSearchReply(
   client: OpenAI,
   params: WebSearchReplyParams,
-  startTime: number
+  startTime: number,
+  ctx?: AiUsageContext
 ): Promise<AIReplyResult> {
   const {
     commentText,
@@ -361,15 +376,17 @@ async function generateWebSearchReply(
     // Note: filters.allowed_domains is not supported by all API versions; we rely on instructions to restrict to domain
     const response = await client.responses.create(
       {
-        model: 'gpt-5',
-        reasoning: { effort: 'low' },
+        model: AI_REPLY_MODEL,
+        reasoning: { effort: AI_REPLY_EFFORT as 'low' },
         instructions,
         input: userInput,
         tools: [{ type: 'web_search_preview' }],
-      },
+        max_output_tokens: AI_REPLY_MAX_TOKENS,
+      } as any,
       { signal: controller.signal, timeout: WEB_RESPONSE_TIMEOUT_MS }
     );
     clearTimeout(timeoutId);
+    recordAiUsage(ctx, { kind: 'reply', model: AI_REPLY_MODEL, usage: (response as { usage?: unknown }).usage, webSearch: true });
 
     const generationTime = Date.now() - startTime;
     const rawText = (response as { output_text?: string }).output_text ?? '';
@@ -386,7 +403,7 @@ async function generateWebSearchReply(
       success: true,
       reply,
       promptVersion: customReplyPrompt ? 'override' : 'global',
-      model: 'gpt-5',
+      model: AI_REPLY_MODEL,
       generationTimeMs: generationTime,
       webUsed: true,
       webDomain: domain,
@@ -399,7 +416,7 @@ async function generateWebSearchReply(
       success: true,
       reply: cleanReplyText(fallbackReply, maxLength),
       promptVersion: customReplyPrompt ? 'override' : 'global',
-      model: 'gpt-5',
+      model: AI_REPLY_MODEL,
       generationTimeMs: generationTime,
       webUsed: true,
       webDomain: domain,
@@ -420,7 +437,8 @@ function shortRequestId(): string {
 }
 
 export async function generateAIReply(
-  config: AIReplyConfig
+  config: AIReplyConfig,
+  ctx?: AiUsageContext
 ): Promise<AIReplyResult> {
   const requestId = shortRequestId();
   const rid = ` [${requestId}]`;
@@ -472,7 +490,8 @@ export async function generateAIReply(
         const { result: priceResult, rawOutput, generationTimeMs: extractMs } = await runStructuredPriceSearch(
           client,
           { commentText: config.commentText, domain, requestId },
-          extractStart
+          extractStart,
+          ctx
         );
 
         const parsed = priceResult ?? parsePriceExtractionResponse(rawOutput);
@@ -494,7 +513,8 @@ export async function generateAIReply(
               webSourceUrl: webUrl,
               requestId,
             },
-            startTime
+            startTime,
+            ctx
           );
           replyResult.webDomain = domain;
           console.info(`${LOG_PREFIX}${rid} 5/5 Done (structured price). web_used=true, price_found=true, extracted_price=${extractedPrice}`);
@@ -509,7 +529,7 @@ export async function generateAIReply(
           success: true,
           reply: fallbackReply,
           promptVersion: config.customReplyPrompt ? 'override' : 'global',
-          model: 'gpt-5',
+          model: AI_REPLY_MODEL,
           generationTimeMs: totalMs,
           webUsed: true,
           webDomain: domain,
@@ -531,7 +551,8 @@ export async function generateAIReply(
           domain,
           requestId,
         },
-        startTime
+        startTime,
+        ctx
       );
       console.info(`${LOG_PREFIX}${rid} 5/5 Done (web search). webUsed=true, domain=${webResult.webDomain}, ${webResult.generationTimeMs}ms`);
       return webResult;
@@ -592,12 +613,16 @@ export async function generateAIReply(
   console.info(`${LOG_PREFIX}${rid} 4/5 Calling OpenAI Chat Completions (no web search)...`);
   try {
     const completion = await client.chat.completions.create({
-      model: 'gpt-5',
+      model: AI_REPLY_MODEL,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-    });
+      reasoning_effort: AI_REPLY_EFFORT,
+      max_completion_tokens: AI_REPLY_MAX_TOKENS,
+    } as any);
+
+    recordAiUsage(ctx, { kind: 'reply', model: AI_REPLY_MODEL, usage: completion.usage });
 
     const generationTime = Date.now() - startTime;
     const reply = completion.choices[0]?.message?.content?.trim();
@@ -607,7 +632,7 @@ export async function generateAIReply(
         success: false,
         error: 'Empty response from OpenAI',
         promptVersion,
-        model: 'gpt-5',
+        model: AI_REPLY_MODEL,
         generationTimeMs: generationTime,
       };
     }
@@ -619,7 +644,7 @@ export async function generateAIReply(
       success: true,
       reply: cleanedReply,
       promptVersion,
-      model: 'gpt-5',
+      model: AI_REPLY_MODEL,
       confidence: 0.85,
       tokensUsed: completion.usage?.total_tokens,
       generationTimeMs: generationTime,
@@ -642,7 +667,7 @@ export async function generateAIReply(
       success: false,
       error: errorMessage,
       promptVersion,
-      model: 'gpt-5',
+      model: AI_REPLY_MODEL,
       generationTimeMs: generationTime,
     };
   }

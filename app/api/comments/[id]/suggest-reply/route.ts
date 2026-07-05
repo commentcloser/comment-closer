@@ -23,6 +23,7 @@ export async function POST(
       include: {
         connectedPage: {
           select: {
+            id: true,
             brandTone: true,
             emojisEnabled: true,
             ctaText: true,
@@ -58,7 +59,7 @@ export async function POST(
       customReplyPrompt: page.customReplyPrompt ?? undefined,
       webSourceUrl: page.webSourceUrl ?? undefined,
       webSourceEnabled: page.webSourceEnabled ?? false,
-    });
+    }, { userId: owner.userId, connectedPageId: page.id, source: 'suggest_reply' });
 
     if (result.success && result.reply) {
       return NextResponse.json({ reply: result.reply });

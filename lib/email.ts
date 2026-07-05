@@ -12,15 +12,33 @@ export interface EmailOptions {
 
 export async function sendEmail({ to, subject, html }: EmailOptions) {
   if (!resend || !process.env.RESEND_API_KEY) {
+    // In production a missing key is a misconfiguration — fail loudly instead of
+    // silently reporting success (the previous behaviour hid total email outages).
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('RESEND_API_KEY is not configured');
+    }
+    // Local dev without a key: skip the send but don't fail. The caller logs the
+    // verification/reset link to the console so flows are testable.
+    console.warn(`[email] Dev mode (no RESEND_API_KEY): not sending "${subject}" to ${to}`);
     return { success: true, id: 'dev-mode' };
   }
-  try {
-    const fromEmail = process.env.EMAIL_FROM || 'onboarding@resend.dev';
-    const result = await resend.emails.send({ from: fromEmail, to, subject, html });
-    return { success: true, id: result.data?.id };
-  } catch {
-    throw new Error('Failed to send email');
+
+  const fromEmail = process.env.EMAIL_FROM || 'onboarding@resend.dev';
+  if (!process.env.EMAIL_FROM) {
+    console.warn(
+      '[email] EMAIL_FROM is not set; falling back to onboarding@resend.dev, which Resend only delivers to the account owner. Set EMAIL_FROM to a verified sending domain to reach real users.'
+    );
   }
+
+  // Resend v6 returns { data, error } and does NOT throw on API errors, so the
+  // error must be checked explicitly — otherwise failed sends look successful.
+  const { data, error } = await resend.emails.send({ from: fromEmail, to, subject, html });
+  if (error) {
+    const message = (error as { message?: string })?.message || 'unknown Resend error';
+    console.error('[email] Resend send failed:', message);
+    throw new Error(`Failed to send email: ${message}`);
+  }
+  return { success: true, id: data?.id };
 }
 
 function buildEmail(content: string, title: string): string {
@@ -88,6 +106,10 @@ export async function sendVerificationEmail(email: string, token: string, name?:
   const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || 'https://commentcloser.com';
   const url = `${baseUrl}/verify-email?token=${token}`;
   const firstName = name ? name.split(' ')[0] : null;
+
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[email] (dev) Verification link for ${email}: ${url}`);
+  }
 
   const content = `
     <!-- Icon -->
@@ -160,6 +182,10 @@ export async function sendPasswordResetEmail(email: string, token: string, name?
   const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || 'https://commentcloser.com';
   const url = `${baseUrl}/reset-password?token=${token}`;
   const firstName = name ? name.split(' ')[0] : null;
+
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[email] (dev) Password reset link for ${email}: ${url}`);
+  }
 
   const content = `
     <!-- Icon -->
