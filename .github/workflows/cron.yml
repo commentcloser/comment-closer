@@ -1,0 +1,60 @@
+name: Cron jobs
+
+# Drives the two background cron endpoints every 5 minutes.
+#
+# Both routes require `Authorization: Bearer $CRON_SECRET` (they return 401
+# without it and 503 if the server has no CRON_SECRET configured). The previous
+# workflow sent no header, so every run silently 401'd while still reporting
+# success. This version sends the header, hits BOTH endpoints, and fails loudly
+# on any non-2xx response so a broken schedule is visible.
+#
+# Requires a repository secret CRON_SECRET whose value matches the CRON_SECRET
+# environment variable in the production (Vercel) deployment.
+#
+# NOTE: scheduled workflows only run from the default branch, so this must be on
+# `main` to take effect. GitHub may delay scheduled runs under load; if you move
+# to Vercel Pro you can replace this with a `crons` block in vercel.json (Vercel
+# injects the same Bearer $CRON_SECRET header automatically) and delete this file.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+# Never let two ticks overlap (a slow tick would otherwise double-process).
+concurrency:
+  group: cron
+  cancel-in-progress: false
+
+jobs:
+  cron:
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: https://www.commentcloser.com
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - name: Verify CRON_SECRET is configured
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Repository secret CRON_SECRET is not set. Add it under Settings > Secrets and variables > Actions (value must match the production CRON_SECRET env var)."
+            exit 1
+          fi
+
+      - name: Post scheduled replies
+        run: |
+          curl -sS -X GET \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -w '\nHTTP %{http_code}\n' \
+            --fail-with-body \
+            "$BASE_URL/api/cron/post-scheduled-replies"
+
+      # Runs even if the previous step failed, so one broken endpoint doesn't
+      # silently stop the other. The job still fails overall if either fails.
+      - name: Fetch TikTok Ads comments
+        if: always()
+        run: |
+          curl -sS -X GET \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -w '\nHTTP %{http_code}\n' \
+            --fail-with-body \
+            "$BASE_URL/api/cron/fetch-tiktok-ads-comments"
