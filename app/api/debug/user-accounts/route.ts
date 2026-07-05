@@ -1,23 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import NextAuth from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-
-const { auth } = NextAuth(authOptions);
+import { requireAdmin } from '@/lib/adminAuth';
 
 /**
  * Debug endpoint to check user's Facebook account and connected pages
- * Helps diagnose why one account can connect pages and another can't
+ * Helps diagnose why one account can connect pages and another can't.
+ *
+ * SECURITY: admin-only. This returns every user's email + Facebook account id
+ * across the whole system, so it must not be reachable by ordinary users.
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const admin = await requireAdmin();
+    if (!admin.ok) {
+      return NextResponse.json({ error: admin.error }, { status: admin.status });
     }
 
-    const userId = session.user.id;
+    const userId = admin.userId;
 
     // Get user's Facebook account
     const facebookAccount = await prisma.account.findFirst({

@@ -626,30 +626,10 @@ export async function POST(request: NextRequest) {
         });
 
         if (account?.access_token) {
-          
-          // Priority Strategy: Always use the specific ad account "Elyon Mon IKE"
-          const targetBusinessName = 'Elyon Mon IKE';
-          const targetAdAccountId = 'act_269316045245432';
-          
-          const priorityAdAccountsUrl = `https://graph.facebook.com/v24.0/me/adaccounts?access_token=${account.access_token}&fields=id,account_id,name,business_name&limit=100`;
-          const priorityAdAccountsResponse = await fetch(priorityAdAccountsUrl);
-          
-          if (priorityAdAccountsResponse.ok) {
-            const priorityAdAccountsData = await priorityAdAccountsResponse.json();
-            const priorityAdAccounts = priorityAdAccountsData.data || [];
-            
-            // Find the specific ad account by business_name or id
-            const targetAccount = priorityAdAccounts.find((acc: any) => 
-              acc.business_name === targetBusinessName || acc.id === targetAdAccountId
-            );
-            
-            if (targetAccount) {
-              adAccountId = targetAccount.account_id || targetAccount.id?.replace(/^act_/i, '') || null;
-              // Skip other strategies - we found the target account
-            } else {
-            }
-          }
-          
+
+          // Detect this user's own ad account. (A hardcoded developer ad
+          // account used to be forced here for every tenant — removed.)
+
           // Strategy 1: Try to get ad accounts directly from the page (business portfolio ad accounts)
           // Only if we haven't found the target account yet
           if (!adAccountId) {
@@ -850,27 +830,9 @@ export async function POST(request: NextRequest) {
         });
 
         if (account?.access_token) {
-          // Strategy 1: Priority Strategy - Use specific ad account if configured (same as Facebook pages)
-          const targetBusinessName = 'Elyon Mon IKE';
-          const targetAdAccountId = 'act_269316045245432';
-          
-          const priorityAdAccountsUrl = `https://graph.facebook.com/v24.0/me/adaccounts?access_token=${account.access_token}&fields=id,account_id,name,business_name&limit=100`;
-          const priorityAdAccountsResponse = await fetch(priorityAdAccountsUrl);
-          
-          if (priorityAdAccountsResponse.ok) {
-            const priorityAdAccountsData = await priorityAdAccountsResponse.json();
-            const priorityAdAccounts = priorityAdAccountsData.data || [];
-            
-            // Find the specific ad account by business_name or id
-            const targetAccount = priorityAdAccounts.find((acc: any) => 
-              acc.business_name === targetBusinessName || acc.id === targetAdAccountId
-            );
-            
-            if (targetAccount) {
-              adAccountId = targetAccount.account_id || targetAccount.id?.replace(/^act_/i, '') || null;
-            }
-          }
-          
+          // Detect this user's own ad account. (A hardcoded developer ad
+          // account used to be forced here for every tenant — removed.)
+
           // Strategy 2: Try to get ad account from connected Facebook Page (if it exists in database)
           if (!adAccountId) {
           let connectedFacebookPageId = facebookPageId;

@@ -34,6 +34,13 @@ export const authOptions = {
 
           const rateLimitKey = `login:${email}`;
 
+          // Enforce the rate limit on the server. The login page also pre-checks
+          // via /api/auth/rate-limit, but a direct POST to the credentials
+          // callback would otherwise bypass throttling and allow brute force.
+          if (isRateLimited(rateLimitKey).limited) {
+            return null;
+          }
+
           const user = await prisma.user.findUnique({
             where: { email },
           });

@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { requireAdmin } from '@/lib/adminAuth';
 
 /**
  * Webhook Debug Endpoint
- * 
+ *
  * This endpoint helps debug webhook issues by showing:
  * - Recent webhook events (if we stored them)
  * - Connected Instagram pages
  * - Test webhook functionality
+ *
+ * SECURITY: admin-only. It exposes every tenant's connected pages and recent
+ * comment content, so it must not be reachable anonymously.
  */
 
 export async function GET(request: NextRequest) {
   try {
+    const admin = await requireAdmin();
+    if (!admin.ok) {
+      return NextResponse.json({ error: admin.error }, { status: admin.status });
+    }
+
     // Get all connected Instagram pages
     const instagramPages = await prisma.connectedPage.findMany({
       where: { provider: 'instagram' },
