@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { randomBytes } from 'crypto';
 import { sendPasswordResetEmail } from '@/lib/email';
-import { isRateLimited, recordFailedAttempt } from '@/lib/rateLimit';
+import { isRateLimited, recordFailedAttempt, getClientIp } from '@/lib/rateLimit';
 import { normalizeEmail } from '@/lib/validators';
 
 export const runtime = 'nodejs';
@@ -25,10 +25,13 @@ export async function POST(request: NextRequest) {
       message: 'If an account with that email exists, we sent a password reset link.',
     };
 
-    // Throttle reset requests per email to limit enumeration/spam.
-    if ((await isRateLimited(`forgot:${normalizedEmail}`)).limited) {
+    // Throttle reset requests per email AND per IP to limit enumeration/spam
+    // (an attacker can otherwise fan out across many emails from one IP).
+    const ip = getClientIp(request);
+    if ((await isRateLimited(`forgot-ip:${ip}`)).limited || (await isRateLimited(`forgot:${normalizedEmail}`)).limited) {
       return NextResponse.json(genericBody);
     }
+    await recordFailedAttempt(`forgot-ip:${ip}`);
     await recordFailedAttempt(`forgot:${normalizedEmail}`);
 
     const user = await prisma.user.findUnique({

@@ -365,21 +365,55 @@ async function handleFeedComment(value: any, connectedPage: any) {
       }
     } else if (savedComment.sentiment) {
       console.log(`[FB Webhook] 🔄 Comment already has sentiment: ${savedComment.sentiment} | Replied: ${savedComment.replied} | Status: ${savedComment.status}`);
-      
-      // If sentiment already exists (update case), check auto-reply
+
+      // Redelivery / edit case. Run the FULL decision engine (not just page
+      // toggles) so cooldown/first-comment/min-length/block-allowlist rules are
+      // still enforced — this branch previously bypassed them, so a comment the
+      // engine would have skipped got auto-replied on Meta's 2nd delivery (AI-3).
+      const decision = await shouldGenerateReply({
+        commentDbId: savedComment.id,
+        sentiment: savedComment.sentiment,
+        commentMessage: message,
+        authorId: authorId,
+        pageId: connectedPage.id,
+        createdAt: timestamp,
+        pageRules: {
+          autoReplyEnabled: connectedPage.autoReplyEnabled,
+          autoReplyPositive: connectedPage.autoReplyPositive,
+          autoReplyNeutral: connectedPage.autoReplyNeutral,
+          replyUserCooldownMinutes: connectedPage.replyUserCooldownMinutes,
+          replyOnlyFirstComment: connectedPage.replyOnlyFirstComment,
+          replyMinCommentLength: connectedPage.replyMinCommentLength,
+          replyBlocklistKeywords: connectedPage.replyBlocklistKeywords,
+          replyAllowlistKeywords: connectedPage.replyAllowlistKeywords,
+          replyAllowlistEnabled: connectedPage.replyAllowlistEnabled,
+        },
+        commentState: {
+          replied: savedComment.replied,
+          status: savedComment.status,
+          aiGeneratedReply: savedComment.aiGeneratedReply,
+        },
+      });
+
+      logReplyDecision(decision, savedComment.id, authorName);
+
+      if (!decision.allowed) {
+        await logSkipDecision(savedComment.id, connectedPage.id, 'facebook', decision.ruleTriggered, decision.reason);
+        console.log(`[FB Webhook] ⏭️  Skipping auto-reply (existing sentiment): ${decision.reason}`);
+        return;
+      }
+
       const shouldReply = shouldAutoReply(savedComment.sentiment, {
         autoReplyEnabled: connectedPage.autoReplyEnabled,
         autoReplyPositive: connectedPage.autoReplyPositive,
         autoReplyNeutral: connectedPage.autoReplyNeutral,
       });
-      
-      console.log(`[FB Webhook] 🚦 Should auto-reply (existing sentiment): ${shouldReply}`);
-      
-      if (shouldReply && !savedComment.replied && savedComment.status === 'pending') {
+
+      if (shouldReply) {
         console.log(`[FB Webhook] ✨ Triggering auto-reply for existing comment ${savedComment.id}`);
         await generateAndPostAutoReply(savedComment.id, savedComment.sentiment, message, authorName, connectedPage, postId, String(commentId));
       } else {
-        console.log(`[FB Webhook] ⏭️  Skipping auto-reply | Already replied: ${savedComment.replied} | Status: ${savedComment.status}`);
+        console.log(`[FB Webhook] ⏭️  Skipping auto-reply (conditions not met)`);
       }
     } else if (!isReplyComment && !savedComment.sentiment) {
       // Too short and not emoji — mark as ignored so it doesn't stay stuck in 'pending'

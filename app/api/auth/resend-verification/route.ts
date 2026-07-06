@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { randomBytes } from 'crypto';
 import { sendVerificationEmail } from '@/lib/email';
-import { isRateLimited, recordFailedAttempt } from '@/lib/rateLimit';
+import { isRateLimited, recordFailedAttempt, getClientIp } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 
@@ -15,9 +15,11 @@ export async function POST(req: NextRequest) {
 
     // Throttle per email so this endpoint can't be used to email-bomb an
     // address or burn the Resend quota. Generic success either way (enumeration-safe).
-    if ((await isRateLimited(`resend:${normalizedEmail}`)).limited) {
+    const ip = getClientIp(req);
+    if ((await isRateLimited(`resend-ip:${ip}`)).limited || (await isRateLimited(`resend:${normalizedEmail}`)).limited) {
       return NextResponse.json({ success: true });
     }
+    await recordFailedAttempt(`resend-ip:${ip}`);
     await recordFailedAttempt(`resend:${normalizedEmail}`);
 
     const user = await prisma.user.findUnique({

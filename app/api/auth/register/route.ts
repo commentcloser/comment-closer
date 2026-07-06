@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { sendVerificationEmail } from '@/lib/email';
 import { isValidEmail, normalizeEmail, validatePassword } from '@/lib/validators';
+import { isRateLimited, recordFailedAttempt, getClientIp } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 
@@ -37,6 +38,17 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedEmail = normalizeEmail(email);
+
+    // IP-based throttle so one IP can't mass-create accounts / spam the Resend
+    // quota with verification emails to arbitrary addresses (AUTH-3).
+    const ip = getClientIp(request);
+    if ((await isRateLimited(`register-ip:${ip}`)).limited) {
+      return NextResponse.json(
+        { success: false, message: 'Too many attempts. Please try again in a few minutes.' },
+        { status: 429 }
+      );
+    }
+    await recordFailedAttempt(`register-ip:${ip}`);
 
     const passwordCheck = validatePassword(password);
     if (!passwordCheck.valid) {

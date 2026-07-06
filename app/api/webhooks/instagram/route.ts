@@ -306,13 +306,48 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
         }
       }
     } else if (savedComment.sentiment) {
+      // Redelivery / edit case: run the full decision engine so cooldown/
+      // first-comment/min-length/block-allowlist rules are enforced, instead of
+      // just the page toggles which this branch used to check (AI-3).
+      const decision = await shouldGenerateReply({
+        commentDbId: savedComment.id,
+        sentiment: savedComment.sentiment,
+        commentMessage: text,
+        authorId: commentData.from?.id || null,
+        pageId: connectedPage.id,
+        createdAt: timestamp,
+        pageRules: {
+          autoReplyEnabled: connectedPage.autoReplyEnabled,
+          autoReplyPositive: connectedPage.autoReplyPositive,
+          autoReplyNeutral: connectedPage.autoReplyNeutral,
+          replyUserCooldownMinutes: connectedPage.replyUserCooldownMinutes,
+          replyOnlyFirstComment: connectedPage.replyOnlyFirstComment,
+          replyMinCommentLength: connectedPage.replyMinCommentLength,
+          replyBlocklistKeywords: connectedPage.replyBlocklistKeywords,
+          replyAllowlistKeywords: connectedPage.replyAllowlistKeywords,
+          replyAllowlistEnabled: connectedPage.replyAllowlistEnabled,
+        },
+        commentState: {
+          replied: savedComment.replied,
+          status: savedComment.status,
+          aiGeneratedReply: savedComment.aiGeneratedReply,
+        },
+      });
+
+      logReplyDecision(decision, savedComment.id, username);
+
+      if (!decision.allowed) {
+        await logSkipDecision(savedComment.id, connectedPage.id, 'instagram', decision.ruleTriggered, decision.reason);
+        return;
+      }
+
       const shouldReply = shouldAutoReply(savedComment.sentiment, {
         autoReplyEnabled: connectedPage.autoReplyEnabled,
         autoReplyPositive: connectedPage.autoReplyPositive,
         autoReplyNeutral: connectedPage.autoReplyNeutral,
       });
 
-      if (shouldReply && !savedComment.replied && savedComment.status === 'pending') {
+      if (shouldReply) {
         await generateAndPostAutoReply(savedComment.id, savedComment.sentiment, text, username, connectedPage, mediaId);
       }
     } else if (!isReplyComment && !savedComment.sentiment) {

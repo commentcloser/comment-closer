@@ -60,3 +60,10 @@ export async function resetRateLimit(key: string): Promise<void> {
     console.error('[rateLimit] resetRateLimit failed:', e instanceof Error ? e.message : String(e));
   }
 }
+
+/** Best-effort client IP from proxy headers, for IP-based rate limiting (AUTH-3). */
+export function getClientIp(req: { headers: { get(name: string): string | null } }): string {
+  const xff = req.headers.get('x-forwarded-for');
+  const first = xff ? xff.split(',')[0].trim() : '';
+  return first || req.headers.get('x-real-ip') || 'unknown';
+}
