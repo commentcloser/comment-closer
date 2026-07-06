@@ -1,0 +1,42 @@
+/**
+ * Retry wrapper for OpenAI calls. Retries on 429 (rate limit) and transient 5xx
+ * with exponential backoff, honoring a Retry-After header when present. A single
+ * rate-limit spike should not fail a whole batch of comments.
+ */
+export async function withOpenAIRetry<T>(
+  fn: () => Promise<T>,
+  opts?: { attempts?: number; label?: string }
+): Promise<T> {
+  const attempts = opts?.attempts ?? 3;
+  let lastErr: unknown;
+
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      lastErr = err;
+      const status: number | undefined = err?.status ?? err?.response?.status;
+      const retriable =
+        status === 429 ||
+        (typeof status === 'number' && status >= 500 && status < 600) ||
+        err?.code === 'ECONNRESET' ||
+        err?.code === 'ETIMEDOUT';
+
+      if (!retriable || i === attempts - 1) throw err;
+
+      const retryAfterRaw = err?.headers?.['retry-after'] ?? err?.response?.headers?.['retry-after'];
+      const retryAfter = Number(retryAfterRaw);
+      const backoffMs =
+        Number.isFinite(retryAfter) && retryAfter > 0
+          ? retryAfter * 1000
+          : Math.min(1000 * 2 ** i, 8000);
+
+      console.warn(
+        `[OpenAI retry] ${opts?.label || 'call'} attempt ${i + 1}/${attempts} failed (${status ?? err?.code}); retrying in ${backoffMs}ms`
+      );
+      await new Promise((resolve) => setTimeout(resolve, backoffMs));
+    }
+  }
+
+  throw lastErr;
+}

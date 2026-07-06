@@ -19,6 +19,7 @@ import {
   AI_PRICE_EXTRACT_MAX_TOKENS,
 } from './aiConfig';
 import { recordAiUsage, type AiUsageContext } from './aiUsage';
+import { withOpenAIRetry } from './openaiRetry';
 
 // Lazy initialization to avoid build-time errors
 let openai: OpenAI | null = null;
@@ -95,8 +96,17 @@ export function isPricingQuestion(commentText: string): boolean {
 
 const WEB_RESPONSE_TIMEOUT_MS = 28000;
 
-const WEB_FALLBACK_MESSAGE =
-  'Μπορείτε να δείτε τις ενημερωμένες τιμές και πληροφορίες στο {url} ή να μας στείλετε μήνυμα.';
+// Language-aware fallback, posted when the web-search / price path fails.
+// Never post Greek to a non-Greek commenter (AI-7): resolve the language
+// (detecting from the comment when 'auto') and pick the matching copy.
+function webFallbackMessage(language: string, url: string, commentText: string): string {
+  const lang = (language || 'auto').toLowerCase();
+  const resolved = lang === 'auto' || lang === '' ? detectCommentLanguage(commentText) : lang;
+  if (resolved.startsWith('el')) {
+    return `Μπορείτε να δείτε τις ενημερωμένες τιμές και πληροφορίες στο ${url} ή να μας στείλετε μήνυμα.`;
+  }
+  return `You can find up-to-date prices and information at ${url}, or send us a message.`;
+}
 
 /** System-level output rules (not editable by user). Enforced in all reply generation. */
 const SYSTEM_OUTPUT_RULES = `IMPORTANT:
@@ -284,7 +294,7 @@ async function generateReplyWithExtractedPrice(
   ].join('\n');
 
   try {
-    const completion = await client.chat.completions.create({
+    const completion = await withOpenAIRetry(() => client.chat.completions.create({
       model: AI_REPLY_MODEL,
       messages: [
         { role: 'system', content: systemPrompt },
@@ -292,11 +302,11 @@ async function generateReplyWithExtractedPrice(
       ],
       reasoning_effort: AI_REPLY_EFFORT,
       max_completion_tokens: AI_REPLY_MAX_TOKENS,
-    } as any);
+    } as any), { label: 'reply' });
     recordAiUsage(ctx, { kind: 'reply', model: AI_REPLY_MODEL, usage: completion.usage, webSearch: true });
     const generationTimeMs = Date.now() - startTime;
     const rawReply = completion.choices[0]?.message?.content?.trim();
-    const reply = cleanReplyText(rawReply || WEB_FALLBACK_MESSAGE.replace('{url}', webSourceUrl), maxLength);
+    const reply = cleanReplyText(rawReply || webFallbackMessage(language, webSourceUrl, commentText), maxLength);
     console.info(`${LOG_PREFIX}${rid}     Reply-with-price done in ${generationTimeMs}ms`);
     return {
       success: true,
@@ -311,7 +321,7 @@ async function generateReplyWithExtractedPrice(
     };
   } catch (err) {
     const generationTimeMs = Date.now() - startTime;
-    const fallbackReply = cleanReplyText(WEB_FALLBACK_MESSAGE.replace('{url}', webSourceUrl), maxLength);
+    const fallbackReply = cleanReplyText(webFallbackMessage(language, webSourceUrl, commentText), maxLength);
     console.info(`${LOG_PREFIX}${rid}     Reply-with-price failed, using fallback: ${err instanceof Error ? err.message : String(err)}`);
     return {
       success: true,
@@ -366,7 +376,7 @@ async function generateWebSearchReply(
     'Return ONLY the reply text, no quotes or extra explanation.',
   ].join('\n');
 
-  const fallbackReply = WEB_FALLBACK_MESSAGE.replace('{url}', webSourceUrl);
+  const fallbackReply = webFallbackMessage(language, webSourceUrl, commentText);
 
   console.info(`${LOG_PREFIX}${rid} 4/5 Calling OpenAI Responses API (web_search, domain: ${domain})...`);
   try {
@@ -522,7 +532,7 @@ export async function generateAIReply(
         }
 
         // No price found or parse failed → safe fallback, never invent
-        const fallbackReply = cleanReplyText(WEB_FALLBACK_MESSAGE.replace('{url}', webUrl), config.maxLength);
+        const fallbackReply = cleanReplyText(webFallbackMessage(config.language, webUrl, config.commentText), config.maxLength);
         const totalMs = Date.now() - startTime;
         console.info(`${LOG_PREFIX}${rid} 5/5 Done (structured price fallback). web_used=true, price_found=false, no invention`);
         return {
@@ -612,7 +622,7 @@ export async function generateAIReply(
 
   console.info(`${LOG_PREFIX}${rid} 4/5 Calling OpenAI Chat Completions (no web search)...`);
   try {
-    const completion = await client.chat.completions.create({
+    const completion = await withOpenAIRetry(() => client.chat.completions.create({
       model: AI_REPLY_MODEL,
       messages: [
         { role: 'system', content: systemPrompt },
@@ -620,7 +630,7 @@ export async function generateAIReply(
       ],
       reasoning_effort: AI_REPLY_EFFORT,
       max_completion_tokens: AI_REPLY_MAX_TOKENS,
-    } as any);
+    } as any), { label: 'reply' });
 
     recordAiUsage(ctx, { kind: 'reply', model: AI_REPLY_MODEL, usage: completion.usage });
 

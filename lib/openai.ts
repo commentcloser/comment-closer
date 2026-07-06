@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { AI_SENTIMENT_MODEL, AI_SENTIMENT_EFFORT, AI_SENTIMENT_MAX_TOKENS } from './aiConfig';
 import { recordAiUsage, type AiUsageContext } from './aiUsage';
+import { withOpenAIRetry } from './openaiRetry';
 
 // Lazy initialization of OpenAI client to avoid errors during build
 let openai: OpenAI | null = null;
@@ -101,7 +102,7 @@ export async function analyzeCommentSentiment(
   const model = AI_SENTIMENT_MODEL;
 
   try {
-    const completion = await client.chat.completions.create({
+    const completion = await withOpenAIRetry(() => client.chat.completions.create({
       model,
       messages: [
         {
@@ -116,7 +117,7 @@ export async function analyzeCommentSentiment(
       ],
       reasoning_effort: AI_SENTIMENT_EFFORT,
       max_completion_tokens: AI_SENTIMENT_MAX_TOKENS,
-    } as any);
+    } as any), { label: 'sentiment' });
 
     recordAiUsage(ctx, { kind: 'sentiment', model, usage: completion.usage });
 

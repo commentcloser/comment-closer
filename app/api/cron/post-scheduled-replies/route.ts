@@ -195,6 +195,19 @@ export async function GET(request: Request) {
 
   console.log(`[Cron] === POST SCHEDULED REPLIES ===`);
 
+  // Recover comments orphaned in 'ai_generating' when a generation died mid-flight
+  // (serverless timeout). Without this they can never be re-claimed. All providers
+  // (the TikTok-Ads cron only resets its own). ~5 min old = safely stale.
+  const staleThreshold = new Date(Date.now() - 5 * 60 * 1000);
+  const staleReset = await prisma.comment.updateMany({
+    where: {
+      status: 'ai_generating',
+      OR: [{ lastAttemptAt: { lt: staleThreshold } }, { lastAttemptAt: null }],
+    },
+    data: { status: 'pending' },
+  });
+  if (staleReset.count > 0) console.log(`[Cron] Reset ${staleReset.count} stale ai_generating comment(s) to pending`);
+
   const now = new Date();
 
   const scheduledComments = await prisma.comment.findMany({
