@@ -8,6 +8,9 @@ export const dynamic = 'force-dynamic';
  * Comprehensive webhook diagnostics to debug why real webhooks aren't arriving
  */
 export async function GET(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production' && process.env.DEBUG_ROUTES_ENABLED !== '1') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
   const admin = await requireAdmin();
   if (!admin.ok) {
     return NextResponse.json({ error: admin.error }, { status: admin.status });
