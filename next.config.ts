@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 // Baseline security headers (SEC-7). Kept conservative so they don't interfere
 // with the Facebook/TikTok OAuth popup flows (popups are separate windows, not
@@ -23,4 +24,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Wrap with Sentry. Without SENTRY_DSN this is a runtime no-op; without
+// SENTRY_AUTH_TOKEN source-map upload is skipped (build still succeeds). (OBS-1)
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+});

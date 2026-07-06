@@ -6,6 +6,7 @@ import { shouldGenerateReply, logReplyDecision } from '@/lib/replyDecisionEngine
 import { logSkipDecision, logReplyAttempt, logReplySuccess, logReplyFailure } from '@/lib/actionLogger';
 import { autoModerateNegativeComment } from '@/lib/commentModerator';
 import { verifyWebhookSignature } from '@/lib/webhookVerification';
+import * as Sentry from '@sentry/nextjs';
 
 export const maxDuration = 60;
 
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
         }
       } catch (err) {
         console.error('[FB Webhook] after() processing error:', err);
+        Sentry.captureException(err);
       }
     });
 
