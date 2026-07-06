@@ -36,6 +36,11 @@ export async function GET(request: Request) {
 
   after(async () => {
     try {
+      // Only touch comments stuck for a while, so we never race a webhook after()
+      // that is still analysing a freshly-arrived comment (which also sits
+      // pending / sentiment:null during its multi-second OpenAI call). A webhook
+      // processes in seconds, so a 10-minute-old comment's webhook is long done.
+      const staleCutoff = new Date(Date.now() - 10 * 60 * 1000);
       const stuck = await prisma.comment.findMany({
         where: {
           status: 'pending',
@@ -43,6 +48,7 @@ export async function GET(request: Request) {
           isReply: false,
           message: { not: '' },
           attemptCount: { lt: MAX_ATTEMPTS },
+          createdAt: { lt: staleCutoff },
         },
         select: {
           id: true,
