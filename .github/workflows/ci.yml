@@ -23,6 +23,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Test
+        run: npm test
+
       # Lint is currently informational (the inherited code has many pre-existing
       # lint findings). It reports but does not fail the build yet.
       - name: Lint
