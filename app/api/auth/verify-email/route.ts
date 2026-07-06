@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Fire-and-forget welcome email — must never block or fail verification.
-    sendWelcomeEmail(user.email, user.name || undefined).catch((e) =>
+    sendWelcomeEmail(user.email, user.name || undefined, user.locale || undefined).catch((e) =>
       console.error('[verify-email] welcome email failed:', e)
     );
 

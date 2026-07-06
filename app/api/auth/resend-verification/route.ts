@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail },
-      select: { id: true, name: true, emailVerified: true, password: true },
+      select: { id: true, name: true, emailVerified: true, password: true, locale: true },
     });
 
     // Always return success to prevent email enumeration
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     });
 
     try {
-      await sendVerificationEmail(normalizedEmail, token, user.name || undefined);
+      await sendVerificationEmail(normalizedEmail, token, user.name || undefined, user.locale || undefined);
     } catch (emailError) {
       // Never surface send failures here: a different response for "send failed"
       // vs the generic success below would leak whether the account exists.

@@ -23,6 +23,7 @@ model User {
   password      String?
   image         String?
   role          Role      @default(USER)
+  locale        String?   @default("en") // UI locale captured at signup, for emails
   lastLoginAt   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt

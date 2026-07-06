@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     // Send password reset email
     try {
-      await sendPasswordResetEmail(normalizedEmail, token, user.name || undefined);
+      await sendPasswordResetEmail(normalizedEmail, token, user.name || undefined, user.locale || undefined);
     } catch (emailError) {      // Don't fail the request if email fails, but log it
       // In development, the email will be logged to console
       console.error('[ForgotPassword] Failed to send reset email:', emailError);

@@ -73,6 +73,11 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
+    // Capture the UI locale (from the client, falling back to Accept-Language)
+    // so transactional emails can match the user's language (AUTH-4).
+    const acceptLang = (request.headers.get('accept-language') || '').toLowerCase();
+    const locale = body.locale === 'el' || acceptLang.startsWith('el') ? 'el' : 'en';
+
     // Create user
     const user = await prisma.user.create({
       data: {
@@ -80,6 +85,7 @@ export async function POST(request: NextRequest) {
         email: normalizedEmail,
         password: hashedPassword,
         emailVerified: null,
+        locale,
       },
     });
 
@@ -100,7 +106,7 @@ export async function POST(request: NextRequest) {
     // Send verification email
     let emailSent = true;
     try {
-      await sendVerificationEmail(normalizedEmail, token, name);
+      await sendVerificationEmail(normalizedEmail, token, name, locale);
     } catch (emailError) {      // Don't fail registration if email fails, but log it
       // In development, the email will be logged to console
       emailSent = false;
