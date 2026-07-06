@@ -478,7 +478,7 @@ async function generateAndPostAutoReply(
     // Idempotency: only one process may reply per comment (handles duplicate webhooks)
     const claimed = await prisma.comment.updateMany({
       where: { id: commentDbId, replied: false, status: 'pending' },
-      data: { status: 'ai_generating' },
+      data: { status: 'ai_generating', lastAttemptAt: new Date() },
     });
     if (claimed.count === 0) return;
 

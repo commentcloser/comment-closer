@@ -449,7 +449,7 @@ async function generateAndPostTikTokReply(opts: {
     // Idempotency guard
     const claimed = await prisma.comment.updateMany({
       where: { id: commentDbId, replied: false, status: 'pending' },
-      data: { status: 'ai_generating' },
+      data: { status: 'ai_generating', lastAttemptAt: new Date() },
     });
     if (claimed.count === 0) return;
 
