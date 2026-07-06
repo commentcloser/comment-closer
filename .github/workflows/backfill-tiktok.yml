@@ -1,0 +1,42 @@
+name: Backfill organic TikTok comments
+
+# Safety-net backfill for organic TikTok (provider 'tiktok'), which is otherwise
+# purely webhook-driven (INTEG-6). Re-polls comments on known videos and inserts
+# any the webhook missed. Runs hourly rather than every 5 min because it makes a
+# TikTok comment/list call per known video and is only a fallback for dropped or
+# unregistered webhook events — not the primary ingestion path.
+#
+# Requires the same CRON_SECRET repository secret as cron.yml (must match the
+# production Vercel CRON_SECRET). Scheduled workflows only run from the default
+# branch, so this takes effect once merged to main.
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: backfill-tiktok
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: https://www.commentcloser.com
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - name: Verify CRON_SECRET is configured
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Repository secret CRON_SECRET is not set. Add it under Settings > Secrets and variables > Actions (value must match the production CRON_SECRET env var)."
+            exit 1
+          fi
+
+      - name: Backfill organic TikTok comments
+        run: |
+          curl -sS -X GET \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -w '\nHTTP %{http_code}\n' \
+            --fail-with-body \
+            "$BASE_URL/api/cron/backfill-tiktok-comments"

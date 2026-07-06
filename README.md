@@ -52,7 +52,8 @@ The maintenance scripts under `scripts/` refuse to run against the prod DB unles
 Both background jobs are driven by GitHub Actions workflows (`.github/workflows/`),
 which call the endpoints with `Authorization: Bearer $CRON_SECRET`:
 
-- `cron.yml` — every 5 min: `post-scheduled-replies` + `fetch-tiktok-ads-comments`.
+- `cron.yml` — every 5 min: `post-scheduled-replies` + `fetch-tiktok-ads-comments` + `backfill-sentiment`.
+- `backfill-tiktok.yml` — hourly: `backfill-tiktok-comments` (safety net for missed organic-TikTok webhook events).
 - `refresh-meta-tokens.yml` — daily: refresh Facebook long-lived user tokens.
 
 The repo secret **`CRON_SECRET`** (Settings → Secrets → Actions) must equal the

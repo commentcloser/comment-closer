@@ -29,6 +29,44 @@ export function tiktokClientSecret(): string | undefined {
   return sandbox || process.env.TIKTOK_CLIENT_SECRET;
 }
 
+/**
+ * Registers (or updates) the app-level comment.update webhook callback URL
+ * (INTEG-6). This is app-scoped — it uses only app_id + secret, no user token —
+ * and is idempotent, so it's safe to call on every OAuth connect as a
+ * self-healing measure in case the one-time manual registration was missed or
+ * the callback URL changed. Returns a small result object; never throws.
+ */
+export async function registerTikTokWebhook(): Promise<{ success: boolean; message?: string }> {
+  const appId = tiktokClientKey();
+  const secret = tiktokClientSecret();
+  if (!appId || !secret) {
+    return { success: false, message: 'TIKTOK_CLIENT_KEY or TIKTOK_CLIENT_SECRET not set' };
+  }
+
+  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const callbackUrl = `${baseUrl}/api/webhooks/tiktok`;
+
+  try {
+    const res = await fetch(`${BASE}/business/webhook/update/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        app_id: appId,
+        secret,
+        event_type: 'COMMENT',
+        callback_url: callbackUrl,
+      }),
+    });
+    const data = await res.json();
+    if (data.code === 0) {
+      return { success: true, message: callbackUrl };
+    }
+    return { success: false, message: `code ${data.code}: ${data.message}` };
+  } catch (err) {
+    return { success: false, message: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
