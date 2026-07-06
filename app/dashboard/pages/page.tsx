@@ -829,10 +829,10 @@ function PagesPageContent() {
 
   if (status === 'loading' || !mounted) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-canvas flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-gray-300 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-300">Loading...</p>
+          <div className="size-8 animate-spin rounded-full border-2 border-line border-t-accent mx-auto mb-4"></div>
+          <p className="text-[15px] text-ink-muted">Loading...</p>
         </div>
       </div>
     );
@@ -847,22 +847,18 @@ function PagesPageContent() {
       };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-black">
+    <div className="min-h-screen bg-canvas">
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-40 w-64 h-screen transition-transform ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 transition-transform ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-900`}
+        } lg:translate-x-0 border-r border-line bg-surface`}
       >
         <div className="h-full flex flex-col">
-          <div className="h-20 px-6 flex items-center border-b border-gray-200 dark:border-gray-900">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-violet-600 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform shadow-md">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                </svg>
-              </div>
-              <span className="text-lg font-bold text-gray-900 dark:text-white">Comment Closer</span>
+          <div className="h-16 px-5 border-b border-line flex items-center">
+            <Link href="/" className="flex items-center gap-3">
+              <span className="tick3" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span className="text-[17px] font-semibold tracking-tight text-ink">Comment Closer</span>
             </Link>
           </div>
 
@@ -879,10 +875,10 @@ function PagesPageContent() {
                       setShowConnectPageMessage(true);
                       setTimeout(() => setShowConnectPageMessage(false), 4000);
                     }}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group text-sm cursor-pointer ${
+                    className={`relative flex items-center gap-3 h-10 px-3 rounded-btn text-[15px] font-medium transition-colors opacity-50 cursor-not-allowed hover:bg-transparent hover:text-ink-muted ${
                       isActive
-                        ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium'
-                        : 'text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900 hover:text-gray-900 dark:hover:text-gray-200'
+                        ? 'bg-accent-wash text-accent before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-accent'
+                        : 'text-ink-muted'
                     }`}
                   >
                     {item.icon}
@@ -890,15 +886,15 @@ function PagesPageContent() {
                   </div>
                 );
               }
-              
+
               return (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group text-sm ${
+                  className={`relative flex items-center gap-3 h-10 px-3 rounded-btn text-[15px] font-medium transition-colors ${
                     isActive
-                      ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium'
-                      : 'text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900 hover:text-gray-900 dark:hover:text-gray-200'
+                      ? 'bg-accent-wash text-accent before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-accent'
+                      : 'text-ink-muted hover:bg-surface-2 hover:text-ink'
                   }`}
                 >
                   {item.icon}
@@ -909,28 +905,28 @@ function PagesPageContent() {
           </nav>
 
           {/* Language Toggle */}
-          <div className="px-3 py-4 border-t border-gray-200 dark:border-gray-900">
+          <div className="px-3 py-4 border-t border-line">
             <div className="px-3 mb-2">
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+              <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted mb-3">
                 {t('dashboard.preferences.language')}
               </p>
-              <div className="flex items-center gap-2">
+              <div className="inline-flex w-full items-center rounded-btn border border-line bg-surface-2 p-0.5">
                 <button
                   onClick={() => changeLanguage('en')}
-                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                  className={`flex-1 h-8 px-3 rounded-[6px] font-mono text-[12px] uppercase tracking-[0.08em] font-medium transition-colors ${
                     currentLanguage === 'en' || currentLanguage.startsWith('en')
-                      ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-900'
+                      ? 'bg-surface text-ink shadow-card'
+                      : 'text-ink-muted hover:text-ink'
                   }`}
                 >
                   EN
                 </button>
                 <button
                   onClick={() => changeLanguage('el')}
-                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                  className={`flex-1 h-8 px-3 rounded-[6px] font-mono text-[12px] uppercase tracking-[0.08em] font-medium transition-colors ${
                     currentLanguage === 'el' || currentLanguage.startsWith('el')
-                      ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-900'
+                      ? 'bg-surface text-ink shadow-card'
+                      : 'text-ink-muted hover:text-ink'
                   }`}
                 >
                   ΕΛ
@@ -940,14 +936,14 @@ function PagesPageContent() {
           </div>
 
           {/* Theme Toggle */}
-          <div className="px-3 py-4 border-t border-gray-200 dark:border-gray-900">
+          <div className="px-3 py-4 border-t border-line">
             <div className="px-3">
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+              <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted mb-3">
                 {t('dashboard.preferences.theme')}
               </p>
               <button
                 onClick={toggleTheme}
-                className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900 rounded-lg transition-all"
+                className="w-full flex items-center justify-between h-10 px-3 rounded-btn text-[15px] font-medium text-ink-muted hover:bg-surface-2 hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
               >
                 <div className="flex items-center gap-2">
                   {theme === 'light' ? (
@@ -961,21 +957,21 @@ function PagesPageContent() {
                   )}
                   <span>{theme === 'light' ? t('dashboard.preferences.darkMode') : t('dashboard.preferences.lightMode')}</span>
                 </div>
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
             </div>
           </div>
 
-          <div className="p-4 border-t border-gray-200 dark:border-gray-900">
-            <div className="flex items-center gap-3 px-3 py-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-violet-600 rounded-full flex items-center justify-center text-white font-semibold text-xs shadow-sm">
+          <div className="border-t border-line px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 flex items-center justify-center rounded-full border border-accent/20 bg-accent-wash font-mono text-[13px] font-medium text-accent">
                 {session.user.name?.charAt(0).toUpperCase() || 'U'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{session.user.name}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{session.user.email}</p>
+                <p className="text-[14px] font-medium text-ink truncate">{session.user.name}</p>
+                <p className="font-mono text-[11px] text-ink-muted truncate">{session.user.email}</p>
               </div>
             </div>
           </div>
@@ -984,24 +980,24 @@ function PagesPageContent() {
 
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-gray-900/50 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-[35] bg-ink/40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         ></div>
       )}
 
       <div className="lg:ml-64">
-        <header className="sticky top-0 z-20 h-20 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-900">
-          <div className="h-full px-6 flex items-center justify-between">
+        <header className="sticky top-0 z-30 h-16 border-b border-line bg-canvas/95 flex items-center gap-4 px-6">
+          <div className="w-full flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 -ml-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-900 rounded-lg transition-all"
+                className="lg:hidden inline-flex items-center justify-center size-9 -ml-2 rounded-btn text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+              <h1 className="font-display text-[20px] font-medium text-ink">
                 {t('dashboard.menu.pages') || 'Connected Pages'}
               </h1>
             </div>
@@ -1012,79 +1008,73 @@ function PagesPageContent() {
           </div>
         </header>
 
-        <main className="min-h-[calc(100vh-80px)] p-4 sm:p-6 lg:p-8">
+        <main className="min-h-[calc(100vh-64px)] p-4 sm:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
             {error && !error.includes('No Facebook account') && !error.toLowerCase().includes('no facebook account connected') && (
-              <div className={`mb-6 p-4 border rounded-lg ${
+              <div className={`mb-6 flex items-start gap-3 rounded-card border px-4 py-3 text-[14px] leading-relaxed ${
                 error.includes('rate limit') || error.includes('Rate limit')
-                  ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
-                  : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                  ? 'border-signal/40 bg-signal-wash text-signal-text'
+                  : 'border-danger/30 bg-danger-wash text-danger'
               }`}>
-                <div className="flex items-start gap-3">
                   {error.includes('rate limit') || error.includes('Rate limit') ? (
-                    <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="size-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                   ) : (
-                    <svg className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="size-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   )}
                   <div className="flex-1">
-                    <p className={`text-sm font-medium ${
-                      error.includes('rate limit') || error.includes('Rate limit')
-                        ? 'text-yellow-800 dark:text-yellow-200'
-                        : 'text-red-800 dark:text-red-200'
-                    }`}>
+                    <p className="text-[14px] font-medium">
                       {error}
                     </p>
                     {error.includes('rate limit') || error.includes('Rate limit') ? (
-                      <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                      <p className="text-[13px] opacity-80 mt-1">
                         This is temporary. Your connected pages are still available and working. The limit will reset automatically in a few minutes.
                       </p>
                     ) : null}
                   </div>
-                </div>
               </div>
             )}
 
             {loading ? (
               <div className="flex flex-col items-center justify-center py-20">
-                <div className="w-12 h-12 border-4 border-gray-200 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin"></div>
-                <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+                <div className="size-8 animate-spin rounded-full border-2 border-line border-t-accent"></div>
+                <p className="mt-4 text-[13px] text-ink-muted">
                   {t('dashboard.pages.loadingPages', 'Loading pages...')}
                 </p>
               </div>
                 ) : pages.length === 0 && instagramPages.length === 0 && connectedPages.length === 0 ? (
               <div className="max-w-2xl mx-auto">
-                <div className="bg-white dark:bg-gray-950 rounded-2xl border border-gray-200 dark:border-gray-800 p-12 text-center shadow-sm">
+                <div className="bg-surface rounded-card border border-line p-12 text-center shadow-card">
                   <div className="mb-6">
-                    <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <div className="size-14 rounded-card border border-line bg-accent-wash text-accent flex items-center justify-center mx-auto mb-4">
                       <div className="flex items-center gap-1">
-                        <svg className="w-10 h-10 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                         </svg>
-                        <svg className="w-8 h-8 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
                         </svg>
                       </div>
                     </div>
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+                        <h2 className="font-display text-[25px] font-extrabold text-ink mb-3">
                           {t('dashboard.pages.connectYourFacebookInstagram', 'Connect Your Facebook & Instagram Pages')}
                         </h2>
-                        <p className="text-gray-600 dark:text-gray-400 mb-2">
+                        <p className="text-[15px] text-ink-muted mb-2">
                           {t('dashboard.pages.description')}
                         </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
+                        <p className="text-[13px] text-ink-muted mb-6">
                           {t('dashboard.pages.adminAccessRequired', 'Make sure you have admin access to the Facebook pages and Instagram Business accounts you want to connect.')}
                         </p>
                   </div>
                   <Link
                     href="/dashboard/onboarding"
-                    className="group inline-flex items-center justify-center gap-3 px-8 py-3.5 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white rounded-lg transition-all font-medium text-base shadow-md hover:shadow-lg"
+                    className="group inline-flex items-center justify-center gap-3 h-11 px-5 rounded-btn bg-accent text-on-accent hover:bg-accent-hover text-[15px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                   >
                     <div className="flex items-center gap-2">
-                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                       </svg>
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -1092,11 +1082,11 @@ function PagesPageContent() {
                       </svg>
                     </div>
                     <span>{t('dashboard.pages.connectFacebookInstagram', 'Connect Facebook & Instagram')}</span>
-                    <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
                   </Link>
-                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-4">
+                  <p className="text-[13px] text-ink-muted mt-4">
                     {t('dashboard.pages.accountWillBeLinked', 'Your Facebook account will be linked to your current account ({{email}})', { email: session?.user?.email })}
                   </p>
                 </div>
@@ -1105,10 +1095,10 @@ function PagesPageContent() {
               <div>
                 <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
                   <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                    <h1 className="font-display text-[25px] font-medium text-ink mb-2">
                       {t('dashboard.pages.yourPages', 'Your Pages')}
                     </h1>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-[13px] text-ink-muted">
                       {t('dashboard.pages.description')}
                     </p>
                   </div>
@@ -1131,7 +1121,7 @@ function PagesPageContent() {
                         }
                         await signIn('facebook', { callbackUrl: '/dashboard/pages' });
                       }}
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-pink-600 hover:from-blue-700 hover:to-pink-700 text-white rounded-lg transition-all font-medium text-sm shadow-md hover:shadow-lg"
+                      className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-accent text-on-accent hover:bg-accent-hover text-[15px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                     >
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
@@ -1143,19 +1133,19 @@ function PagesPageContent() {
 
                 {/* Show connect button if no active account, even if there are connected pages */}
                 {hasNoActiveAccount && (
-                  <div className="mb-6 p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                  <div className="mb-6 p-6 rounded-card border border-line bg-surface shadow-card">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                          <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                        <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center">
+                          <svg className="size-5" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                           </svg>
                         </div>
                         <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                          <h3 className="text-[16px] font-medium text-ink mb-1">
                             {t('dashboard.pages.facebookAccountDisconnected', 'Facebook Account Disconnected')}
                           </h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                          <p className="text-[13px] text-ink-muted">
                             {t('dashboard.pages.reconnectToManage', 'Reconnect your Facebook account to manage your pages and fetch comments.')}
                           </p>
                         </div>
@@ -1206,7 +1196,7 @@ function PagesPageContent() {
                             alert(`Failed to connect Facebook: ${error?.message || 'Unknown error'}. Please check your Facebook App configuration.`);
                           }
                         }}
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium text-sm shadow-md hover:shadow-lg"
+                        className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-accent text-on-accent hover:bg-accent-hover text-[15px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                       >
                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
@@ -1220,12 +1210,12 @@ function PagesPageContent() {
                 {(pages.length > 0 || instagramPages.length > 0 || connectedPages.length > 0) && (
                   <div>
                     {hasNoActiveAccount && connectedPages.length > 0 && (
-                      <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg mb-6">
+                      <div className="flex items-start gap-3 rounded-card border border-signal/40 bg-signal-wash text-signal-text px-4 py-3 text-[14px] leading-relaxed mb-6">
                         <div className="flex items-center gap-2">
-                          <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="size-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                           </svg>
-                          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                          <p className="text-[14px] font-medium">
                             {t('dashboard.pages.connectedPagesWarning', 'You have {{count}} connected page(s), but your Facebook account is disconnected. Reconnect to manage them.', { count: connectedPages.length })}
                           </p>
                         </div>
@@ -1237,20 +1227,16 @@ function PagesPageContent() {
                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Facebook Pages Column */}
                         <div className="space-y-5">
-                          <div className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-blue-100/50 to-indigo-50 dark:from-blue-950/50 dark:via-blue-900/30 dark:to-indigo-950/50 rounded-2xl p-6 border border-blue-200/50 dark:border-blue-800/50 shadow-lg">
-                            <div className="relative flex items-center gap-4">
-                              <div className="relative">
-                                <div className="relative w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
-                                  <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                                  </svg>
-                                </div>
-                              </div>
-                              <div className="flex-1">
-                                <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-400 dark:to-blue-300 bg-clip-text text-transparent mb-1">
+                          <div className="pb-3 border-b border-line-strong">
+                            <div className="flex items-center gap-3">
+                              <svg className="size-5 shrink-0 text-ink-muted" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                              </svg>
+                              <div className="flex-1 min-w-0">
+                                <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted mb-0.5">
                                   {t('dashboard.pages.facebookPages', 'Facebook Pages')}
                                 </h2>
-                                <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">{t('dashboard.pages.manageConnectedPages', 'Manage your connected pages')}</p>
+                                <p className="text-[12px] text-ink-muted">{t('dashboard.pages.manageConnectedPages', 'Manage your connected pages')}</p>
                               </div>
                               {(() => {
                                 const disconnectedPages = pages.filter((page) => !isPageConnected(page.id, 'facebook'));
@@ -1260,11 +1246,11 @@ function PagesPageContent() {
                                   <div className="relative">
                                     <button
                                       onClick={() => setShowAddPageDropdown(showAddPageDropdown === 'facebook' ? null : 'facebook')}
-                                      className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-xl flex items-center justify-center shadow-md transition-all duration-200 hover:scale-110 group"
+                                      className="size-9 rounded-btn border border-line-strong bg-surface text-ink hover:border-accent/40 hover:text-accent flex items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                       title={hasDisconnectedPages ? t('dashboard.pages.addPageTooltip', 'Add Page ({{count}} available)', { count: disconnectedPages.length }) : t('dashboard.pages.allPagesConnectedTooltip', 'All pages are connected')}
                                     >
-                                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                      <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                       </svg>
                                     </button>
                                     
@@ -1273,24 +1259,24 @@ function PagesPageContent() {
                                       loadingFullPages ? (
                                         /* Modal - Loading pages from API */
                                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                                          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddPageDropdown(null)}></div>
-                                          <div className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in zoom-in duration-200">
-                                            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50">
+                                          <div className="absolute inset-0 bg-ink/40 dark:bg-black/60" onClick={() => setShowAddPageDropdown(null)}></div>
+                                          <div className="relative w-full max-w-md rounded-card border border-line bg-surface shadow-pop overflow-hidden animate-in fade-in zoom-in duration-200">
+                                            <div className="px-6 py-4 border-b border-line">
                                               <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3">
-                                                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                                                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
+                                                  <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center">
+                                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
                                                   </div>
-                                                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('dashboard.pages.facebookPages', 'Facebook Pages')}</h3>
+                                                  <h3 className="font-display text-[20px] font-medium text-ink">{t('dashboard.pages.facebookPages', 'Facebook Pages')}</h3>
                                                 </div>
-                                                <button onClick={() => setShowAddPageDropdown(null)} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                                                <button onClick={() => setShowAddPageDropdown(null)} className="size-9 p-0 rounded-btn flex items-center justify-center text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas">
                                                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                                 </button>
                                               </div>
                                             </div>
                                             <div className="px-6 py-12 flex flex-col items-center justify-center gap-3">
-                                              <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                                              <p className="text-sm text-gray-600 dark:text-gray-400">{t('dashboard.pages.loadingPages', 'Loading pages...')}</p>
+                                              <div className="size-8 animate-spin rounded-full border-2 border-line border-t-accent" />
+                                              <p className="text-[13px] text-ink-muted">{t('dashboard.pages.loadingPages', 'Loading pages...')}</p>
                                             </div>
                                           </div>
                                         </div>
@@ -1299,31 +1285,31 @@ function PagesPageContent() {
                                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                                           {/* Backdrop */}
                                           <div 
-                                            className="absolute inset-0 bg-black/50 backdrop-blur-sm" 
+                                            className="absolute inset-0 bg-ink/40 dark:bg-black/60" 
                                             onClick={() => setShowAddPageDropdown(null)}
                                           ></div>
                                           
                                           {/* Modal */}
-                                          <div className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in zoom-in duration-200">
+                                          <div className="relative w-full max-w-md rounded-card border border-line bg-surface shadow-pop overflow-hidden animate-in fade-in zoom-in duration-200">
                                             {/* Header */}
-                                            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50">
+                                            <div className="px-6 py-4 border-b border-line">
                                               <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3">
-                                                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                                                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                                  <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center">
+                                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                                                       <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                                                     </svg>
                                                   </div>
                                                   <div>
-                                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('dashboard.pages.addFacebookPage', 'Add Facebook Page')}</h3>
-                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                    <h3 className="font-display text-[20px] font-medium text-ink">{t('dashboard.pages.addFacebookPage', 'Add Facebook Page')}</h3>
+                                                    <p className="text-[13px] text-ink-muted">
                                                       {t('dashboard.pages.pagesAvailable', '{{count}} page available', { count: disconnectedPages.length })}
                                                     </p>
                                                   </div>
                                                 </div>
                                                 <button
                                                   onClick={() => setShowAddPageDropdown(null)}
-                                                  className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                                                  className="size-9 p-0 rounded-btn flex items-center justify-center text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                                 >
                                                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1339,18 +1325,18 @@ function PagesPageContent() {
                                                 return (
                                                   <div
                                                     key={`add-fb-${page.id}`}
-                                                    className="w-full flex items-center gap-3 px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                                    className="w-full flex items-center gap-3 px-6 py-3 hover:bg-surface-2 transition-colors"
                                                   >
-                                                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
-                                                      <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                                    <div className="size-10 rounded-full border border-accent/20 bg-accent-wash text-accent flex items-center justify-center flex-shrink-0">
+                                                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                                                         <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                                                       </svg>
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                      <h4 className="font-semibold text-gray-900 dark:text-white truncate mb-0.5">
+                                                      <h4 className="text-[14px] font-medium text-ink truncate mb-0.5">
                                                         {page.name}
                                                       </h4>
-                                                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                      <p className="text-[13px] text-ink-muted">
                                                         {t('dashboard.pages.facebookPage', 'Facebook Page')}
                                                       </p>
                                                     </div>
@@ -1362,13 +1348,13 @@ function PagesPageContent() {
                                                         }
                                                       }}
                                                       disabled={isProcessing}
-                                                      className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg flex items-center justify-center shadow-md hover:shadow-lg transition-all duration-200 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 group"
+                                                      className="size-9 rounded-btn bg-accent text-on-accent hover:bg-accent-hover flex items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                                                       title={t('dashboard.pages.addPage', 'Add page')}
                                                     >
                                                       {isProcessing ? (
-                                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                        <div className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                                                       ) : (
-                                                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                                         </svg>
                                                       )}
@@ -1384,29 +1370,29 @@ function PagesPageContent() {
                                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                                           {/* Backdrop */}
                                           <div 
-                                            className="absolute inset-0 bg-black/50 backdrop-blur-sm" 
+                                            className="absolute inset-0 bg-ink/40 dark:bg-black/60" 
                                             onClick={() => setShowAddPageDropdown(null)}
                                           ></div>
                                           
                                           {/* Modal */}
-                                          <div className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in zoom-in duration-200">
+                                          <div className="relative w-full max-w-md rounded-card border border-line bg-surface shadow-pop overflow-hidden animate-in fade-in zoom-in duration-200">
                                             {/* Header */}
-                                            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50">
+                                            <div className="px-6 py-4 border-b border-line">
                                               <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3">
-                                                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                                                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                                  <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center">
+                                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                                                       <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                                                     </svg>
                                                   </div>
                                                   <div>
-                                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('dashboard.pages.facebookPages', 'Facebook Pages')}</h3>
-                                                    <p className="text-sm text-gray-600 dark:text-gray-400">{t('dashboard.pages.allPagesConnected', 'All pages connected')}</p>
+                                                    <h3 className="font-display text-[20px] font-medium text-ink">{t('dashboard.pages.facebookPages', 'Facebook Pages')}</h3>
+                                                    <p className="text-[13px] text-ink-muted">{t('dashboard.pages.allPagesConnected', 'All pages connected')}</p>
                                                   </div>
                                                 </div>
                                                 <button
                                                   onClick={() => setShowAddPageDropdown(null)}
-                                                  className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                                                  className="size-9 p-0 rounded-btn flex items-center justify-center text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                                 >
                                                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1417,20 +1403,20 @@ function PagesPageContent() {
                                             
                                             {/* Content */}
                                             <div className="px-6 py-8 text-center">
-                                              <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 rounded-full flex items-center justify-center">
-                                                <svg className="w-10 h-10 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <div className="size-14 mx-auto mb-4 rounded-full bg-accent-wash text-accent flex items-center justify-center">
+                                                <svg className="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                 </svg>
                                               </div>
-                                              <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                                              <h4 className="font-display text-[20px] font-extrabold text-ink mb-2">
                                                 {t('dashboard.pages.allFacebookPagesActivated', 'All Facebook Pages Activated')}
                                               </h4>
-                                              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                                              <p className="text-[15px] text-ink-muted mb-6">
                                                 {t('dashboard.pages.allFacebookPagesActive', 'All Facebook pages in your account are currently connected and active.')}
                                               </p>
                                               <button
                                                 onClick={() => setShowAddPageDropdown(null)}
-                                                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-200 font-semibold shadow-sm hover:shadow-md"
+                                                className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-accent text-on-accent hover:bg-accent-hover text-[15px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                               >
                                                 {t('dashboard.pages.gotIt', 'Got it')}
                                               </button>
@@ -1465,7 +1451,7 @@ function PagesPageContent() {
                                   return (
                                     <div
                                       key={`fb-${page.id}`}
-                                      className="group relative bg-white dark:bg-gray-900 rounded-xl border border-blue-200/60 dark:border-blue-800/50 px-4 py-3 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 hover:-translate-y-0.5"
+                                      className="relative rounded-card border border-line bg-surface p-4 shadow-card"
                                     >
                                       
                                       <div className="relative">
@@ -1476,12 +1462,12 @@ function PagesPageContent() {
                                                 <img
                                                   src={connectedPage.profileImageUrl}
                                                   alt={page.name}
-                                                  className="relative w-10 h-10 rounded-lg object-cover shadow-sm border border-gray-200 dark:border-gray-700"
+                                                  className="relative size-10 rounded-full object-cover ring-1 ring-line"
                                                 />
                                               ) : (
                                                 <>
-                                                  <div className="relative w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-sm">
-                                                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                                  <div className="relative size-10 rounded-full border border-accent/20 bg-accent-wash text-accent flex items-center justify-center">
+                                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                                                       <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                                                     </svg>
                                                   </div>
@@ -1489,10 +1475,10 @@ function PagesPageContent() {
                                               )}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                              <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate mb-0.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                              <h3 className="text-[14px] font-medium text-ink truncate mb-0.5">
                                                 {page.name}
                                               </h3>
-                                              <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                                              <p className="text-[12px] text-ink-muted">
                                                 {t('dashboard.pages.facebookPage', 'Facebook Page')}
                                               </p>
                                             </div>
@@ -1501,10 +1487,10 @@ function PagesPageContent() {
                                             <button
                                               onClick={() => setPageToDisconnect({ pageId: page.id, provider: 'facebook', pageName: page.name })}
                                               disabled={isProcessing}
-                                              className="absolute top-0 right-0 p-2 text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group/btn"
+                                              className="absolute top-0 right-0 size-8 rounded-btn flex items-center justify-center text-ink-muted transition-colors hover:bg-danger-wash hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                                               title={t('dashboard.pages.titleDisconnectPage', 'Disconnect page')}
                                             >
-                                              <svg className="w-4 h-4 group-hover/btn:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                               </svg>
                                             </button>
@@ -1515,7 +1501,7 @@ function PagesPageContent() {
                                             {isConnected && connectedPage && (
                                               <button
                                                 onClick={() => openSettings(connectedPage)}
-                                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-blue-200 dark:border-blue-700/50 text-blue-600 dark:text-blue-400 rounded-lg transition-all duration-200 font-semibold text-xs whitespace-nowrap shadow-sm hover:shadow-md hover:scale-105 transform"
+                                                className="inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-btn text-[13px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors duration-150 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                                 title={t('dashboard.pages.aiSettings')}
                                               >
                                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1527,7 +1513,7 @@ function PagesPageContent() {
                                             {isConnected && (
                                               <Link
                                                 href={`/dashboard/comments?pageId=${page.id}`}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all duration-200 font-semibold text-xs whitespace-nowrap shadow-sm hover:shadow-md hover:scale-105 transform"
+                                                className="inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-btn border border-line-strong bg-surface text-[13px] font-medium text-ink hover:border-accent/40 hover:text-accent transition-colors duration-150 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                               >
                                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -1543,7 +1529,7 @@ function PagesPageContent() {
                               {facebookList.length > INITIAL_VISIBLE && (
                                 <button
                                   onClick={() => setShowAllFb(!showAllFb)}
-                                  className="w-full py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                                  className="w-full h-9 rounded-btn text-[13px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                 >
                                   {showAllFb ? (
                                     <>
@@ -1560,13 +1546,13 @@ function PagesPageContent() {
                               )}
                             </div>
                             ) : (
-                            <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-blue-50/30 dark:from-gray-900 dark:to-blue-950/20 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700">
-                              <div className="w-16 h-16 mx-auto mb-4 bg-gray-200 dark:bg-gray-800 rounded-full flex items-center justify-center">
-                                <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="text-center py-12 rounded-card border border-dashed border-line-strong bg-surface-2">
+                              <div className="size-14 mx-auto mb-4 rounded-card border border-line bg-accent-wash text-accent flex items-center justify-center">
+                                <svg className="size-6 stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                 </svg>
                               </div>
-                              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('dashboard.pages.noFacebookPagesAvailable', 'No Facebook pages available')}</p>
+                              <p className="text-[13px] font-medium text-ink-muted">{t('dashboard.pages.noFacebookPagesAvailable', 'No Facebook pages available')}</p>
                             </div>
                             );
                           })()}
@@ -1574,20 +1560,16 @@ function PagesPageContent() {
 
                         {/* Instagram Pages Column */}
                         <div className="space-y-5">
-                          <div className="relative overflow-hidden bg-gradient-to-br from-pink-50 via-purple-50/50 to-orange-50 dark:from-pink-950/50 dark:via-purple-900/30 dark:to-orange-950/50 rounded-2xl p-6 border border-pink-200/50 dark:border-pink-800/50 shadow-lg">
-                            <div className="relative flex items-center gap-4">
-                              <div className="relative">
-                                <div className="relative w-14 h-14 bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 rounded-xl flex items-center justify-center shadow-md">
-                                  <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-                                  </svg>
-                                </div>
-                              </div>
-                              <div className="flex-1">
-                                <h2 className="text-xl font-bold bg-gradient-to-r from-pink-600 via-purple-600 to-orange-600 dark:from-pink-400 dark:via-purple-400 dark:to-orange-400 bg-clip-text text-transparent mb-1">
+                          <div className="pb-3 border-b border-line-strong">
+                            <div className="flex items-center gap-3">
+                              <svg className="size-5 shrink-0 text-ink-muted" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                              </svg>
+                              <div className="flex-1 min-w-0">
+                                <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted mb-0.5">
                                   {t('dashboard.pages.instagramAccounts', 'Instagram Accounts')}
                                 </h2>
-                                <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">{t('dashboard.pages.manageConnectedAccounts', 'Manage your connected accounts')}</p>
+                                <p className="text-[12px] text-ink-muted">{t('dashboard.pages.manageConnectedAccounts', 'Manage your connected accounts')}</p>
                               </div>
                               {(() => {
                                 const disconnectedInstagramPages = instagramPages.filter((page) => !isPageConnected(page.id, 'instagram'));
@@ -1597,11 +1579,11 @@ function PagesPageContent() {
                                   <div className="relative">
                                     <button
                                       onClick={() => setShowAddPageDropdown(showAddPageDropdown === 'instagram' ? null : 'instagram')}
-                                      className="w-10 h-10 bg-gradient-to-br from-purple-600 via-pink-600 to-orange-600 hover:from-purple-700 hover:via-pink-700 hover:to-orange-700 rounded-xl flex items-center justify-center shadow-md transition-all duration-200 hover:scale-110 group"
+                                      className="size-9 rounded-btn border border-line-strong bg-surface text-ink hover:border-accent/40 hover:text-accent flex items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                       title={hasDisconnectedPages ? t('dashboard.pages.addPageTooltip', 'Add Page ({{count}} available)', { count: disconnectedInstagramPages.length }) : t('dashboard.pages.allAccountsConnectedTooltip', 'All accounts are connected')}
                                     >
-                                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                      <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                       </svg>
                                     </button>
                                     
@@ -1610,24 +1592,24 @@ function PagesPageContent() {
                                       loadingFullPages ? (
                                         /* Modal - Loading Instagram accounts from API */
                                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                                          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddPageDropdown(null)}></div>
-                                          <div className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in zoom-in duration-200">
-                                            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-pink-50 via-purple-50 to-orange-50 dark:from-pink-950/50 dark:via-purple-950/50 dark:to-orange-950/50">
+                                          <div className="absolute inset-0 bg-ink/40 dark:bg-black/60" onClick={() => setShowAddPageDropdown(null)}></div>
+                                          <div className="relative w-full max-w-md rounded-card border border-line bg-surface shadow-pop overflow-hidden animate-in fade-in zoom-in duration-200">
+                                            <div className="px-6 py-4 border-b border-line">
                                               <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3">
-                                                  <div className="w-10 h-10 bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 rounded-lg flex items-center justify-center">
-                                                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                                                  <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center">
+                                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
                                                   </div>
-                                                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('dashboard.pages.instagramAccounts', 'Instagram Accounts')}</h3>
+                                                  <h3 className="font-display text-[20px] font-medium text-ink">{t('dashboard.pages.instagramAccounts', 'Instagram Accounts')}</h3>
                                                 </div>
-                                                <button onClick={() => setShowAddPageDropdown(null)} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                                                <button onClick={() => setShowAddPageDropdown(null)} className="size-9 p-0 rounded-btn flex items-center justify-center text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas">
                                                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                                 </button>
                                               </div>
                                             </div>
                                             <div className="px-6 py-12 flex flex-col items-center justify-center gap-3">
-                                              <div className="w-10 h-10 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                                              <p className="text-sm text-gray-600 dark:text-gray-400">{t('dashboard.pages.loadingPages', 'Loading pages...')}</p>
+                                              <div className="size-8 animate-spin rounded-full border-2 border-line border-t-accent" />
+                                              <p className="text-[13px] text-ink-muted">{t('dashboard.pages.loadingPages', 'Loading pages...')}</p>
                                             </div>
                                           </div>
                                         </div>
@@ -1636,31 +1618,31 @@ function PagesPageContent() {
                                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                                           {/* Backdrop */}
                                           <div 
-                                            className="absolute inset-0 bg-black/50 backdrop-blur-sm" 
+                                            className="absolute inset-0 bg-ink/40 dark:bg-black/60" 
                                             onClick={() => setShowAddPageDropdown(null)}
                                           ></div>
                                           
                                           {/* Modal */}
-                                          <div className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in zoom-in duration-200">
+                                          <div className="relative w-full max-w-md rounded-card border border-line bg-surface shadow-pop overflow-hidden animate-in fade-in zoom-in duration-200">
                                             {/* Header */}
-                                            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-pink-50 via-purple-50 to-orange-50 dark:from-pink-950/50 dark:via-purple-950/50 dark:to-orange-950/50">
+                                            <div className="px-6 py-4 border-b border-line">
                                               <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3">
-                                                  <div className="w-10 h-10 bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 rounded-lg flex items-center justify-center">
-                                                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                                  <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center">
+                                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                                                       <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
                                                     </svg>
                                                   </div>
                                                   <div>
-                                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('dashboard.pages.addInstagramAccount', 'Add Instagram Account')}</h3>
-                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                    <h3 className="font-display text-[20px] font-medium text-ink">{t('dashboard.pages.addInstagramAccount', 'Add Instagram Account')}</h3>
+                                                    <p className="text-[13px] text-ink-muted">
                                                       {t('dashboard.pages.accountsAvailable', '{{count}} account available', { count: disconnectedInstagramPages.length })}
                                                     </p>
                                                   </div>
                                                 </div>
                                                 <button
                                                   onClick={() => setShowAddPageDropdown(null)}
-                                                  className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                                                  className="size-9 p-0 rounded-btn flex items-center justify-center text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                                 >
                                                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1676,9 +1658,9 @@ function PagesPageContent() {
                                                 return (
                                                   <div
                                                     key={`add-ig-${page.id}`}
-                                                    className="w-full flex items-center gap-3 px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                                    className="w-full flex items-center gap-3 px-6 py-3 hover:bg-surface-2 transition-colors"
                                                   >
-                                                    <div className="w-12 h-12 bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden shadow-md">
+                                                    <div className="size-10 rounded-full border border-accent/20 bg-accent-wash text-accent flex items-center justify-center flex-shrink-0 overflow-hidden ring-1 ring-line">
                                                       {page.profile_picture_url ? (
                                                         <img 
                                                           src={page.profile_picture_url} 
@@ -1686,16 +1668,16 @@ function PagesPageContent() {
                                                           className="w-full h-full object-cover"
                                                         />
                                                       ) : (
-                                                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                                                           <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
                                                         </svg>
                                                       )}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                      <h4 className="font-semibold text-gray-900 dark:text-white truncate mb-0.5">
+                                                      <h4 className="text-[14px] font-medium text-ink truncate mb-0.5">
                                                         {page.name || page.username}
                                                       </h4>
-                                                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                      <p className="text-[13px] text-ink-muted">
                                                         {t('dashboard.pages.instagramAccount', 'Instagram Account')}
                                                       </p>
                                                     </div>
@@ -1707,13 +1689,13 @@ function PagesPageContent() {
                                                         }
                                                       }}
                                                       disabled={isProcessing}
-                                                      className="w-9 h-9 bg-gradient-to-br from-purple-600 via-pink-600 to-orange-600 hover:from-purple-700 hover:via-pink-700 hover:to-orange-700 rounded-lg flex items-center justify-center shadow-md hover:shadow-lg transition-all duration-200 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 group"
+                                                      className="size-9 rounded-btn bg-accent text-on-accent hover:bg-accent-hover flex items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                                                       title={t('dashboard.pages.addAccount', 'Add account')}
                                                     >
                                                       {isProcessing ? (
-                                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                        <div className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                                                       ) : (
-                                                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                                         </svg>
                                                       )}
@@ -1729,29 +1711,29 @@ function PagesPageContent() {
                                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                                           {/* Backdrop */}
                                           <div 
-                                            className="absolute inset-0 bg-black/50 backdrop-blur-sm" 
+                                            className="absolute inset-0 bg-ink/40 dark:bg-black/60" 
                                             onClick={() => setShowAddPageDropdown(null)}
                                           ></div>
                                           
                                           {/* Modal */}
-                                          <div className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in zoom-in duration-200">
+                                          <div className="relative w-full max-w-md rounded-card border border-line bg-surface shadow-pop overflow-hidden animate-in fade-in zoom-in duration-200">
                                             {/* Header */}
-                                            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-pink-50 via-purple-50 to-orange-50 dark:from-pink-950/50 dark:via-purple-950/50 dark:to-orange-950/50">
+                                            <div className="px-6 py-4 border-b border-line">
                                               <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3">
-                                                  <div className="w-10 h-10 bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 rounded-lg flex items-center justify-center">
-                                                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                                  <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center">
+                                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                                                       <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
                                                     </svg>
                                                   </div>
                                                   <div>
-                                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('dashboard.pages.instagramAccounts', 'Instagram Accounts')}</h3>
-                                                    <p className="text-sm text-gray-600 dark:text-gray-400">{t('dashboard.pages.allAccountsConnected', 'All accounts connected')}</p>
+                                                    <h3 className="font-display text-[20px] font-medium text-ink">{t('dashboard.pages.instagramAccounts', 'Instagram Accounts')}</h3>
+                                                    <p className="text-[13px] text-ink-muted">{t('dashboard.pages.allAccountsConnected', 'All accounts connected')}</p>
                                                   </div>
                                                 </div>
                                                 <button
                                                   onClick={() => setShowAddPageDropdown(null)}
-                                                  className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                                                  className="size-9 p-0 rounded-btn flex items-center justify-center text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                                 >
                                                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1762,20 +1744,20 @@ function PagesPageContent() {
                                             
                                             {/* Content */}
                                             <div className="px-6 py-8 text-center">
-                                              <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 rounded-full flex items-center justify-center">
-                                                <svg className="w-10 h-10 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <div className="size-14 mx-auto mb-4 rounded-full bg-accent-wash text-accent flex items-center justify-center">
+                                                <svg className="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                 </svg>
                                               </div>
-                                              <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                                              <h4 className="font-display text-[20px] font-extrabold text-ink mb-2">
                                                 {t('dashboard.pages.allInstagramAccountsActivated', 'All Instagram Accounts Activated')}
                                               </h4>
-                                              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                                              <p className="text-[15px] text-ink-muted mb-6">
                                                 {t('dashboard.pages.allInstagramAccountsActive', 'All Instagram accounts in your account are currently connected and active.')}
                                               </p>
                                               <button
                                                 onClick={() => setShowAddPageDropdown(null)}
-                                                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 hover:from-purple-700 hover:via-pink-700 hover:to-orange-700 text-white rounded-lg transition-all duration-200 font-semibold shadow-sm hover:shadow-md"
+                                                className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-accent text-on-accent hover:bg-accent-hover text-[15px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                               >
                                                 {t('dashboard.pages.gotIt', 'Got it')}
                                               </button>
@@ -1815,14 +1797,14 @@ function PagesPageContent() {
                                   return (
                                     <div
                                       key={`ig-${page.id}`}
-                                      className="group relative bg-white dark:bg-gray-900 rounded-xl border border-pink-200/60 dark:border-pink-800/50 px-4 py-3 hover:shadow-md hover:border-pink-300 dark:hover:border-pink-700 transition-all duration-300 hover:-translate-y-0.5"
+                                      className="relative rounded-card border border-line bg-surface p-4 shadow-card"
                                     >
                                       
                                       <div className="relative">
                                         <div className="flex items-center justify-between mb-2">
                                           <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-10">
                                             <div className="relative">
-                                              <div className="relative w-10 h-10 bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 rounded-lg flex items-center justify-center shadow-sm transition-all overflow-hidden">
+                                              <div className="relative size-10 rounded-full border border-accent/20 bg-accent-wash text-accent flex items-center justify-center overflow-hidden ring-1 ring-line">
                                                 {page.profile_picture_url && isConnected ? (
                                                   <img 
                                                     src={page.profile_picture_url} 
@@ -1830,17 +1812,17 @@ function PagesPageContent() {
                                                     className="w-full h-full object-cover"
                                                   />
                                                 ) : (
-                                                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                                                     <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
                                                   </svg>
                                                 )}
                                               </div>
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                              <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate mb-0.5 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors">
+                                              <h3 className="text-[14px] font-medium text-ink truncate mb-0.5">
                                                 {page.name || page.username}
                                               </h3>
-                                              <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                                              <p className="text-[12px] text-ink-muted">
                                                 {t('dashboard.pages.instagramAccount', 'Instagram Account')}
                                               </p>
                                             </div>
@@ -1849,10 +1831,10 @@ function PagesPageContent() {
                                             <button
                                               onClick={() => setPageToDisconnect({ pageId: page.id, provider: 'instagram', pageName: page.name || page.username || '' })}
                                               disabled={isProcessing}
-                                              className="absolute top-0 right-0 p-2 text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group/btn"
+                                              className="absolute top-0 right-0 size-8 rounded-btn flex items-center justify-center text-ink-muted transition-colors hover:bg-danger-wash hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                                               title={t('dashboard.pages.titleDisconnectPage', 'Disconnect page')}
                                             >
-                                              <svg className="w-4 h-4 group-hover/btn:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                               </svg>
                                             </button>
@@ -1863,7 +1845,7 @@ function PagesPageContent() {
                                             {isConnected && connectedPage && (
                                               <button
                                                 onClick={() => openSettings(connectedPage)}
-                                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-gray-800 hover:bg-pink-50 dark:hover:bg-pink-900/20 border border-pink-200 dark:border-pink-700/50 text-pink-600 dark:text-pink-400 rounded-lg transition-all duration-200 font-semibold text-xs whitespace-nowrap shadow-sm hover:shadow-md hover:scale-105 transform"
+                                                className="inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-btn text-[13px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors duration-150 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                                 title={t('dashboard.pages.aiSettings')}
                                               >
                                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1875,7 +1857,7 @@ function PagesPageContent() {
                                             {isConnected && (
                                               <Link
                                                 href={`/dashboard/comments?pageId=${page.id}`}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 hover:from-purple-700 hover:via-pink-700 hover:to-orange-700 text-white rounded-lg transition-all duration-200 font-semibold text-xs whitespace-nowrap shadow-sm hover:shadow-md hover:scale-105 transform"
+                                                className="inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-btn border border-line-strong bg-surface text-[13px] font-medium text-ink hover:border-accent/40 hover:text-accent transition-colors duration-150 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                               >
                                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -1892,7 +1874,7 @@ function PagesPageContent() {
                               {instagramList.length > INITIAL_VISIBLE && (
                                 <button
                                   onClick={() => setShowAllIg(!showAllIg)}
-                                  className="w-full py-2 text-xs font-semibold text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950/30 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                                  className="w-full h-9 rounded-btn text-[13px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                 >
                                   {showAllIg ? (
                                     <>
@@ -1909,13 +1891,13 @@ function PagesPageContent() {
                               )}
                             </div>
                             ) : (
-                            <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-pink-50/30 dark:from-gray-900 dark:to-pink-950/20 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700">
-                              <div className="w-16 h-16 mx-auto mb-4 bg-gray-200 dark:bg-gray-800 rounded-full flex items-center justify-center">
-                                <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="text-center py-12 rounded-card border border-dashed border-line-strong bg-surface-2">
+                              <div className="size-14 mx-auto mb-4 rounded-card border border-line bg-accent-wash text-accent flex items-center justify-center">
+                                <svg className="size-6 stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                 </svg>
                               </div>
-                              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('dashboard.pages.noInstagramAccountsAvailable', 'No Instagram accounts available')}</p>
+                              <p className="text-[13px] font-medium text-ink-muted">{t('dashboard.pages.noInstagramAccountsAvailable', 'No Instagram accounts available')}</p>
                             </div>
                             );
                           })()}
@@ -1924,14 +1906,12 @@ function PagesPageContent() {
                         {/* TikTok Column */}
                         <div className="space-y-5">
                           {/* TikTok Header Card */}
-                          <div className="relative overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-black dark:from-black dark:via-gray-900 dark:to-gray-950 rounded-2xl p-6 border border-gray-700/50 shadow-lg">
-                            <div className="relative flex items-center gap-4">
-                              <div className="relative w-14 h-14 bg-black rounded-xl flex items-center justify-center shadow-md border border-gray-700">
-                                <TikTokIcon className="w-8 h-8 text-white" />
-                              </div>
-                              <div className="flex-1">
-                                <h2 className="text-xl font-bold text-white mb-1">TikTok Accounts</h2>
-                                <p className="text-sm text-gray-400 font-medium">Manage your connected accounts</p>
+                          <div className="pb-3 border-b border-line-strong">
+                            <div className="flex items-center gap-3">
+                              <TikTokIcon className="size-5 shrink-0 text-ink-muted" />
+                              <div className="flex-1 min-w-0">
+                                <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted mb-0.5">TikTok Accounts</h2>
+                                <p className="text-[12px] text-ink-muted">Manage your connected accounts</p>
                               </div>
                               <button
                                 onClick={async () => {
@@ -1948,11 +1928,11 @@ function PagesPageContent() {
                                     } catch {}
                                   }
                                 }}
-                                className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center shadow-md transition-all duration-200 hover:scale-110"
+                                className="size-9 rounded-btn border border-line-strong bg-surface text-ink hover:border-accent/40 hover:text-accent flex items-center justify-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                 title={t('dashboard.pages.connectTikTokTitle', 'Reactivate TikTok Account')}
                               >
-                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                 </svg>
                               </button>
                             </div>
@@ -1961,24 +1941,24 @@ function PagesPageContent() {
                           {/* TikTok Add/Reactivate Modal */}
                           {showAddPageDropdown === 'tiktok' && (
                             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddPageDropdown(null)} />
-                              <div className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-in fade-in zoom-in duration-200">
-                                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-900 dark:to-gray-800">
+                              <div className="absolute inset-0 bg-ink/40 dark:bg-black/60" onClick={() => setShowAddPageDropdown(null)} />
+                              <div className="relative w-full max-w-md rounded-card border border-line bg-surface shadow-pop overflow-hidden animate-in fade-in zoom-in duration-200">
+                                <div className="px-6 py-4 border-b border-line">
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center">
+                                      <div className="size-10 rounded-btn bg-[#0F0F0F] flex items-center justify-center">
                                         <TikTokIcon className="w-6 h-6 text-white" />
                                       </div>
                                       <div>
-                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('dashboard.pages.reactivateTikTok', 'Reactivate TikTok Account')}</h3>
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                        <h3 className="font-display text-[20px] font-medium text-ink">{t('dashboard.pages.reactivateTikTok', 'Reactivate TikTok Account')}</h3>
+                                        <p className="text-[13px] text-ink-muted">
                                           {disconnectedTiktokAccounts.length > 0
                                             ? t('dashboard.pages.tiktokAccountsAvailable', '{{count}} disconnected account(s)', { count: disconnectedTiktokAccounts.length })
                                             : t('dashboard.pages.noDisconnectedTiktok', 'No disconnected accounts')}
                                         </p>
                                       </div>
                                     </div>
-                                    <button onClick={() => setShowAddPageDropdown(null)} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                                    <button onClick={() => setShowAddPageDropdown(null)} className="size-9 p-0 rounded-btn flex items-center justify-center text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas">
                                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                       </svg>
@@ -1988,13 +1968,13 @@ function PagesPageContent() {
                                 <div className="max-h-96 overflow-y-auto modal-scrollbar">
                                   {disconnectedTiktokAccounts.length === 0 ? (
                                     <div className="px-6 py-12 text-center">
-                                      <div className="w-12 h-12 mx-auto mb-3 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-                                        <svg className="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                      <div className="size-12 mx-auto mb-3 rounded-full bg-accent-wash text-accent flex items-center justify-center">
+                                        <svg className="size-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                         </svg>
                                       </div>
-                                      <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">{t('dashboard.pages.allTikTokConnected', 'All accounts connected')}</p>
-                                      <p className="text-xs text-gray-500 dark:text-gray-400">{t('dashboard.pages.allTikTokConnectedDesc', "You don't have any disconnected TikTok accounts to reactivate.")}</p>
+                                      <p className="text-[14px] font-medium text-ink mb-1">{t('dashboard.pages.allTikTokConnected', 'All accounts connected')}</p>
+                                      <p className="text-[13px] text-ink-muted">{t('dashboard.pages.allTikTokConnectedDesc', "You don't have any disconnected TikTok accounts to reactivate.")}</p>
                                     </div>
                                   ) : (
                                     <div className="py-2">
@@ -2030,13 +2010,13 @@ function PagesPageContent() {
                                               }
                                             }}
                                             disabled={isProcessing}
-                                            className="w-full flex items-center gap-3 px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed text-left"
+                                            className="w-full flex items-center gap-3 px-6 py-3 hover:bg-surface-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed text-left"
                                           >
                                             {acc.profileImageUrl ? (
                                               <img
                                                 src={acc.profileImageUrl}
                                                 alt={acc.pageName}
-                                                className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                                                className="size-10 rounded-full object-cover ring-1 ring-line flex-shrink-0"
                                                 onError={(e) => {
                                                   const img = e.currentTarget;
                                                   const fb = img.nextElementSibling as HTMLElement | null;
@@ -2046,20 +2026,20 @@ function PagesPageContent() {
                                               />
                                             ) : null}
                                             <div
-                                              className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${acc.provider === 'tiktok_ads' ? 'bg-gradient-to-br from-purple-600 to-pink-600' : 'bg-black'}`}
+                                              className={`size-10 rounded-full flex items-center justify-center flex-shrink-0 ${acc.provider === 'tiktok_ads' ? 'bg-[#0F0F0F]' : 'bg-[#0F0F0F]'}`}
                                               style={{ display: acc.profileImageUrl ? 'none' : 'flex' }}
                                             >
                                               <TikTokIcon className="w-6 h-6 text-white" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                              <h4 className="font-semibold text-gray-900 dark:text-white truncate">{acc.pageName}</h4>
-                                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                              <h4 className="text-[14px] font-medium text-ink truncate">{acc.pageName}</h4>
+                                              <p className="text-[12px] text-ink-muted">
                                                 {acc.provider === 'tiktok_ads' ? t('dashboard.pages.tiktokAds', 'TikTok Ads') : t('dashboard.pages.tiktokOrganic', 'TikTok Organic')}
                                               </p>
                                             </div>
-                                            <div className="w-9 h-9 bg-black hover:bg-gray-800 rounded-lg flex items-center justify-center shadow-md transition-all flex-shrink-0">
+                                            <div className="size-9 rounded-btn bg-[#0F0F0F] text-white flex items-center justify-center transition-colors flex-shrink-0">
                                               {isProcessing ? (
-                                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                <div className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                               ) : (
                                                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                                                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -2088,7 +2068,7 @@ function PagesPageContent() {
                                   return (
                                     <div
                                       key={`tt-${cp.pageId}`}
-                                      className="group relative bg-white dark:bg-gray-900 rounded-xl border border-gray-200/60 dark:border-gray-700/50 px-4 py-3 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-300 hover:-translate-y-0.5"
+                                      className="relative rounded-card border border-line bg-surface p-4 shadow-card"
                                     >
                                       <div className="relative">
                                         <div className="flex items-center justify-between mb-2">
@@ -2100,24 +2080,24 @@ function PagesPageContent() {
                                             )}
                                             <div className="flex-1 min-w-0">
                                               <div className="flex items-center gap-1.5 mb-0.5">
-                                                <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors">
+                                                <h3 className="text-[14px] font-medium text-ink truncate">
                                                   {cp.pageName}
                                                 </h3>
                                                 {cp.provider === 'tiktok_ads' && (
-                                                  <span className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
+                                                  <span className="flex-shrink-0 inline-flex items-center rounded-[6px] px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] bg-surface-2 text-ink-muted border border-line">
                                                     Ads
                                                   </span>
                                                 )}
                                               </div>
                                               {cp.needsReconnect ? (
-                                                <p className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-600 dark:text-red-400">
+                                                <p className="inline-flex items-center gap-1 text-[11px] font-medium text-danger">
                                                   <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                                                   </svg>
                                                   Reconnect required
                                                 </p>
                                               ) : (
-                                                <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                                                <p className="text-[12px] text-ink-muted">
                                                   {cp.provider === 'tiktok_ads' ? 'TikTok Ads Account' : 'TikTok Account'}
                                                 </p>
                                               )}
@@ -2126,10 +2106,10 @@ function PagesPageContent() {
                                           <button
                                             onClick={() => setPageToDisconnect({ pageId: cp.pageId, provider: cp.provider, pageName: cp.pageName })}
                                             disabled={isProcessing}
-                                            className="absolute top-0 right-0 p-2 text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group/btn"
+                                            className="absolute top-0 right-0 size-8 rounded-btn flex items-center justify-center text-ink-muted transition-colors hover:bg-danger-wash hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                                             title="Disconnect account"
                                           >
-                                            <svg className="w-4 h-4 group-hover/btn:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                             </svg>
                                           </button>
@@ -2137,7 +2117,7 @@ function PagesPageContent() {
                                         <div className="flex items-center justify-end gap-2">
                                           <button
                                             onClick={() => openSettings(cp)}
-                                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-lg transition-all duration-200 font-semibold text-xs whitespace-nowrap shadow-sm hover:shadow-md hover:scale-105 transform"
+                                            className="inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-btn text-[13px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors duration-150 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                             title="AI Settings"
                                           >
                                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2147,7 +2127,7 @@ function PagesPageContent() {
                                           </button>
                                           <Link
                                             href={`/dashboard/comments?pageId=${cp.pageId}`}
-                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-black hover:bg-gray-800 text-white rounded-lg transition-all duration-200 font-semibold text-xs whitespace-nowrap shadow-sm hover:shadow-md hover:scale-105 transform"
+                                            className="inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-btn border border-line-strong bg-surface text-[13px] font-medium text-ink hover:border-accent/40 hover:text-accent transition-colors duration-150 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                           >
                                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -2162,7 +2142,7 @@ function PagesPageContent() {
                                 {tiktokAccounts.length > INITIAL_VISIBLE && (
                                   <button
                                     onClick={() => setShowAllTikTok(!showAllTikTok)}
-                                    className="w-full py-2 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                                    className="w-full h-9 rounded-btn text-[13px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                   >
                                     {showAllTikTok ? (
                                       <>
@@ -2179,14 +2159,14 @@ function PagesPageContent() {
                                 )}
                               </div>
                             ) : (
-                              <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100/30 dark:from-gray-900 dark:to-gray-950/20 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700">
-                                <div className="w-16 h-16 mx-auto mb-4 bg-black rounded-full flex items-center justify-center">
-                                  <TikTokIcon className="w-8 h-8 text-white" />
+                              <div className="text-center py-12 rounded-card border border-dashed border-line-strong bg-surface-2">
+                                <div className="size-14 mx-auto mb-4 rounded-card bg-[#0F0F0F] flex items-center justify-center">
+                                  <TikTokIcon className="size-6 text-white" />
                                 </div>
-                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">No TikTok accounts connected</p>
+                                <p className="text-[13px] font-medium text-ink-muted mb-3">No TikTok accounts connected</p>
                                 <a
                                   href="/api/tiktok/connect"
-                                  className="inline-flex items-center gap-2 px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-lg transition-all text-sm font-semibold"
+                                  className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-[#0F0F0F] text-white border border-line-strong hover:opacity-90 dark:bg-white dark:text-[#0F0F0F] text-[15px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                                 >
                                   <TikTokIcon className="w-4 h-4" />
                                   Connect TikTok
@@ -2201,19 +2181,19 @@ function PagesPageContent() {
                 )}
 
                 {pages.length === 0 && instagramPages.length === 0 && connectedPages.length === 0 && (
-                  <div className="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 p-8">
-                    <svg className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="text-center py-12 rounded-card border border-dashed border-line-strong bg-surface-2 p-8">
+                    <svg className="size-6 text-accent mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                     </svg>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    <h3 className="font-display text-[20px] font-extrabold text-ink mb-2">
                       No Facebook Pages Found
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    <p className="text-[15px] text-ink-muted mb-4">
                       Your Facebook account is connected, but you don't have any pages yet.
                     </p>
-                    <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4 text-left max-w-md mx-auto">
-                      <p className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">To use this app, you need to:</p>
-                      <ol className="text-sm text-blue-800 dark:text-blue-300 space-y-2 list-decimal list-inside">
+                    <div className="rounded-card border border-line bg-surface p-4 mb-4 text-left max-w-md mx-auto">
+                      <p className="text-[13px] font-medium text-ink mb-2">To use this app, you need to:</p>
+                      <ol className="text-[13px] text-ink-muted space-y-2 list-decimal list-inside">
                         <li>Create a Facebook Page, OR</li>
                         <li>Get admin access to an existing Facebook Page</li>
                       </ol>
@@ -2222,7 +2202,7 @@ function PagesPageContent() {
                       href="https://www.facebook.com/pages/create"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all shadow-md hover:shadow-lg mb-4"
+                      className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-accent text-on-accent hover:bg-accent-hover text-[15px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas mb-4"
                     >
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -2232,7 +2212,7 @@ function PagesPageContent() {
                     <div>
                       <button
                         onClick={() => fetchData(true)}
-                        className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm"
+                        className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn border border-line-strong bg-surface text-ink hover:border-accent/40 hover:text-accent text-[15px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                       >
                         {t('dashboard.pages.refreshPages', 'Refresh Pages')}
                       </button>
@@ -2247,46 +2227,68 @@ function PagesPageContent() {
 
       {/* AI Settings — Fullscreen, 2 columns, custom prompt taller */}
       {pageToSettings && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-b from-gray-100 to-gray-50 dark:from-gray-900 dark:to-gray-950 min-h-screen sm:min-h-0 sm:h-screen">
-          <header className="flex-shrink-0 flex items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-800 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex flex-col bg-canvas min-h-screen sm:min-h-0 sm:h-screen">
+          <header className="flex-shrink-0 h-16 flex items-center justify-between gap-3 px-4 sm:px-6 border-b border-line bg-canvas/95">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-violet-500 flex items-center justify-center flex-shrink-0 shadow-sm">
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+              <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center flex-shrink-0">
+                <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
               </div>
               <div className="min-w-0">
-                <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">{t('dashboard.pages.aiSettings')}</h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{pageToSettings.pageName}</p>
+                <h1 className="font-display text-[20px] font-medium text-ink truncate">{t('dashboard.pages.aiSettings')}</h1>
+                <p className="font-mono text-[11px] text-ink-muted truncate">{pageToSettings.pageName}</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (savingSettings) return;
-                if (hasSettingsChanges) setShowUnsavedSettingsConfirm(true);
-                else setPageToSettings(null);
-              }}
-              className="flex-shrink-0 p-2.5 sm:p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors touch-manipulation min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center"
-              aria-label="Close"
-            >
-              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  if (savingSettings) return;
+                  if (hasSettingsChanges) setShowUnsavedSettingsConfirm(true);
+                  else setPageToSettings(null);
+                }}
+                disabled={savingSettings}
+                className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-btn text-[15px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors duration-150 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
+              >
+                {t('dashboard.pages.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={saveSettings}
+                disabled={!canSaveSettings}
+                className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-btn bg-accent text-on-accent hover:bg-accent-hover text-[15px] font-medium transition-colors duration-150 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
+              >
+                {savingSettings ? (<><div className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin" />{t('dashboard.pages.saving')}</>) : t('dashboard.pages.saveSettings')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (savingSettings) return;
+                  if (hasSettingsChanges) setShowUnsavedSettingsConfirm(true);
+                  else setPageToSettings(null);
+                }}
+                className="size-9 p-0 flex-shrink-0 rounded-btn flex items-center justify-center text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors duration-150 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+                aria-label="Close"
+              >
+                <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
           </header>
 
           {/* Unsaved changes confirm — small modal */}
           {showUnsavedSettingsConfirm && (
             <>
-              <div className="absolute inset-0 z-10 bg-black/40 dark:bg-black/50" onClick={() => setShowUnsavedSettingsConfirm(false)} aria-hidden />
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-full max-w-sm rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl p-5">
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white">{t('dashboard.pages.unsavedChangesTitle')}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('dashboard.pages.unsavedChangesMessage')}</p>
+              <div className="absolute inset-0 z-10 bg-ink/40 dark:bg-black/60" onClick={() => setShowUnsavedSettingsConfirm(false)} aria-hidden />
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-full max-w-sm rounded-card border border-line bg-surface shadow-pop p-5">
+                <h3 className="font-display text-[20px] font-medium text-ink">{t('dashboard.pages.unsavedChangesTitle')}</h3>
+                <p className="text-[13px] text-ink-muted mt-1">{t('dashboard.pages.unsavedChangesMessage')}</p>
                 <div className="flex flex-col-reverse sm:flex-row gap-2 mt-5">
-                  <button type="button" onClick={() => { setShowUnsavedSettingsConfirm(false); setPageToSettings(null); }} className="px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition-colors">
+                  <button type="button" onClick={() => { setShowUnsavedSettingsConfirm(false); setPageToSettings(null); }} className="inline-flex items-center justify-center h-10 px-4 rounded-btn border border-line-strong bg-surface text-[14px] font-medium text-ink hover:border-accent/40 hover:text-accent transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas">
                     {t('dashboard.pages.discard')}
                   </button>
-                  <button type="button" onClick={() => setShowUnsavedSettingsConfirm(false)} className="px-4 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors">
+                  <button type="button" onClick={() => setShowUnsavedSettingsConfirm(false)} className="inline-flex items-center justify-center h-10 px-4 rounded-btn text-[14px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas">
                     {t('dashboard.pages.cancel')}
                   </button>
-                  <button type="button" onClick={async () => { setShowUnsavedSettingsConfirm(false); await saveSettings(); }} disabled={!canSaveSettings} className="sm:ml-auto px-4 py-2.5 text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                  <button type="button" onClick={async () => { setShowUnsavedSettingsConfirm(false); await saveSettings(); }} disabled={!canSaveSettings} className="sm:ml-auto inline-flex items-center justify-center h-10 px-4 rounded-btn bg-accent text-on-accent hover:bg-accent-hover text-[14px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none">
                     {t('dashboard.pages.saveSettings')}
                   </button>
                 </div>
@@ -2298,45 +2300,45 @@ function PagesPageContent() {
             <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-5">
               {/* Left column */}
               <div className="flex flex-col gap-3 sm:gap-5">
-                <div className="flex items-start justify-between gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm shadow-gray-200/50 dark:shadow-none">
+                <div className="flex items-start justify-between gap-3 sm:gap-4 p-4 sm:p-5 rounded-card border border-line bg-surface shadow-card">
                   <div className="flex gap-3 min-w-0 flex-1">
-                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                    <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center flex-shrink-0">
+                      <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">{t('dashboard.pages.autoReply')}</p>
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">{t('dashboard.pages.autoReplyDesc')}</p>
+                      <p className="text-[15px] font-medium text-ink">{t('dashboard.pages.autoReply')}</p>
+                      <p className="text-[13px] text-ink-muted mt-0.5">{t('dashboard.pages.autoReplyDesc')}</p>
                     </div>
                   </div>
-                  <button type="button" onClick={() => { const next = !settingsAutoReply; setSettingsAutoReply(next); if (!next) setSettingsWebSourceEnabled(false); }} className={`relative inline-flex h-7 w-12 sm:h-6 sm:w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 touch-manipulation ${settingsAutoReply ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`} aria-pressed={settingsAutoReply}>
-                    <span className={`inline-block h-6 w-6 sm:h-5 sm:w-5 transform rounded-full bg-white shadow transition-transform duration-200 ${settingsAutoReply ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  <button type="button" onClick={() => { const next = !settingsAutoReply; setSettingsAutoReply(next); if (!next) setSettingsWebSourceEnabled(false); }} className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors cursor-pointer touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas ${settingsAutoReply ? 'border-accent bg-accent dark:shadow-[0_0_16px_-4px_var(--u-accent)]' : 'border-line-strong bg-surface-2'}`} aria-pressed={settingsAutoReply}>
+                    <span className={`inline-block size-4 rounded-full bg-white shadow-sm transition-transform ${settingsAutoReply ? 'translate-x-[22px]' : 'border border-line translate-x-1'}`} />
                   </button>
                 </div>
 
                 {!settingsAutoReply && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 transition-opacity duration-200">{t('dashboard.pages.enableAutoReplyToConfigure')}</p>
+                  <p className="text-[13px] text-ink-muted transition-opacity duration-200">{t('dashboard.pages.enableAutoReplyToConfigure')}</p>
                 )}
 
                 <div className={`transition-opacity duration-200 ${!settingsAutoReply ? 'opacity-60 pointer-events-none' : ''}`}>
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t('dashboard.pages.aiReplyBehavior')}</h3>
-                  <div className="ml-0 sm:ml-2 p-4 sm:p-5 rounded-xl bg-gray-50 dark:bg-gray-800/70 border border-gray-200 dark:border-gray-700 space-y-3">
+                  <h3 className="text-[13px] font-medium text-ink mb-3">{t('dashboard.pages.aiReplyBehavior')}</h3>
+                  <div className="ml-0 sm:ml-2 p-4 sm:p-5 rounded-card bg-surface-2 border border-line space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex gap-3 min-w-0 flex-1">
-                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center flex-shrink-0">
-                          <svg className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
+                        <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center flex-shrink-0">
+                          <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">{t('dashboard.pages.webSourceEnabled')}</p>
-                            <span className="text-gray-400 dark:text-gray-500 cursor-help" title={t('dashboard.pages.webSearchTooltip')}>
+                            <p className="text-[15px] font-medium text-ink">{t('dashboard.pages.webSourceEnabled')}</p>
+                            <span className="text-ink-muted cursor-help" title={t('dashboard.pages.webSearchTooltip')}>
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             </span>
                           </div>
-                          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">{t('dashboard.pages.webSearchOnlyForPricing')}</p>
+                          <p className="text-[13px] text-ink-muted mt-0.5">{t('dashboard.pages.webSearchOnlyForPricing')}</p>
                         </div>
                       </div>
-                      <button type="button" disabled={!settingsAutoReply} onClick={() => setSettingsWebSourceEnabled(v => !v)} className={`relative inline-flex h-7 w-12 sm:h-6 sm:w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${settingsWebSourceEnabled ? 'bg-emerald-600' : 'bg-gray-300 dark:bg-gray-600'}`} aria-pressed={settingsWebSourceEnabled}>
-                        <span className={`inline-block h-6 w-6 sm:h-5 sm:w-5 transform rounded-full bg-white shadow transition-transform duration-200 ${settingsWebSourceEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                      <button type="button" disabled={!settingsAutoReply} onClick={() => setSettingsWebSourceEnabled(v => !v)} className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors cursor-pointer touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:cursor-not-allowed ${settingsWebSourceEnabled ? 'border-accent bg-accent dark:shadow-[0_0_16px_-4px_var(--u-accent)]' : 'border-line-strong bg-surface-2'}`} aria-pressed={settingsWebSourceEnabled}>
+                        <span className={`inline-block size-4 rounded-full bg-white shadow-sm transition-transform ${settingsWebSourceEnabled ? 'translate-x-[22px]' : 'border border-line translate-x-1'}`} />
                       </button>
                     </div>
                     <div className="relative">
@@ -2347,78 +2349,78 @@ function PagesPageContent() {
                         onBlur={() => setSettingsWebSourceUrl(prev => prev.trim())}
                         placeholder="https://example.com"
                         disabled={!settingsWebSourceEnabled}
-                        className={`w-full px-4 py-3 pr-11 text-sm border rounded-xl bg-white dark:bg-gray-900 focus:ring-2 focus:ring-violet-500 focus:border-transparent disabled:opacity-60 disabled:cursor-not-allowed ${isUrlInvalid && settingsWebSourceUrl.trim() ? 'border-red-500 dark:border-red-500' : 'border-gray-200 dark:border-gray-600'}`}
+                        className={`w-full h-11 rounded-btn border bg-surface px-3.5 pr-11 text-[15px] text-ink placeholder:text-ink-muted/60 transition-colors focus:outline-none focus:ring-2 disabled:bg-surface-2 disabled:text-ink-muted disabled:cursor-not-allowed ${isUrlInvalid && settingsWebSourceUrl.trim() ? 'border-danger focus:border-danger focus:ring-danger/30' : 'border-line focus:border-accent focus:ring-ring'}`}
                       />
                       {settingsWebSourceUrl.trim() && (
-                        <button type="button" onClick={() => { setSettingsWebSourceUrl(''); setSettingsWebSourceEnabled(false); }} className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" aria-label="Clear URL">
+                        <button type="button" onClick={() => { setSettingsWebSourceUrl(''); setSettingsWebSourceEnabled(false); }} className="absolute right-2 top-1/2 -translate-y-1/2 size-7 rounded-full flex items-center justify-center text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors" aria-label="Clear URL">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                       )}
                     </div>
-                    {settingsWebSourceEnabled && isUrlInvalid && <p className="text-xs text-red-600 dark:text-red-400">{t('dashboard.pages.validUrlError')}</p>}
+                    {settingsWebSourceEnabled && isUrlInvalid && <p className="text-[13px] text-danger">{t('dashboard.pages.validUrlError')}</p>}
                   </div>
                 </div>
 
                 {/* Manual Review Toggle */}
                 <div className={`transition-opacity duration-200 ${!settingsAutoReply ? 'opacity-60 pointer-events-none' : ''}`}>
-                  <div className="flex items-start justify-between gap-3 p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm shadow-gray-200/50 dark:shadow-none">
+                  <div className="flex items-start justify-between gap-3 p-4 sm:p-5 rounded-card border border-line bg-surface shadow-card">
                     <div className="flex gap-3 min-w-0 flex-1">
-                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center flex-shrink-0">
-                        <svg className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                      <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center flex-shrink-0">
+                        <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">{t('dashboard.pages.manualReview', 'Manual Review')}</p>
-                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">{t('dashboard.pages.manualReviewDesc', 'Review AI replies before they are sent')}</p>
+                        <p className="text-[15px] font-medium text-ink">{t('dashboard.pages.manualReview', 'Manual Review')}</p>
+                        <p className="text-[13px] text-ink-muted mt-0.5">{t('dashboard.pages.manualReviewDesc', 'Review AI replies before they are sent')}</p>
                       </div>
                     </div>
-                    <button type="button" disabled={!settingsAutoReply} onClick={() => setSettingsManualReview(v => !v)} className={`relative inline-flex h-7 w-12 sm:h-6 sm:w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation ${settingsManualReview ? 'bg-amber-600' : 'bg-gray-300 dark:bg-gray-600'}`} aria-pressed={settingsManualReview}>
-                      <span className={`inline-block h-6 w-6 sm:h-5 sm:w-5 transform rounded-full bg-white shadow transition-transform duration-200 ${settingsManualReview ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    <button type="button" disabled={!settingsAutoReply} onClick={() => setSettingsManualReview(v => !v)} className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors cursor-pointer touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:cursor-not-allowed ${settingsManualReview ? 'border-accent bg-accent dark:shadow-[0_0_16px_-4px_var(--u-accent)]' : 'border-line-strong bg-surface-2'}`} aria-pressed={settingsManualReview}>
+                      <span className={`inline-block size-4 rounded-full bg-white shadow-sm transition-transform ${settingsManualReview ? 'translate-x-[22px]' : 'border border-line translate-x-1'}`} />
                     </button>
                   </div>
                 </div>
 
                 {/* Negative comments — visible on large screens only (below website box) */}
-                <div className="hidden lg:block p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm shadow-gray-200/50 dark:shadow-none space-y-3">
+                <div className="hidden lg:block p-4 sm:p-5 rounded-card border border-line bg-surface shadow-card space-y-3">
                   <div className="flex gap-3">
-                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    <div className="size-10 rounded-btn bg-danger-wash text-danger flex items-center justify-center flex-shrink-0">
+                      <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">{t('dashboard.pages.negativeComments')}</p>
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">{t('dashboard.pages.negativeCommentsDesc')}</p>
+                      <p className="text-[15px] font-medium text-ink">{t('dashboard.pages.negativeComments')}</p>
+                      <p className="text-[13px] text-ink-muted mt-0.5">{t('dashboard.pages.negativeCommentsDesc')}</p>
                     </div>
-                    <button type="button" onClick={() => setSettingsNegativeEnabled(v => !v)} className={`relative inline-flex h-7 w-12 sm:h-6 sm:w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 ${settingsNegativeEnabled ? 'bg-orange-500' : 'bg-gray-300 dark:bg-gray-600'}`} aria-pressed={settingsNegativeEnabled}>
-                      <span className={`inline-block h-6 w-6 sm:h-5 sm:w-5 transform rounded-full bg-white shadow transition-transform ${settingsNegativeEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    <button type="button" onClick={() => setSettingsNegativeEnabled(v => !v)} className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors cursor-pointer touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas ${settingsNegativeEnabled ? 'border-accent bg-accent dark:shadow-[0_0_16px_-4px_var(--u-accent)]' : 'border-line-strong bg-surface-2'}`} aria-pressed={settingsNegativeEnabled}>
+                      <span className={`inline-block size-4 rounded-full bg-white shadow-sm transition-transform ${settingsNegativeEnabled ? 'translate-x-[22px]' : 'border border-line translate-x-1'}`} />
                     </button>
                   </div>
                   {settingsNegativeEnabled && (
                     <>
                       <div className="flex flex-wrap items-center gap-3 pl-0 sm:pl-14">
-                        <div className="inline-flex rounded-xl bg-gray-100 dark:bg-gray-900/80 p-0.5 text-sm font-medium">
-                          <button type="button" onClick={() => setSettingsNegativeMode('hide')} className={`px-3 py-2 sm:py-1.5 rounded-lg transition-colors touch-manipulation ${settingsNegativeMode === 'hide' ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400'}`}>{t('dashboard.pages.autoHide')}</button>
+                        <div className="inline-flex items-center rounded-btn border border-line bg-surface-2 p-0.5 text-[13px] font-medium">
+                          <button type="button" onClick={() => setSettingsNegativeMode('hide')} className={`h-8 px-3 rounded-[6px] transition-colors touch-manipulation ${settingsNegativeMode === 'hide' ? 'bg-surface text-ink shadow-card' : 'text-ink-muted hover:text-ink'}`}>{t('dashboard.pages.autoHide')}</button>
                           {!isTikTokSettingsPage && (
-                            <button type="button" onClick={() => setSettingsNegativeMode('delete')} className={`px-3 py-2 sm:py-1.5 rounded-lg transition-colors touch-manipulation ${settingsNegativeMode === 'delete' ? 'bg-red-600 text-white shadow-sm' : 'text-gray-600 dark:text-gray-400'}`}>{t('dashboard.pages.autoDelete')}</button>
+                            <button type="button" onClick={() => setSettingsNegativeMode('delete')} className={`h-8 px-3 rounded-[6px] transition-colors touch-manipulation ${settingsNegativeMode === 'delete' ? 'bg-danger text-white shadow-card' : 'text-ink-muted hover:text-ink'}`}>{t('dashboard.pages.autoDelete')}</button>
                           )}
                         </div>
                       </div>
-                      {!isTikTokSettingsPage && settingsNegativeMode === 'delete' && <p className="text-xs text-red-600 dark:text-red-400 pl-0 sm:pl-14">{t('dashboard.pages.autoDeleteWarning')}</p>}
+                      {!isTikTokSettingsPage && settingsNegativeMode === 'delete' && <p className="text-[13px] text-danger pl-0 sm:pl-14">{t('dashboard.pages.autoDeleteWarning')}</p>}
                     </>
                   )}
                 </div>
 
                 {/* Moderate Replies — Meta only (TikTok reply moderation not supported) */}
                 {!isTikTokSettingsPage && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm shadow-gray-200/50 dark:shadow-none space-y-3">
+                <div className="p-4 sm:p-5 rounded-card border border-line bg-surface shadow-card space-y-3">
                   <div className="flex gap-3">
-                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                    <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center flex-shrink-0">
+                      <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">{t('dashboard.pages.moderateReplies', 'Moderate Replies')}</p>
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">{t('dashboard.pages.moderateRepliesDesc', 'Auto-hide/delete negative replies on comments')}</p>
+                      <p className="text-[15px] font-medium text-ink">{t('dashboard.pages.moderateReplies', 'Moderate Replies')}</p>
+                      <p className="text-[13px] text-ink-muted mt-0.5">{t('dashboard.pages.moderateRepliesDesc', 'Auto-hide/delete negative replies on comments')}</p>
                     </div>
-                    <button type="button" onClick={() => setSettingsModerateReplies(v => !v)} className={`relative inline-flex h-7 w-12 sm:h-6 sm:w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 ${settingsModerateReplies ? 'bg-purple-500' : 'bg-gray-300 dark:bg-gray-600'}`} aria-pressed={settingsModerateReplies}>
-                      <span className={`inline-block h-6 w-6 sm:h-5 sm:w-5 transform rounded-full bg-white shadow transition-transform ${settingsModerateReplies ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    <button type="button" onClick={() => setSettingsModerateReplies(v => !v)} className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors cursor-pointer touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas ${settingsModerateReplies ? 'border-accent bg-accent dark:shadow-[0_0_16px_-4px_var(--u-accent)]' : 'border-line-strong bg-surface-2'}`} aria-pressed={settingsModerateReplies}>
+                      <span className={`inline-block size-4 rounded-full bg-white shadow-sm transition-transform ${settingsModerateReplies ? 'translate-x-[22px]' : 'border border-line translate-x-1'}`} />
                     </button>
                   </div>
                 </div>
@@ -2427,14 +2429,14 @@ function PagesPageContent() {
 
               {/* Right column: Custom Prompt (disabled when Auto-Reply OFF) + Negative comments (always enabled) */}
               <div className="flex flex-col gap-3 sm:gap-5">
-                <div className={`flex flex-col flex-1 p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm shadow-gray-200/50 dark:shadow-none transition-opacity duration-200 ${!settingsAutoReply ? 'opacity-60 pointer-events-none' : ''}`}>
+                <div className={`flex flex-col flex-1 p-4 sm:p-5 rounded-card border border-line bg-surface shadow-card transition-opacity duration-200 ${!settingsAutoReply ? 'opacity-60 pointer-events-none' : ''}`}>
                   <div className="flex gap-3 mb-2">
-                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center flex-shrink-0">
+                      <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">{t('dashboard.pages.customReplyPrompt')}</p>
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">{t('dashboard.pages.customReplyPromptDesc')}</p>
+                      <p className="text-[15px] font-medium text-ink">{t('dashboard.pages.customReplyPrompt')}</p>
+                      <p className="text-[13px] text-ink-muted mt-0.5">{t('dashboard.pages.customReplyPromptDesc')}</p>
                     </div>
                   </div>
                   <textarea
@@ -2443,17 +2445,17 @@ function PagesPageContent() {
                     placeholder={t('dashboard.pages.customReplyPrompt')}
                     rows={4}
                     disabled={!settingsAutoReply}
-                    className="w-full flex-1 min-h-[120px] px-4 py-3 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="w-full flex-1 min-h-[120px] rounded-btn border border-line bg-surface px-3.5 py-2.5 text-[15px] leading-relaxed text-ink placeholder:text-ink-muted/60 transition-colors focus:outline-none focus:border-accent focus:ring-2 focus:ring-ring resize-none disabled:bg-surface-2 disabled:text-ink-muted disabled:cursor-not-allowed"
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{settingsCustomPrompt.length} {t('dashboard.pages.characters')}</p>
+                  <p className="text-[12px] text-ink-muted mt-1">{settingsCustomPrompt.length} {t('dashboard.pages.characters')}</p>
                 </div>
 
                 {/* Reply delay */}
-                <div className={`p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm shadow-gray-200/50 dark:shadow-none transition-opacity duration-200 ${!settingsAutoReply ? 'opacity-60 pointer-events-none' : ''}`}>
-                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white mb-0.5">
+                <div className={`p-4 sm:p-5 rounded-card border border-line bg-surface shadow-card transition-opacity duration-200 ${!settingsAutoReply ? 'opacity-60 pointer-events-none' : ''}`}>
+                  <p className="text-[15px] font-medium text-ink mb-0.5">
                     {t('dashboard.pages.replyDelayLabel')}
                   </p>
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-3">
+                  <p className="text-[13px] text-ink-muted mb-3">
                     {t('dashboard.pages.replyDelayHelp')}
                   </p>
                   <div className="flex flex-wrap gap-2 items-center">
@@ -2468,10 +2470,10 @@ function PagesPageContent() {
                         key={value}
                         type="button"
                         onClick={() => { setSettingsReplyDelay(value); setCustomDelayOpen(false); }}
-                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                        className={`inline-flex items-center h-8 rounded-full border px-3 text-[13px] font-medium transition-colors ${
                           settingsReplyDelay === value && !customDelayOpen
-                            ? 'bg-violet-600 text-white shadow-sm'
-                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
+                            ? 'border-accent bg-accent-wash text-accent'
+                            : 'border-line bg-surface text-ink-muted hover:border-accent/40 hover:text-ink'
                         }`}
                       >
                         {label}
@@ -2486,10 +2488,10 @@ function PagesPageContent() {
                           setSettingsReplyDelay(420);
                         }
                       }}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                      className={`inline-flex items-center h-8 rounded-full border px-3 text-[13px] font-medium transition-colors ${
                         customDelayOpen
-                          ? 'bg-violet-600 text-white shadow-sm'
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
+                          ? 'border-accent bg-accent-wash text-accent'
+                          : 'border-line bg-surface text-ink-muted hover:border-accent/40 hover:text-ink'
                       }`}
                     >
                       {t('dashboard.pages.replyDelayCustom')}
@@ -2508,38 +2510,38 @@ function PagesPageContent() {
                               setSettingsReplyDelay(Math.min(120, val) * 60);
                             }
                           }}
-                          className="w-16 px-2 py-2 text-sm text-center border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                          className="w-16 px-2 py-2 font-mono text-[14px] text-center rounded-btn border border-line bg-surface text-ink transition-colors focus:outline-none focus:border-accent focus:ring-2 focus:ring-ring"
                         />
-                        <span className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.pages.replyDelayMinutes')}</span>
+                        <span className="text-[13px] text-ink-muted">{t('dashboard.pages.replyDelayMinutes')}</span>
                       </>
                     )}
                   </div>
                 </div>
 
-                <div className="lg:hidden p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm shadow-gray-200/50 dark:shadow-none space-y-3">
+                <div className="lg:hidden p-4 sm:p-5 rounded-card border border-line bg-surface shadow-card space-y-3">
                   <div className="flex gap-3">
-                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    <div className="size-10 rounded-btn bg-danger-wash text-danger flex items-center justify-center flex-shrink-0">
+                      <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">{t('dashboard.pages.negativeComments')}</p>
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">{t('dashboard.pages.negativeCommentsDesc')}</p>
+                      <p className="text-[15px] font-medium text-ink">{t('dashboard.pages.negativeComments')}</p>
+                      <p className="text-[13px] text-ink-muted mt-0.5">{t('dashboard.pages.negativeCommentsDesc')}</p>
                     </div>
-                    <button type="button" onClick={() => setSettingsNegativeEnabled(v => !v)} className={`relative inline-flex h-7 w-12 sm:h-6 sm:w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 ${settingsNegativeEnabled ? 'bg-orange-500' : 'bg-gray-300 dark:bg-gray-600'}`} aria-pressed={settingsNegativeEnabled}>
-                      <span className={`inline-block h-6 w-6 sm:h-5 sm:w-5 transform rounded-full bg-white shadow transition-transform ${settingsNegativeEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    <button type="button" onClick={() => setSettingsNegativeEnabled(v => !v)} className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors cursor-pointer touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas ${settingsNegativeEnabled ? 'border-accent bg-accent dark:shadow-[0_0_16px_-4px_var(--u-accent)]' : 'border-line-strong bg-surface-2'}`} aria-pressed={settingsNegativeEnabled}>
+                      <span className={`inline-block size-4 rounded-full bg-white shadow-sm transition-transform ${settingsNegativeEnabled ? 'translate-x-[22px]' : 'border border-line translate-x-1'}`} />
                     </button>
                   </div>
                   {settingsNegativeEnabled && (
                     <>
                       <div className="flex flex-wrap items-center gap-3 pl-0 sm:pl-14">
-                        <div className="inline-flex rounded-xl bg-gray-100 dark:bg-gray-900/80 p-0.5 text-sm font-medium">
-                          <button type="button" onClick={() => setSettingsNegativeMode('hide')} className={`px-3 py-2 sm:py-1.5 rounded-lg transition-colors touch-manipulation ${settingsNegativeMode === 'hide' ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-400'}`}>{t('dashboard.pages.autoHide')}</button>
+                        <div className="inline-flex items-center rounded-btn border border-line bg-surface-2 p-0.5 text-[13px] font-medium">
+                          <button type="button" onClick={() => setSettingsNegativeMode('hide')} className={`h-8 px-3 rounded-[6px] transition-colors touch-manipulation ${settingsNegativeMode === 'hide' ? 'bg-surface text-ink shadow-card' : 'text-ink-muted hover:text-ink'}`}>{t('dashboard.pages.autoHide')}</button>
                           {!isTikTokSettingsPage && (
-                            <button type="button" onClick={() => setSettingsNegativeMode('delete')} className={`px-3 py-2 sm:py-1.5 rounded-lg transition-colors touch-manipulation ${settingsNegativeMode === 'delete' ? 'bg-red-600 text-white shadow-sm' : 'text-gray-600 dark:text-gray-400'}`}>{t('dashboard.pages.autoDelete')}</button>
+                            <button type="button" onClick={() => setSettingsNegativeMode('delete')} className={`h-8 px-3 rounded-[6px] transition-colors touch-manipulation ${settingsNegativeMode === 'delete' ? 'bg-danger text-white shadow-card' : 'text-ink-muted hover:text-ink'}`}>{t('dashboard.pages.autoDelete')}</button>
                           )}
                         </div>
                       </div>
-                      {!isTikTokSettingsPage && settingsNegativeMode === 'delete' && <p className="text-xs text-red-600 dark:text-red-400 pl-0 sm:pl-14">{t('dashboard.pages.autoDeleteWarning')}</p>}
+                      {!isTikTokSettingsPage && settingsNegativeMode === 'delete' && <p className="text-[13px] text-danger pl-0 sm:pl-14">{t('dashboard.pages.autoDeleteWarning')}</p>}
                     </>
                   )}
                 </div>
@@ -2547,23 +2549,23 @@ function PagesPageContent() {
 
               {/* Third column – Advanced Rules */}
               <div className={`flex flex-col gap-3 sm:gap-5 lg:col-span-2 xl:col-span-1 transition-opacity duration-200 ${!settingsAutoReply ? 'opacity-60 pointer-events-none' : ''}`}>
-                <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm shadow-gray-200/50 dark:shadow-none space-y-1">
+                <div className="p-4 sm:p-5 rounded-card border border-line bg-surface shadow-card space-y-1">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                    <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center flex-shrink-0">
+                      <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">{t('dashboard.pages.advancedRules')}</p>
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">{t('dashboard.pages.advancedRulesDesc')}</p>
+                      <p className="text-[15px] font-medium text-ink">{t('dashboard.pages.advancedRules')}</p>
+                      <p className="text-[13px] text-ink-muted mt-0.5">{t('dashboard.pages.advancedRulesDesc')}</p>
                     </div>
                   </div>
 
                   {/* Cooldown per user */}
                   <div className="pb-3">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{t('dashboard.pages.cooldownLabel')}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 mb-2">{t('dashboard.pages.cooldownDesc')}</p>
+                    <p className="text-[14px] font-medium text-ink">{t('dashboard.pages.cooldownLabel')}</p>
+                    <p className="text-[12px] text-ink-muted mt-0.5 mb-2">{t('dashboard.pages.cooldownDesc')}</p>
                     <div className="flex flex-wrap gap-2">
                       {([
                         { label: t('dashboard.pages.cooldownOff'), value: 0 },
@@ -2576,10 +2578,10 @@ function PagesPageContent() {
                           key={value}
                           type="button"
                           onClick={() => setSettingsCooldownMinutes(value)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          className={`inline-flex items-center h-8 rounded-full border px-3 text-[13px] font-medium transition-colors ${
                             settingsCooldownMinutes === value
-                              ? 'bg-indigo-600 text-white shadow-sm'
-                              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'
+                              ? 'border-accent bg-accent-wash text-accent'
+                              : 'border-line bg-surface text-ink-muted hover:border-accent/40 hover:text-ink'
                           }`}
                         >
                           {label}
@@ -2589,28 +2591,28 @@ function PagesPageContent() {
                   </div>
 
                   {/* Only first comment */}
-                  <div className="flex items-center justify-between py-3 border-t border-gray-100 dark:border-gray-700/50">
+                  <div className="flex items-center justify-between py-3 border-t border-line">
                     <div className="pr-3">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">{t('dashboard.pages.onlyFirstCommentLabel')}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('dashboard.pages.onlyFirstCommentDesc')}</p>
+                      <p className="text-[14px] font-medium text-ink">{t('dashboard.pages.onlyFirstCommentLabel')}</p>
+                      <p className="text-[12px] text-ink-muted mt-0.5">{t('dashboard.pages.onlyFirstCommentDesc')}</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setSettingsOnlyFirstComment(v => !v)}
-                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                        settingsOnlyFirstComment ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+                      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas ${
+                        settingsOnlyFirstComment ? 'border-accent bg-accent dark:shadow-[0_0_16px_-4px_var(--u-accent)]' : 'border-line-strong bg-surface-2'
                       }`}
                       aria-pressed={settingsOnlyFirstComment}
                     >
-                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${settingsOnlyFirstComment ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                      <span className={`inline-block size-4 rounded-full bg-white shadow-sm transition-transform ${settingsOnlyFirstComment ? 'translate-x-[22px]' : 'border border-line translate-x-1'}`} />
                     </button>
                   </div>
 
                   {/* Min comment length */}
-                  <div className="flex items-center justify-between py-3 border-t border-gray-100 dark:border-gray-700/50">
+                  <div className="flex items-center justify-between py-3 border-t border-line">
                     <div className="pr-3">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">{t('dashboard.pages.minLengthLabel')}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('dashboard.pages.minLengthDesc')}</p>
+                      <p className="text-[14px] font-medium text-ink">{t('dashboard.pages.minLengthLabel')}</p>
+                      <p className="text-[12px] text-ink-muted mt-0.5">{t('dashboard.pages.minLengthDesc')}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <input
@@ -2622,17 +2624,17 @@ function PagesPageContent() {
                           const val = parseInt(e.target.value);
                           if (val && val > 0 && val <= 100) setSettingsMinCommentLength(val);
                         }}
-                        className="w-16 px-2 py-1.5 text-sm text-center border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-16 px-2 py-1.5 font-mono text-[14px] text-center rounded-btn border border-line bg-surface text-ink transition-colors focus:outline-none focus:border-accent focus:ring-2 focus:ring-ring"
                       />
-                      <span className="text-xs text-gray-500 dark:text-gray-400">{t('dashboard.pages.characters')}</span>
+                      <span className="text-[12px] text-ink-muted">{t('dashboard.pages.characters')}</span>
                     </div>
                   </div>
 
                   {/* Max reply length */}
-                  <div className="flex items-center justify-between py-3 border-t border-gray-100 dark:border-gray-700/50">
+                  <div className="flex items-center justify-between py-3 border-t border-line">
                     <div className="pr-3">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">{t('dashboard.pages.maxReplyLengthLabel', 'Max Reply Length')}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      <p className="text-[14px] font-medium text-ink">{t('dashboard.pages.maxReplyLengthLabel', 'Max Reply Length')}</p>
+                      <p className="text-[12px] text-ink-muted mt-0.5">
                         {isTikTokSettingsPage
                           ? t('dashboard.pages.maxReplyLengthTikTokDesc', 'TikTok limits replies to 150 characters')
                           : t('dashboard.pages.maxReplyLengthDesc', 'Maximum characters for AI-generated replies')}
@@ -2640,7 +2642,7 @@ function PagesPageContent() {
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {isTikTokSettingsPage ? (
-                        <span className="px-3 py-1.5 text-sm font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg cursor-not-allowed">150</span>
+                        <span className="px-3 py-1.5 font-mono text-[13px] font-medium text-ink-muted bg-surface-2 border border-line rounded-[6px] cursor-not-allowed">150</span>
                       ) : (
                         <input
                           type="number"
@@ -2651,42 +2653,42 @@ function PagesPageContent() {
                             const val = parseInt(e.target.value);
                             if (val && val > 0 && val <= 500) setSettingsMaxReplyLength(val);
                           }}
-                          className="w-16 px-2 py-1.5 text-sm text-center border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                          className="w-16 px-2 py-1.5 font-mono text-[14px] text-center rounded-btn border border-line bg-surface text-ink transition-colors focus:outline-none focus:border-accent focus:ring-2 focus:ring-ring"
                         />
                       )}
-                      <span className="text-xs text-gray-500 dark:text-gray-400">{t('dashboard.pages.characters')}</span>
+                      <span className="text-[12px] text-ink-muted">{t('dashboard.pages.characters')}</span>
                     </div>
                   </div>
 
                   {/* Blocklist keywords */}
-                  <div className="py-3 border-t border-gray-100 dark:border-gray-700/50">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{t('dashboard.pages.blocklistLabel')}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 mb-2">{t('dashboard.pages.blocklistDesc')}</p>
+                  <div className="py-3 border-t border-line">
+                    <p className="text-[14px] font-medium text-ink">{t('dashboard.pages.blocklistLabel')}</p>
+                    <p className="text-[12px] text-ink-muted mt-0.5 mb-2">{t('dashboard.pages.blocklistDesc')}</p>
                     <input
                       type="text"
                       value={settingsBlocklistKeywords}
                       onChange={(e) => setSettingsBlocklistKeywords(e.target.value)}
                       placeholder={t('dashboard.pages.blocklistPlaceholder')}
-                      className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="w-full px-3.5 py-2 text-[15px] rounded-btn border border-line bg-surface text-ink placeholder:text-ink-muted/60 transition-colors focus:outline-none focus:border-accent focus:ring-2 focus:ring-ring"
                     />
                   </div>
 
                   {/* Allowlist keywords */}
-                  <div className="py-3 border-t border-gray-100 dark:border-gray-700/50">
+                  <div className="py-3 border-t border-line">
                     <div className="flex items-center justify-between mb-1">
                       <div className="pr-3">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">{t('dashboard.pages.allowlistLabel')}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('dashboard.pages.allowlistDesc')}</p>
+                        <p className="text-[14px] font-medium text-ink">{t('dashboard.pages.allowlistLabel')}</p>
+                        <p className="text-[12px] text-ink-muted mt-0.5">{t('dashboard.pages.allowlistDesc')}</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => setSettingsAllowlistEnabled(v => !v)}
-                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                          settingsAllowlistEnabled ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+                        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas ${
+                          settingsAllowlistEnabled ? 'border-accent bg-accent dark:shadow-[0_0_16px_-4px_var(--u-accent)]' : 'border-line-strong bg-surface-2'
                         }`}
                         aria-pressed={settingsAllowlistEnabled}
                       >
-                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${settingsAllowlistEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                        <span className={`inline-block size-4 rounded-full bg-white shadow-sm transition-transform ${settingsAllowlistEnabled ? 'translate-x-[22px]' : 'border border-line translate-x-1'}`} />
                       </button>
                     </div>
                     {settingsAllowlistEnabled && (
@@ -2695,7 +2697,7 @@ function PagesPageContent() {
                         value={settingsAllowlistKeywords}
                         onChange={(e) => setSettingsAllowlistKeywords(e.target.value)}
                         placeholder={t('dashboard.pages.allowlistPlaceholder')}
-                        className="w-full mt-2 px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full mt-2 px-3.5 py-2 text-[15px] rounded-btn border border-line bg-surface text-ink placeholder:text-ink-muted/60 transition-colors focus:outline-none focus:border-accent focus:ring-2 focus:ring-ring"
                       />
                     )}
                   </div>
@@ -2704,12 +2706,6 @@ function PagesPageContent() {
             </div>
           </div>
 
-          <footer className="flex-shrink-0 px-3 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-800 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3">
-            <button onClick={() => { if (savingSettings) return; if (hasSettingsChanges) setShowUnsavedSettingsConfirm(true); else setPageToSettings(null); }} disabled={savingSettings} className="w-full sm:w-auto px-4 py-3 sm:py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors disabled:opacity-50 touch-manipulation min-h-[44px] sm:min-h-0">{t('dashboard.pages.cancel')}</button>
-            <button onClick={saveSettings} disabled={!canSaveSettings} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 touch-manipulation min-h-[44px] sm:min-h-0 shadow-sm">
-              {savingSettings ? (<><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{t('dashboard.pages.saving')}</>) : t('dashboard.pages.saveSettings')}
-            </button>
-          </footer>
         </div>
       )}
 
@@ -2717,34 +2713,34 @@ function PagesPageContent() {
       {pageToDisconnect && (
         <>
           <div 
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" 
+            className="fixed inset-0 z-50 bg-ink/40 dark:bg-black/60" 
             onClick={() => setPageToDisconnect(null)}
           ></div>
-          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 p-6">
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md rounded-card border border-line bg-surface shadow-pop p-6">
             <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="size-10 rounded-btn bg-danger-wash text-danger flex items-center justify-center flex-shrink-0">
+                <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <h3 className="font-display text-[20px] font-medium text-ink">
                   {t('dashboard.pages.disconnectPageTitle', 'Disconnect Page?')}
                 </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-[13px] text-ink-muted mt-1">
                   {t('dashboard.pages.disconnectPageConfirm', 'Are you sure you want to disconnect {{pageName}}?', { pageName: pageToDisconnect.pageName })}
                 </p>
               </div>
             </div>
             
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            <p className="text-[13px] text-ink-muted mb-6">
               {t('dashboard.pages.disconnectPageDescription', 'This will stop monitoring comments from this page. You can reconnect it anytime.')}
             </p>
 
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={() => setPageToDisconnect(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                className="inline-flex items-center justify-center h-10 px-4 rounded-btn text-[14px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
               >
                 {t('dashboard.pages.cancel', 'Cancel')}
               </button>
@@ -2756,11 +2752,11 @@ function PagesPageContent() {
                   }
                 }}
                 disabled={disconnecting === pageToDisconnect?.pageId}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-danger text-white hover:opacity-90 text-[15px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
               >
                 {disconnecting === pageToDisconnect?.pageId ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                     {t('dashboard.pages.disconnecting', 'Disconnecting...')}
                   </>
                 ) : (
@@ -2777,7 +2773,7 @@ function PagesPageContent() {
 
 export default function PagesPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen bg-canvas"><div className="size-8 animate-spin rounded-full border-2 border-line border-t-accent" /></div>}>
       <PagesPageContent />
     </Suspense>
   );

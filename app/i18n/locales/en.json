@@ -94,20 +94,144 @@
     "contact": "Contact"
   },
   "landing": {
-    "logo": "AI Comment Replyer",
-    "badge": "AI-Powered Comment Management",
-    "titleLine1": "Never Miss a",
-    "titleLine2": "Comment Again",
-    "subtitle": "Automate your social media responses with AI that understands your brand. Reply to comments instantly, 24/7, with personalized messages that sound like you.",
-    "startFreeTrial": "Start Free Trial",
-    "watchDemo": "Watch Demo",
+    "logo": "Comment Closer",
+    "badge": "For brands running ads on Facebook · Instagram · TikTok",
+    "titleLine1": "You paid for the ad.",
+    "titleLine2": "The comments are undoing it.",
+    "subtitle": "Nobody buys before reading the comments. Comment Closer wipes the negativity under your ads and answers everyone else — automatically.",
+    "startFreeTrial": "Start free — fix my comments",
+    "watchDemo": "See it in action",
     "stats": {
-      "automated": "Automated Replies",
-      "saved": "Saved Per Week",
-      "consistent": "Brand Consistent"
+      "automated": "100% of comments answered",
+      "saved": "0 negatives left visible",
+      "consistent": "24/7 on every ad and post"
+    },
+    "hero": {
+      "platforms": "Facebook · Instagram · TikTok — posts and ads",
+      "ctaNote": "Free during early access · No credit card · Set up in minutes",
+      "demo": {
+        "brandName": "Your Brand",
+        "sponsored": "Sponsored",
+        "statusUnmanaged": "UNMANAGED",
+        "statusActive": "COMMENT CLOSER ACTIVE",
+        "captionBleeding": "BLEEDING.",
+        "captionClosing": "CLOSING.",
+        "captionPrinting": "PRINTING.",
+        "meterLabel": "ROAS",
+        "simulation": "simulation",
+        "wastedLabel": "wasted today",
+        "recoveredLabel": "recovered today",
+        "c1": "Total scam, avoid.",
+        "c2": "Ordered 3 weeks ago. Nothing.",
+        "c3": "dm me for a cheaper version of this",
+        "c4": "Do you ship to Cyprus?",
+        "c5": "Best thing I've bought this year",
+        "r4": "We do — free shipping over €40. Link in bio.",
+        "r5": "Thank you! You made our day. 💜",
+        "chipNegative": "NEGATIVE",
+        "chipQuestion": "QUESTION",
+        "chipPositive": "POSITIVE",
+        "chipHidden": "hidden · 0.4s",
+        "chipReplied": "Replied",
+        "unansweredLabel": "unanswered",
+        "hiddenLabel": "hidden",
+        "repliedLabel": "replied",
+        "cleanLabel": "feed: CLEAN",
+        "scoreLose": "This feed loses money",
+        "scorePrint": "This feed prints money",
+        "flipBefore": "Before",
+        "flipAfter": "After"
+      }
+    },
+    "ticker": {
+      "stat1": "142 comments hidden",
+      "stat2": "1,038 replies sent",
+      "stat3": "0 left unanswered",
+      "stat4": "every question answered in seconds",
+      "verdict": "Ugly comments kill great ads."
     },
     "socialProof": {
-      "title": "Trusted by Leading Brands"
+      "title": "Trusted by teams running paid social"
+    },
+    "problem": {
+      "eyebrow": "THE PROBLEM",
+      "title": "The most expensive part of your ad is the part you never look at.",
+      "point1": {
+        "title": "One complaint outshouts your whole ad.",
+        "desc": "A single visible \"scam\", \"never arrived\", \"don't buy\" undoes the creative you paid thousands to run."
+      },
+      "point2": {
+        "title": "Every unanswered question is a lost sale.",
+        "desc": "\"How much?\" \"Do you ship?\" Silence reads as \"we don't care\" — and the buyer scrolls on to someone who answers."
+      },
+      "point3": {
+        "title": "You're paying to promote your own bad press.",
+        "desc": "Every euro of ad spend pushes those comments in front of more people. The more you scale, the more it costs you."
+      },
+      "counterLabel": "burned while you read this (demo)",
+      "punchline1": "Your budget doesn't leak in Ads Manager.",
+      "punchline2": "It leaks in the comments.",
+      "anatomy": {
+        "title": "Anatomy of a dying ad",
+        "c1": "Total scam, don't waste your money!!",
+        "c2": "How much is shipping to Thessaloniki?",
+        "c3": "dm me for the same thing way cheaper",
+        "label1": "the algorithm feeds it oxygen",
+        "label2": "the question that was a sale",
+        "label3": "your budget pays to show it"
+      }
+    },
+    "flip": {
+      "eyebrow": "THE FLIP",
+      "title1": "A clean comment section is a second ad.",
+      "title2": "And it runs for free.",
+      "point1": "Comments are social proof. Buyers trust them more than your creative.",
+      "point2": "Answered questions close sales on the spot. A brand that replies looks alive — and safe to buy from.",
+      "point3": "Engagement feeds the algorithm. Live comments make the same budget buy more.",
+      "punchline": "Same ad. Same budget. Better comments. More sales.",
+      "toggleBefore": "Before",
+      "toggleAfter": "After",
+      "toggleHint": "Flip it yourself"
+    },
+    "how": {
+      "eyebrow": "HOW IT WORKS",
+      "title": "Every comment. Read, judged, handled. In seconds.",
+      "step1": {
+        "title": "AI reads every new comment",
+        "desc": "The moment a comment lands on your ad or post — Facebook, Instagram or TikTok — the AI reads it and scores its sentiment."
+      },
+      "step2": {
+        "title": "Negative? Gone. Automatically.",
+        "desc": "Insults, complaints, troll bait: hidden or deleted before your audience ever sees them. You choose which."
+      },
+      "step3": {
+        "title": "Everything else gets a reply — in your voice",
+        "desc": "Questions answered, compliments thanked, buyers nudged toward checkout. Instantly, in your brand's tone."
+      },
+      "step4": {
+        "title": "No comment left unreplied. Ever.",
+        "desc": "The result: a comment section that looks great and sells for you — 24/7, even while you sleep."
+      }
+    },
+    "results": {
+      "eyebrow": "RESULTS",
+      "title": "What changes when the comments work for you",
+      "stat1": {
+        "value": "100%",
+        "label": "of comments answered"
+      },
+      "stat2": {
+        "value": "Seconds",
+        "label": "from comment to reply"
+      },
+      "stat3": {
+        "value": "0",
+        "label": "negatives left in sight"
+      },
+      "stat4": {
+        "value": "10+ hrs",
+        "label": "of moderation saved every week"
+      }
     },
     "features": {
       "title": "Everything You Need",
@@ -144,9 +268,9 @@
       "uptimeSLA": "Uptime SLA"
     },
     "pricing": {
-      "title": "Simple, Transparent Pricing",
-      "subtitle": "Currently free during early access — no charges. The paid plans below are planned for the future. All plans include Facebook, Instagram, TikTok Organic & Ads.",
-      "mostPopular": "Most Popular",
+      "title": "Costs less than one wasted day of ads.",
+      "subtitle": "Free during early access — zero charges. The paid plans below are what's coming. Every plan covers Facebook, Instagram and TikTok — organic posts and ads.",
+      "mostPopular": "Most chosen",
       "comingSoon": "Coming soon",
       "starter": {
         "name": "Free",
@@ -182,8 +306,8 @@
       }
     },
     "testimonials": {
-      "title": "Loved by Teams Worldwide",
-      "subtitle": "See what our customers have to say about their experience",
+      "title": "Brands that stopped the bleed",
+      "subtitle": "What happens after the comment section switches to your side.",
       "testimonial1": {
         "quote": "This tool has completely transformed how we handle customer engagement. Response times dropped from hours to seconds, and our customer satisfaction scores have never been higher.",
         "name": "Sarah Johnson",
@@ -200,32 +324,150 @@
         "role": "Social Media Manager, BrandCo"
       }
     },
+    "calc": {
+      "eyebrow": "THE STAKES",
+      "title": "What is your comment section costing you right now?",
+      "subtitle": "Drag the slider. Watch what an unmanaged comment section quietly takes from every campaign.",
+      "spendLabel": "Your monthly ad spend",
+      "wastedLabel": "Bleeding out every month",
+      "wastedNote": "promoting complaints, troll bait and unanswered questions to more people",
+      "lostLabel": "Sales walking away",
+      "lostNote": "buyers who read the comments — and scrolled straight past you",
+      "recoverLabel": "Comment Closer recovers",
+      "recoverNote": "most of it back, automatically — starting the day you connect",
+      "perMonth": "/ month",
+      "disclaimer": "Illustrative estimate based on your ad spend. Your real numbers depend on your audience and offer.",
+      "cta": "Stop the leak — start free"
+    },
+    "compare": {
+      "eyebrow": "THE CHOICE",
+      "title": "Three ways to handle your comments. Only one grows your ads.",
+      "colIgnore": "Ignore them",
+      "colManual": "Moderate by hand",
+      "colUs": "Comment Closer",
+      "row1": {
+        "label": "Negative comments under your ads",
+        "ignore": "Seen by every buyer",
+        "manual": "Caught hours later",
+        "us": "Hidden in seconds, automatically"
+      },
+      "row2": {
+        "label": "Comments answered",
+        "ignore": "Never",
+        "manual": "When you find the time",
+        "us": "Every single one, 24/7"
+      },
+      "row3": {
+        "label": "Your time",
+        "ignore": "0 hrs — and it shows",
+        "manual": "10+ hrs every week",
+        "us": "Minutes to set up"
+      },
+      "row4": {
+        "label": "Nights, weekends, holidays",
+        "ignore": "Comments pile up",
+        "manual": "You, still working",
+        "us": "Fully covered"
+      },
+      "row5": {
+        "label": "Brand voice",
+        "ignore": "Silence",
+        "manual": "Inconsistent",
+        "us": "Consistent — your tone"
+      },
+      "row6": {
+        "label": "Ad performance",
+        "ignore": "Leaking budget",
+        "manual": "Slightly better",
+        "us": "Clean section, better ROAS"
+      },
+      "verdict": "Doing nothing is a decision too. It's just the expensive one."
+    },
+    "stickyCta": {
+      "text": "Your comment section is costing you sales right now.",
+      "button": "Start free"
+    },
+    "inaction": {
+      "eyebrow": "EVERY DAY YOU WAIT",
+      "title": "Every day you wait, your ads keep paying to show your worst comments.",
+      "point1": "A pinned complaint under your best-performing ad.",
+      "point2": "A buyer who asked \"how much?\" and got silence.",
+      "point3": "Budget spent pushing your worst review to thousands more.",
+      "cta": "Fix it in the next 5 minutes"
+    },
     "faq": {
-      "title": "Frequently Asked Questions",
-      "subtitle": "Everything you need to know about AI Comment Replyer",
-      "q1": "How does AI comment reply work?",
-      "a1": "Our AI analyzes incoming comments and generates contextual, brand-aligned responses in seconds. You can customize tone, style, and approve responses before they go live.",
-      "q2": "Which platforms do you support?",
-      "a2": "Currently, we support Facebook Pages and Instagram. We're continuously expanding to other social media platforms based on user demand.",
-      "q3": "Is my data secure?",
-      "a3": "Absolutely. We use enterprise-grade encryption, comply with GDPR standards, and never share your data with third parties. Your account and comments are fully protected.",
-      "q4": "Can I customize the AI responses?",
-      "a4": "Yes! You can set custom rules, tone preferences, response templates, and approval workflows. The AI learns from your brand voice and improves over time.",
-      "q5": "What happens if the AI makes a mistake?",
-      "a5": "All responses can be set to require manual approval before posting. You can also edit, reject, or provide feedback on any generated response to help the AI learn."
+      "title": "Questions, answered",
+      "subtitle": "Exactly what happens to every comment under your ads.",
+      "q1": "What exactly happens to negative comments?",
+      "a1": "The AI reads every incoming comment and scores its sentiment. Anything negative — insults, complaints, troll bait — is hidden or deleted automatically, before your audience sees it. You choose hide or delete, and everything stays logged in your dashboard.",
+      "q2": "Which platforms do you cover?",
+      "a2": "Facebook, Instagram and TikTok — both organic posts and paid ads. Connect your pages and ad accounts once, and the AI watches every comment across all of them, 24/7.",
+      "q3": "Will the replies really sound like my brand?",
+      "a3": "Yes. You set the tone and custom prompts per page, and the AI replies in your voice: questions get answered, compliments get thanked, buyers get nudged. No comment is left unreplied.",
+      "q4": "Do comments really affect ad performance?",
+      "a4": "Massively. Buyers read the comments before they click. Visible complaints kill trust; answered questions and live engagement build it — and feed the algorithm. Clean, active comments make the same budget perform better.",
+      "q5": "What if the AI gets one wrong?",
+      "a5": "You stay in charge. Turn on manual review to approve replies before they post, edit or replace any reply, and pause automation with one click. Every action is logged so you always know what ran.",
+      "q6": "Is my data safe?",
+      "a6": "Yes. We only access the comments and pages you connect, through the official Facebook, Instagram and TikTok APIs. Your data is never sold or shared, and you can disconnect any account or delete your data at any time.",
+      "q7": "Can I try it for free?",
+      "a7": "Yes — it's completely free during early access, no credit card required. Connect your pages, watch it work, and only think about a plan once you've seen the results.",
+      "q8": "What about the comments already on my ads?",
+      "a8": "As soon as you connect, Comment Closer can scan your existing comments and clean up the backlog — hiding the negatives and replying to what's unanswered — so you start from a clean slate, not a mess."
+    },
+    "control": {
+      "eyebrow": "YOU'RE IN CONTROL",
+      "title": "Automated doesn't mean out of your hands.",
+      "subtitle": "You set the rules once. The AI does the work — the way you'd do it, on your terms.",
+      "c1": { "title": "Hide or delete — your call", "desc": "Choose what happens to negative comments. Nothing is removed against a rule you didn't set." },
+      "c2": { "title": "Approve before it posts", "desc": "Turn on manual review and every reply waits for your yes before it goes live." },
+      "c3": { "title": "Your voice, your rules", "desc": "Set the tone and custom prompts per page, with block and allow lists." },
+      "c4": { "title": "Every action logged", "desc": "A full audit trail in your dashboard — and you can pause automation with one click." },
+      "reassure": "Free during early access · No card required · Pause or cancel anytime"
+    },
+    "priceReassure": {
+      "line1": "The comments are already costing you more than any plan here.",
+      "line2": "This is the easiest money you'll save this month.",
+      "chip1": "No credit card",
+      "chip2": "Setup in minutes",
+      "chip3": "Cancel anytime",
+      "chip4": "Your data stays yours"
+    },
+    "pullquote": {
+      "text1": "The best time to fix your comment section was your last campaign.",
+      "text2": "The second best time is right now."
+    },
+    "audience": {
+      "eyebrow": "WHO IT'S FOR",
+      "title": "If you run ads, this is bleeding you too.",
+      "subtitle": "Every business running paid social has a comment section working against it. Here's who turns it around with Comment Closer.",
+      "a1": { "title": "E-commerce & DTC brands", "desc": "Turn comment-section trust into checkout." },
+      "a2": { "title": "Agencies & media buyers", "desc": "Protect every client's ad spend at once." },
+      "a3": { "title": "Local businesses", "desc": "Never miss another 'how much?' or 'are you open?'." },
+      "a4": { "title": "Creators & personal brands", "desc": "Keep your feed clean at any comment volume." }
+    },
+    "setup": {
+      "eyebrow": "GET STARTED",
+      "title": "Live in three minutes. Then never think about it again.",
+      "subtitle": "No developers, no complicated setup. Connect once and Comment Closer runs itself.",
+      "step1": { "title": "Connect your pages", "desc": "Link Facebook, Instagram and TikTok in a few clicks — pages and ad accounts." },
+      "step2": { "title": "Set your brand voice", "desc": "Pick your tone, rules and no-go words once. Adjust anytime." },
+      "step3": { "title": "Comment Closer takes over", "desc": "Negatives vanish, everyone gets a reply — 24/7, automatically, while you sleep." },
+      "cta": "Start free — connect in minutes"
     },
     "finalCta": {
-      "title": "Ready to Get Started?",
-      "subtitle": "Join thousands of businesses automating their comment management. Start your free 14-day trial today.",
-      "button": "Start Free Trial"
+      "title": "Every comment answered. Every negative gone. Every ad working harder.",
+      "subtitle": "Connect your pages in minutes. From then on: negatives gone, everything answered, no comment left hanging.",
+      "button": "Start free now",
+      "microline": "Free during early access — no card required."
     },
     "navigation": {
-      "features": "Features",
+      "features": "The Problem",
       "pricing": "Pricing",
-      "testimonials": "Testimonials"
+      "testimonials": "Results"
     },
     "footer": {
-      "description": "Automate your social media responses with AI that understands your brand.",
+      "description": "AI that cleans your comment section and answers every comment — so your ads sell instead of apologize.",
       "product": "Product",
       "company": "Company",
       "legal": "Legal",

@@ -37,4 +37,16 @@ i18n
   .use(initReactI18next)
   .init(initOptions);
 
+// Keep <html lang> in sync with the active locale for accessibility (correct
+// screen-reader pronunciation of Greek vs English) and SEO (language detection).
+// Guarded for SSR; <html> has suppressHydrationWarning so client mutation is safe.
+if (typeof document !== 'undefined') {
+  const syncHtmlLang = (lng?: string) => {
+    const code = (lng || i18n.language || 'en').split('-')[0];
+    if (document.documentElement.lang !== code) document.documentElement.lang = code;
+  };
+  syncHtmlLang();
+  i18n.on('languageChanged', syncHtmlLang);
+}
+
 export default i18n;

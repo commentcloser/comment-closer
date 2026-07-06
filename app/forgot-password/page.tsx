@@ -74,15 +74,15 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthLayout>
-      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-2xl border border-gray-200/50 dark:border-gray-800/50 shadow-2xl p-8">
+      <div className="w-full rounded-card border border-line bg-surface shadow-card px-8 py-8">
         <div className="mb-8 text-center">
-          <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+          <div className="size-12 rounded-full bg-accent-wash text-accent flex items-center justify-center mx-auto mb-4">
+            <svg className="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{t('auth.forgotPassword.title')}</h1>
-          <p className="text-gray-600 dark:text-gray-300">{t('auth.forgotPassword.subtitle')}</p>
+          <h1 className="font-display text-[25px] font-medium text-ink">{t('auth.forgotPassword.title')}</h1>
+          <p className="text-[14px] text-ink-muted mt-1">{t('auth.forgotPassword.subtitle')}</p>
         </div>
 
         {alertMessage && (
@@ -117,9 +117,9 @@ export default function ForgotPasswordPage() {
             </Button>
 
             <div className="text-center">
-              <Link href="/login" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium inline-flex items-center gap-2 transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              <Link href="/login" className="inline-flex items-center gap-2 text-[14px] font-medium text-accent hover:text-accent-hover underline underline-offset-2 decoration-accent/30 hover:decoration-accent transition-colors">
+                <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
                 {t('auth.forgotPassword.backToLogin')}
               </Link>
@@ -127,20 +127,20 @@ export default function ForgotPasswordPage() {
           </form>
         ) : (
           <div className="space-y-6 text-center">
-            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
-              <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            <div className="size-12 rounded-full bg-accent-wash text-accent flex items-center justify-center mx-auto">
+              <svg className="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{t('auth.forgotPassword.checkEmail')}</h3>
-              <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
-                {t('auth.forgotPassword.emailSent')} <strong className="text-gray-900 dark:text-white">{email}</strong>
+              <h3 className="text-[16px] font-medium text-ink mb-2">{t('auth.forgotPassword.checkEmail')}</h3>
+              <p className="text-[14px] text-ink-muted mb-4">
+                {t('auth.forgotPassword.emailSent')} <strong className="font-medium text-ink">{email}</strong>
               </p>
             </div>
             <Link
               href="/login"
-              className="inline-block text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium text-sm transition-colors"
+              className="inline-block text-[14px] font-medium text-accent hover:text-accent-hover underline underline-offset-2 decoration-accent/30 hover:decoration-accent transition-colors"
             >
               {t('auth.forgotPassword.backToLogin')}
             </Link>

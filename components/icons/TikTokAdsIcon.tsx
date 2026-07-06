@@ -4,7 +4,7 @@ interface TikTokAdsIconProps {
 }
 
 /**
- * TikTok Ads icon — TikTok logo on a purple background with a small "ADS" badge.
+ * TikTok Ads icon — TikTok logo on a black tile with a small "ADS" badge.
  * Used as a placeholder when no profile image is available for tiktok_ads accounts.
  */
 export function TikTokAdsIcon({ size = 'md', className = '' }: TikTokAdsIconProps) {
@@ -14,12 +14,12 @@ export function TikTokAdsIcon({ size = 'md', className = '' }: TikTokAdsIconProp
 
   return (
     <div className={`relative flex-shrink-0 ${containerSize} ${className}`}>
-      <div className="w-full h-full rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-sm">
+      <div className="w-full h-full rounded-lg bg-[#0F0F0F] flex items-center justify-center">
         <svg className={`${iconSize} text-white`} fill="currentColor" viewBox="0 0 24 24">
           <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.74a4.85 4.85 0 01-1.01-.05z" />
         </svg>
       </div>
-      <span className={`absolute -bottom-1 -right-1 bg-purple-600 text-white font-bold rounded leading-none ${badgeClass}`}>
+      <span className={`absolute -bottom-1 -right-1 bg-accent text-on-accent font-bold rounded leading-none ${badgeClass}`}>
         ADS
       </span>
     </div>

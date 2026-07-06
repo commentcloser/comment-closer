@@ -11,24 +11,24 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+          <label className="block text-[13px] font-medium text-ink mb-1.5">
             {label}
           </label>
         )}
         <input
           ref={ref}
-          className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all text-gray-900 placeholder:text-gray-400 dark:text-white dark:placeholder:text-gray-500 ${
+          className={`w-full h-11 rounded-btn border bg-surface px-3.5 text-[15px] text-ink placeholder:text-ink-muted/60 transition-colors focus:outline-none focus:ring-2 disabled:bg-surface-2 disabled:text-ink-muted disabled:cursor-not-allowed ${
             error
-              ? 'border-red-500 focus:ring-red-200 dark:border-red-500'
-              : 'border-gray-300 focus:ring-gray-900 focus:border-gray-900 dark:border-gray-600 dark:focus:ring-gray-100 dark:focus:border-gray-500'
-          } ${props.disabled ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : 'bg-white dark:bg-gray-900'} ${className}`}
+              ? 'border-danger focus:border-danger focus:ring-danger/30'
+              : 'border-line focus:border-accent focus:ring-ring'
+          } ${className}`}
           {...props}
         />
         {error && (
-          <p className="text-sm text-red-600 dark:text-red-400 mt-1.5">{error}</p>
+          <p className="mt-1.5 text-[13px] text-danger">{error}</p>
         )}
         {helperText && !error && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">{helperText}</p>
+          <p className="mt-1.5 text-[13px] text-ink-muted">{helperText}</p>
         )}
       </div>
     );
