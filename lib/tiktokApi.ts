@@ -51,7 +51,8 @@ export function verifyTikTokWebhookSignature(rawBody: string, signatureHeader: s
 
   if (!secret) {
     console.error('[TikTok Webhook] Client secret not set — cannot verify signature');
-    return process.env.NODE_ENV !== 'production';
+    // Fail CLOSED unless explicitly allowed for local dev (SEC-9).
+    return process.env.NODE_ENV !== 'production' && process.env.ALLOW_UNSIGNED_WEBHOOKS === '1';
   }
 
   if (!signatureHeader) {

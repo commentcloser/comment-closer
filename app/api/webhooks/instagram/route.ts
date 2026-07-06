@@ -69,25 +69,21 @@ export async function POST(request: NextRequest) {
       let connectedPage: Awaited<ReturnType<typeof prisma.connectedPage.findFirst>> = null;
       const isTestWebhook = instagramBusinessAccountId === '0' || instagramBusinessAccountId === 0;
 
+      // Meta 'Send to server' test event (entry.id === '0'). Do NOT resolve it to
+      // a real customer's page — processing would burn OpenAI and could hide,
+      // delete, or reply to comments on live data. Acknowledge and skip. (SEC-6)
       if (isTestWebhook) {
-        connectedPage = await prisma.connectedPage.findFirst({
-          where: { provider: 'instagram', instagramUserId: { not: null } },
-          include: { user: true },
-          orderBy: { createdAt: 'desc' },
-        }) ?? await prisma.connectedPage.findFirst({
-          where: { provider: 'instagram' },
-          include: { user: true },
-          orderBy: { createdAt: 'desc' },
-        });
-      } else {
-        connectedPage = await prisma.connectedPage.findFirst({
-          where: { instagramUserId: String(instagramBusinessAccountId), provider: 'instagram' },
-          include: { user: true },
-        }) ?? await prisma.connectedPage.findFirst({
-          where: { pageId: String(instagramBusinessAccountId), provider: 'instagram' },
-          include: { user: true },
-        });
+        addLog('Ignoring Instagram test webhook (entry.id=0)');
+        continue;
       }
+
+      connectedPage = await prisma.connectedPage.findFirst({
+        where: { instagramUserId: String(instagramBusinessAccountId), provider: 'instagram' },
+        include: { user: true },
+      }) ?? await prisma.connectedPage.findFirst({
+        where: { pageId: String(instagramBusinessAccountId), provider: 'instagram' },
+        include: { user: true },
+      });
 
       if (!connectedPage) {
         addLog(`No page for IG: ${instagramBusinessAccountId}`);
