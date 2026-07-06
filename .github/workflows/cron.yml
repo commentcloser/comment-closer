@@ -58,3 +58,12 @@ jobs:
             -w '\nHTTP %{http_code}\n' \
             --fail-with-body \
             "$BASE_URL/api/cron/fetch-tiktok-ads-comments"
+
+      - name: Backfill stuck sentiment
+        if: always()
+        run: |
+          curl -sS -X GET \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -w '\nHTTP %{http_code}\n' \
+            --fail-with-body \
+            "$BASE_URL/api/cron/backfill-sentiment"
