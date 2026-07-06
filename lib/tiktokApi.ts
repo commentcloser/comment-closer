@@ -14,6 +14,21 @@ import { createHmac, timingSafeEqual } from 'crypto';
 
 const BASE = 'https://business-api.tiktok.com/open_api/v1.3';
 
+/**
+ * TikTok app credentials. The sandbox key/secret must only override production
+ * creds in a NON-production environment (INTEG-2) — otherwise a stray sandbox
+ * var in Vercel prod silently overrides the real credential and breaks OAuth
+ * and webhook verification for all live TikTok users.
+ */
+export function tiktokClientKey(): string | undefined {
+  const sandbox = process.env.NODE_ENV !== 'production' ? process.env.TIKTOK_SANDBOX_CLIENT_KEY : undefined;
+  return sandbox || process.env.TIKTOK_CLIENT_KEY;
+}
+export function tiktokClientSecret(): string | undefined {
+  const sandbox = process.env.NODE_ENV !== 'production' ? process.env.TIKTOK_SANDBOX_CLIENT_SECRET : undefined;
+  return sandbox || process.env.TIKTOK_CLIENT_SECRET;
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -47,7 +62,7 @@ export interface TikTokComment {
  * Returns false (blocking) in production when secret is missing.
  */
 export function verifyTikTokWebhookSignature(rawBody: string, signatureHeader: string | null): boolean {
-  const secret = process.env.TIKTOK_SANDBOX_CLIENT_SECRET || process.env.TIKTOK_CLIENT_SECRET;
+  const secret = tiktokClientSecret();
 
   if (!secret) {
     console.error('[TikTok Webhook] Client secret not set — cannot verify signature');
@@ -150,8 +165,8 @@ export async function getValidTikTokAccessToken(accountId: string): Promise<stri
     return account.access_token ?? null;
   }
 
-  const clientId = process.env.TIKTOK_SANDBOX_CLIENT_KEY || process.env.TIKTOK_CLIENT_KEY;
-  const clientSecret = process.env.TIKTOK_SANDBOX_CLIENT_SECRET || process.env.TIKTOK_CLIENT_SECRET;
+  const clientId = tiktokClientKey();
+  const clientSecret = tiktokClientSecret();
 
   if (!clientId || !clientSecret) return account.access_token ?? null;
 

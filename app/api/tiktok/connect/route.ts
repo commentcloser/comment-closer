@@ -3,6 +3,7 @@ import NextAuth from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
+import { tiktokClientKey } from '@/lib/tiktokApi';
 
 const { auth } = NextAuth(authOptions);
 
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  const clientKey = process.env.TIKTOK_SANDBOX_CLIENT_KEY || process.env.TIKTOK_CLIENT_KEY;
+  const clientKey = tiktokClientKey();
   if (!clientKey) {
     return NextResponse.json({ error: 'TikTok client key not configured' }, { status: 500 });
   }

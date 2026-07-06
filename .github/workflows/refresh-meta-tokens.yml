@@ -1,0 +1,32 @@
+name: Refresh Meta tokens
+
+# Daily proactive refresh of Facebook long-lived user tokens (INTEG-1). Tokens
+# last ~60 days, so daily is plenty. Requires the CRON_SECRET repository secret
+# (same value as the production CRON_SECRET env var).
+
+on:
+  schedule:
+    - cron: '17 4 * * *' # 04:17 UTC daily
+  workflow_dispatch: {}
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: https://www.commentcloser.com
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - name: Verify CRON_SECRET is configured
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Repository secret CRON_SECRET is not set."
+            exit 1
+          fi
+
+      - name: Refresh Meta tokens
+        run: |
+          curl -sS -X GET \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -w '\nHTTP %{http_code}\n' \
+            --fail-with-body \
+            "$BASE_URL/api/cron/refresh-meta-tokens"

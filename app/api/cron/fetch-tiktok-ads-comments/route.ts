@@ -238,10 +238,18 @@ async function processAdvertiser(advertiser: {
     await processAdsComment(comment, advertiser, accessToken, null);
   }
 
-  await prisma.connectedPage.update({
-    where: { id: advertiser.id },
-    data: { lastCommentsFetchedAt: new Date() },
-  });
+  // Only advance the watermark if every ad-group fetch succeeded. Otherwise a
+  // failed group's comments in this window would be skipped forever; leaving the
+  // watermark makes the next run re-read the window (already-processed comments
+  // dedupe via upsert). (INTEG-4)
+  if (!hasErrors) {
+    await prisma.connectedPage.update({
+      where: { id: advertiser.id },
+      data: { lastCommentsFetchedAt: new Date() },
+    });
+  } else {
+    console.warn(`[TikTok Ads Cron] Errors occurred — NOT advancing lastCommentsFetchedAt for ${advertiser.pageName} (will retry window)`);
+  }
 
   return newComments.length;
 }
