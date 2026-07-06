@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import AdminLayout from '@/components/layout/AdminLayout';
+import { useTheme } from '@/contexts/ThemeContext';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -39,7 +40,7 @@ function InfoTooltip({ text }: { text: string }) {
         onMouseLeave={() => setVisible(false)}
         onFocus={() => setVisible(true)}
         onBlur={() => setVisible(false)}
-        className="w-4 h-4 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors focus:outline-none"
+        className="w-4 h-4 rounded-full flex items-center justify-center text-ink-muted hover:text-ink transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         tabIndex={0}
         aria-label="Info"
       >
@@ -48,11 +49,11 @@ function InfoTooltip({ text }: { text: string }) {
         </svg>
       </button>
       {visible && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 z-50 pointer-events-none">
-          <div className="bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-xl px-3 py-2.5 shadow-xl leading-relaxed">
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 max-w-[240px] z-50 pointer-events-none">
+          <div className="rounded-[6px] border border-line bg-ink text-canvas dark:bg-surface-2 dark:text-ink px-3 py-2 text-[12px] leading-snug shadow-pop">
             {text}
           </div>
-          <div className="w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45 mx-auto -mt-1"></div>
+          <div className="w-2 h-2 bg-ink dark:bg-surface-2 border-r border-b border-line rotate-45 mx-auto -mt-1"></div>
         </div>
       )}
     </div>
@@ -65,10 +66,10 @@ function SectionHeader({ title, subtitle, info }: { title: string; subtitle?: st
     <div className="flex items-start justify-between mb-6">
       <div>
         <div className="flex items-center gap-2">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
+          <h3 className="text-[16px] font-medium text-ink">{title}</h3>
           {info && <InfoTooltip text={info} />}
         </div>
-        {subtitle && <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>}
+        {subtitle && <p className="text-[13px] text-ink-muted mt-0.5">{subtitle}</p>}
       </div>
     </div>
   );
@@ -77,6 +78,7 @@ function SectionHeader({ title, subtitle, info }: { title: string; subtitle?: st
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function AdminOverviewPage() {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [growthTimeline, setGrowthTimeline] = useState<GrowthPoint[]>([]);
@@ -107,16 +109,43 @@ export default function AdminOverviewPage() {
     return `${d.getDate()}/${d.getMonth() + 1}`;
   };
 
+  // Theme-aware recharts colors (spec §6.6) — recharts SVG attributes can't
+  // read the `.dark` class, so colors flow through existing props only.
+  const isDark = theme === 'dark';
+  const chart = isDark
+    ? {
+        grid: '#232350',
+        tick: '#9E9CC7',
+        area: '#7C5CFF',
+        area2: '#6D5BFF',
+        bar: '#6D5BFF',
+        pie: ['#7C5CFF', '#6D5BFF', '#2CE8A5', '#6E6C99'],
+        statusActive: '#7C5CFF',
+        statusInactive: '#32326B',
+        tooltip: { backgroundColor: '#0D0D24', border: '1px solid #232350', borderRadius: 12, color: '#F2F1FF', fontSize: 13 },
+      }
+    : {
+        grid: '#E4E2F4',
+        tick: '#5B5885',
+        area: '#6428F0',
+        area2: '#4F46E5',
+        bar: '#4F46E5',
+        pie: ['#6428F0', '#4F46E5', '#0BA678', '#8B88B0'],
+        statusActive: '#6428F0',
+        statusInactive: '#CFCCEA',
+        tooltip: { backgroundColor: '#FFFFFF', border: '1px solid #E4E2F4', borderRadius: 12, color: '#12102E', fontSize: 13 },
+      };
+
   const pieData = metrics ? [
-    { name: 'Facebook', value: metrics.totalFacebookPages, color: '#3b82f6' },
-    { name: 'Instagram', value: metrics.totalInstagramPages, color: '#ec4899' },
-    { name: 'TikTok', value: metrics.totalTikTokPages, color: '#14b8a6' },
-    { name: 'TikTok Ads', value: metrics.totalTikTokAdsPages, color: '#f59e0b' },
+    { name: 'Facebook', value: metrics.totalFacebookPages, color: chart.pie[0] },
+    { name: 'Instagram', value: metrics.totalInstagramPages, color: chart.pie[1] },
+    { name: 'TikTok', value: metrics.totalTikTokPages, color: chart.pie[2] },
+    { name: 'TikTok Ads', value: metrics.totalTikTokAdsPages, color: chart.pie[3] },
   ].filter(d => d.value > 0) : [];
 
   const userStatusData = metrics ? [
-    { name: t('admin.overview.withPages', 'With Pages'), value: metrics.usersWithPages, color: '#22c55e' },
-    { name: t('admin.overview.withoutPages', 'Without Pages'), value: metrics.usersWithoutPages, color: '#6b7280' },
+    { name: t('admin.overview.withPages', 'With Pages'), value: metrics.usersWithPages, color: chart.statusActive },
+    { name: t('admin.overview.withoutPages', 'Without Pages'), value: metrics.usersWithoutPages, color: chart.statusInactive },
   ].filter(d => d.value > 0) : [];
 
   const metricCards = [
@@ -125,36 +154,36 @@ export default function AdminOverviewPage() {
       value: metrics?.totalUsers ?? 0,
       change: `+${metrics?.newUsersWeek ?? 0} ${t('admin.overview.thisWeek', 'this week')}`,
       info: t('admin.overview.info.totalUsers', 'Total number of registered users on the platform, excluding admin accounts.'),
-      iconBg: 'bg-blue-500/10 dark:bg-blue-500/20',
-      iconColor: 'text-blue-500',
-      icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />,
+      iconBg: 'bg-accent-wash',
+      iconColor: 'text-accent',
+      icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />,
     },
     {
       label: t('admin.overview.totalPages', 'Connected Pages'),
       value: metrics?.totalPages ?? 0,
       change: `${metrics?.totalFacebookPages ?? 0} FB · ${metrics?.totalInstagramPages ?? 0} IG · ${metrics?.totalTikTokPages ?? 0} TT · ${metrics?.totalTikTokAdsPages ?? 0} Ads`,
       info: t('admin.overview.info.totalPages', 'Total active connected pages across all platforms. Disconnected pages are not counted.'),
-      iconBg: 'bg-green-500/10 dark:bg-green-500/20',
-      iconColor: 'text-green-500',
-      icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />,
+      iconBg: 'bg-surface-2',
+      iconColor: 'text-ink-muted',
+      icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />,
     },
     {
       label: t('admin.overview.activeUsers', 'Active Users (7d)'),
       value: metrics?.recentActiveUsers ?? 0,
       change: `${t('admin.overview.of', 'of')} ${metrics?.totalUsers ?? 0} ${t('admin.overview.total', 'total')}`,
       info: t('admin.overview.info.activeUsers', 'Users who logged in within the last 7 days. Indicates platform engagement.'),
-      iconBg: 'bg-violet-500/10 dark:bg-violet-500/20',
-      iconColor: 'text-violet-500',
-      icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />,
+      iconBg: 'bg-accent-wash',
+      iconColor: 'text-accent',
+      icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />,
     },
     {
       label: t('admin.overview.totalComments', 'Total Comments'),
       value: metrics?.totalComments ?? 0,
       change: t('admin.overview.allTime', 'all time'),
       info: t('admin.overview.info.totalComments', 'Total number of comments fetched from all connected pages (Facebook, Instagram, TikTok Organic, TikTok Ads) across all users.'),
-      iconBg: 'bg-amber-500/10 dark:bg-amber-500/20',
-      iconColor: 'text-amber-500',
-      icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />,
+      iconBg: 'bg-signal-wash',
+      iconColor: 'text-signal-text',
+      icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />,
     },
   ];
 
@@ -185,18 +214,18 @@ export default function AdminOverviewPage() {
     },
   ];
 
-  const colorMap: Record<string, string> = {
-    blue: 'from-blue-500/5 to-blue-500/10 dark:from-blue-500/10 dark:to-blue-500/5 border-blue-500/10 text-blue-600 dark:text-blue-400',
-    green: 'from-green-500/5 to-green-500/10 dark:from-green-500/10 dark:to-green-500/5 border-green-500/10 text-green-600 dark:text-green-400',
-    amber: 'from-amber-500/5 to-amber-500/10 dark:from-amber-500/10 dark:to-amber-500/5 border-amber-500/10 text-amber-600 dark:text-amber-400',
-    violet: 'from-violet-500/5 to-violet-500/10 dark:from-violet-500/10 dark:to-violet-500/5 border-violet-500/10 text-violet-600 dark:text-violet-400',
+  const colorMap: Record<string, { tile: string; value: string }> = {
+    blue: { tile: 'bg-accent-wash border-accent/20', value: 'text-accent' },
+    green: { tile: 'bg-accent-wash border-accent/20', value: 'text-accent' },
+    amber: { tile: 'bg-signal-wash border-signal/20', value: 'text-signal-text' },
+    violet: { tile: 'bg-surface-2 border-line', value: 'text-ink' },
   };
 
   return (
     <AdminLayout title={t('admin.overview.title', 'Admin Overview')}>
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-4 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="size-8 animate-spin rounded-full border-2 border-line border-t-accent"></div>
         </div>
       ) : (
         <div className="max-w-7xl mx-auto space-y-6">
@@ -204,38 +233,38 @@ export default function AdminOverviewPage() {
           {/* Main Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {metricCards.map((card) => (
-              <div key={card.label} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-700 transition-all">
+              <div key={card.label} className="rounded-card border border-line bg-surface p-5 shadow-card">
                 <div className="flex items-center justify-between mb-3">
-                  <div className={`w-10 h-10 ${card.iconBg} rounded-xl flex items-center justify-center`}>
+                  <div className={`w-10 h-10 ${card.iconBg} rounded-btn flex items-center justify-center`}>
                     <svg className={`w-5 h-5 ${card.iconColor}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">{card.icon}</svg>
                   </div>
                   <InfoTooltip text={card.info} />
                 </div>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">{typeof card.value === 'number' ? card.value.toLocaleString() : card.value}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{card.label}</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{card.change}</p>
+                <p className="font-mono text-[31px] font-medium text-ink">{typeof card.value === 'number' ? card.value.toLocaleString() : card.value}</p>
+                <p className="text-[12px] uppercase tracking-[0.08em] text-ink-muted mt-0.5">{card.label}</p>
+                <p className="font-mono text-[12px] text-ink-muted mt-1">{card.change}</p>
               </div>
             ))}
           </div>
 
           {/* User Growth Chart */}
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+          <div className="rounded-card border border-line bg-surface p-5 shadow-card">
             <div className="flex items-start justify-between mb-6">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('admin.overview.userGrowth', 'User Growth')}</h3>
+                  <h3 className="text-[16px] font-medium text-ink">{t('admin.overview.userGrowth', 'User Growth')}</h3>
                   <InfoTooltip text={t('admin.overview.info.userGrowth', 'Cumulative total users (blue) and new registrations per day (green) over the last 30 days.')} />
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{t('admin.overview.last30Days', 'Last 30 days')}</p>
+                <p className="text-[13px] text-ink-muted mt-0.5">{t('admin.overview.last30Days', 'Last 30 days')}</p>
               </div>
-              <div className="flex items-center gap-4 text-xs">
+              <div className="flex items-center gap-4 text-[12px]">
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-1.5 bg-blue-500 rounded-full"></div>
-                  <span className="text-gray-500 dark:text-gray-400">{t('admin.overview.totalUsers', 'Total Users')}</span>
+                  <div className="w-3 h-1.5 rounded-full" style={{ backgroundColor: chart.area }}></div>
+                  <span className="text-ink-muted">{t('admin.overview.totalUsers', 'Total Users')}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-1.5 bg-green-500 rounded-full"></div>
-                  <span className="text-gray-500 dark:text-gray-400">{t('admin.overview.newUsers', 'New Users')}</span>
+                  <div className="w-3 h-1.5 rounded-full" style={{ backgroundColor: chart.area2 }}></div>
+                  <span className="text-ink-muted">{t('admin.overview.newUsers', 'New Users')}</span>
                 </div>
               </div>
             </div>
@@ -244,23 +273,23 @@ export default function AdminOverviewPage() {
                 <AreaChart data={growthTimeline} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gradientUsers" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                      <stop offset="0%" stopColor={chart.area} stopOpacity={0.18} />
+                      <stop offset="100%" stopColor={chart.area} stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="gradientNew" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#22c55e" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
+                      <stop offset="0%" stopColor={chart.area2} stopOpacity={0.18} />
+                      <stop offset="100%" stopColor={chart.area2} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-                  <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                  <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11, fill: chart.tick }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: chart.tick }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '0.75rem', fontSize: '13px', color: '#fff' }}
+                    contentStyle={chart.tooltip}
                     labelFormatter={(label) => `${t('admin.overview.date', 'Date')}: ${label}`}
                   />
-                  <Area type="monotone" dataKey="users" stroke="#3b82f6" strokeWidth={2.5} fill="url(#gradientUsers)" name={t('admin.overview.totalUsers', 'Total Users')} />
-                  <Area type="monotone" dataKey="newUsers" stroke="#22c55e" strokeWidth={2} fill="url(#gradientNew)" name={t('admin.overview.newUsers', 'New Users')} />
+                  <Area type="monotone" dataKey="users" stroke={chart.area} strokeWidth={2.5} fill="url(#gradientUsers)" name={t('admin.overview.totalUsers', 'Total Users')} />
+                  <Area type="monotone" dataKey="newUsers" stroke={chart.area2} strokeWidth={2} fill="url(#gradientNew)" name={t('admin.overview.newUsers', 'New Users')} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -269,7 +298,7 @@ export default function AdminOverviewPage() {
           {/* Comments Activity + Donut Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Comments Activity */}
-            <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+            <div className="lg:col-span-2 rounded-card border border-line bg-surface p-5 shadow-card">
               <SectionHeader
                 title={t('admin.overview.commentsActivity', 'Comments Activity')}
                 subtitle={t('admin.overview.last30Days', 'Last 30 days')}
@@ -278,14 +307,14 @@ export default function AdminOverviewPage() {
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={commentsTimeline} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-                    <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                    <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11, fill: chart.tick }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: chart.tick }} axisLine={false} tickLine={false} allowDecimals={false} />
                     <Tooltip
-                      contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '0.75rem', fontSize: '13px', color: '#fff' }}
+                      contentStyle={chart.tooltip}
                       labelFormatter={(label) => `${t('admin.overview.date', 'Date')}: ${label}`}
                     />
-                    <Bar dataKey="comments" fill="#f59e0b" radius={[4, 4, 0, 0]} name={t('admin.overview.comments', 'Comments')} />
+                    <Bar dataKey="comments" fill={chart.bar} radius={[4, 4, 0, 0]} name={t('admin.overview.comments', 'Comments')} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -294,9 +323,9 @@ export default function AdminOverviewPage() {
             {/* Donut Charts */}
             <div className="space-y-6">
               {/* Platform Split */}
-              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+              <div className="rounded-card border border-line bg-surface p-5 shadow-card">
                 <div className="flex items-center gap-2 mb-3">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{t('admin.overview.platformSplit', 'Platform Split')}</h3>
+                  <h3 className="text-[14px] font-medium text-ink">{t('admin.overview.platformSplit', 'Platform Split')}</h3>
                   <InfoTooltip text={t('admin.overview.info.platformSplit', 'Distribution of connected pages across Facebook, Instagram, TikTok Organic and TikTok Ads. Shows which platform users prefer.')} />
                 </div>
                 {pieData.length > 0 ? (
@@ -318,23 +347,23 @@ export default function AdminOverviewPage() {
                           <div key={d.name}>
                             <div className="flex items-center gap-1.5">
                               <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }}></div>
-                              <span className="text-xs text-gray-500 dark:text-gray-400">{d.name}</span>
+                              <span className="text-[12px] text-ink-muted">{d.name}</span>
                             </div>
-                            <p className="text-xs font-bold text-gray-900 dark:text-white ml-4">{d.value} <span className="font-normal text-gray-400">({pct}%)</span></p>
+                            <p className="font-mono text-[12px] font-medium text-ink ml-4">{d.value} <span className="font-normal text-ink-muted">({pct}%)</span></p>
                           </div>
                         );
                       })}
                     </div>
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-400 py-4">{t('admin.overview.noPages', 'No pages connected')}</p>
+                  <p className="text-[12px] text-ink-muted py-4">{t('admin.overview.noPages', 'No pages connected')}</p>
                 )}
               </div>
 
               {/* User Status */}
-              <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+              <div className="rounded-card border border-line bg-surface p-5 shadow-card">
                 <div className="flex items-center gap-2 mb-3">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{t('admin.overview.userStatus', 'User Status')}</h3>
+                  <h3 className="text-[14px] font-medium text-ink">{t('admin.overview.userStatus', 'User Status')}</h3>
                   <InfoTooltip text={t('admin.overview.info.userStatus', 'Ratio of users who have connected at least one page (active) vs users who have not connected any page yet (inactive).')} />
                 </div>
                 {userStatusData.length > 0 ? (
@@ -356,16 +385,16 @@ export default function AdminOverviewPage() {
                           <div key={d.name}>
                             <div className="flex items-center gap-1.5">
                               <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }}></div>
-                              <span className="text-xs text-gray-500 dark:text-gray-400">{d.name}</span>
+                              <span className="text-[12px] text-ink-muted">{d.name}</span>
                             </div>
-                            <p className="text-xs font-bold text-gray-900 dark:text-white ml-4">{d.value} <span className="font-normal text-gray-400">({pct}%)</span></p>
+                            <p className="font-mono text-[12px] font-medium text-ink ml-4">{d.value} <span className="font-normal text-ink-muted">({pct}%)</span></p>
                           </div>
                         );
                       })}
                     </div>
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-400 py-4">{t('admin.overview.noUsers', 'No users yet')}</p>
+                  <p className="text-[12px] text-ink-muted py-4">{t('admin.overview.noUsers', 'No users yet')}</p>
                 )}
               </div>
             </div>
@@ -374,19 +403,18 @@ export default function AdminOverviewPage() {
           {/* Quick Stats + Recent Registrations */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Quick Stats */}
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t('admin.overview.quickStats', 'Quick Stats')}</h3>
+            <div className="rounded-card border border-line bg-surface p-5 shadow-card">
+              <h3 className="text-[16px] font-medium text-ink mb-4">{t('admin.overview.quickStats', 'Quick Stats')}</h3>
               <div className="grid grid-cols-2 gap-3">
                 {quickStats.map((stat) => {
                   const cls = colorMap[stat.color];
-                  const [fromTo, , , , , textCls] = cls.split(' ');
                   return (
-                    <div key={stat.label} className={`p-4 bg-gradient-to-br ${cls.split(' ').slice(0, 4).join(' ')} rounded-xl border ${cls.split(' ')[4]}`}>
+                    <div key={stat.label} className={`p-4 rounded-card border ${cls.tile}`}>
                       <div className="flex items-center justify-between mb-1">
-                        <p className={`text-2xl font-bold ${cls.split(' ').slice(5).join(' ')}`}>{stat.value}</p>
+                        <p className={`font-mono text-[25px] font-medium ${cls.value}`}>{stat.value}</p>
                         <InfoTooltip text={stat.info} />
                       </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</p>
+                      <p className="text-[12px] text-ink-muted">{stat.label}</p>
                     </div>
                   );
                 })}
@@ -394,31 +422,31 @@ export default function AdminOverviewPage() {
             </div>
 
             {/* Recent Registrations */}
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
+            <div className="rounded-card border border-line bg-surface p-5 shadow-card">
               <div className="flex items-center gap-2 mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('admin.overview.recentRegistrations', 'Recent Registrations')}</h3>
+                <h3 className="text-[16px] font-medium text-ink">{t('admin.overview.recentRegistrations', 'Recent Registrations')}</h3>
                 <InfoTooltip text={t('admin.overview.info.recentRegistrations', 'The 5 most recently registered users. Click any row to view their full profile.')} />
               </div>
               {recentUsers.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">{t('admin.overview.noUsers', 'No users yet')}</p>
+                <p className="text-[13px] text-ink-muted">{t('admin.overview.noUsers', 'No users yet')}</p>
               ) : (
                 <div className="space-y-2">
                   {recentUsers.map((user) => (
                     <a
                       key={user.id}
                       href={`/admin/users/${user.id}`}
-                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-card hover:bg-surface-2 transition-colors"
                     >
-                      <div className="w-9 h-9 bg-gradient-to-br from-gray-400 to-gray-500 dark:from-gray-500 dark:to-gray-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                      <div className="w-9 h-9 rounded-full border border-accent/20 bg-accent-wash flex items-center justify-center font-mono text-[13px] font-medium text-accent">
                         {(user.name || user.email).charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.name || user.email.split('@')[0]}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+                        <p className="text-[14px] font-medium text-ink truncate">{user.name || user.email.split('@')[0]}</p>
+                        <p className="font-mono text-[11px] text-ink-muted truncate">{user.email}</p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-xs text-gray-400 dark:text-gray-500">{new Date(user.createdAt).toLocaleDateString()}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{user._count.connectedPages} {user._count.connectedPages === 1 ? t('admin.overview.page', 'page') : t('admin.overview.pages', 'pages')}</p>
+                        <p className="font-mono text-[11px] text-ink-muted">{new Date(user.createdAt).toLocaleDateString()}</p>
+                        <p className="text-[12px] text-ink-muted">{user._count.connectedPages} {user._count.connectedPages === 1 ? t('admin.overview.page', 'page') : t('admin.overview.pages', 'pages')}</p>
                       </div>
                     </a>
                   ))}

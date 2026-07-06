@@ -11,6 +11,7 @@ import { PasswordInput } from '@/components/ui/PasswordInput';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { FormField } from '@/components/ui/FormField';
+import { Divider } from '@/components/ui/Divider';
 import { authFunctions } from '@/lib/authFunctions';
 
 interface PasswordStrength {
@@ -28,7 +29,6 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordStrength, setPasswordStrength] = useState<PasswordStrength>({ score: 0, label: '', color: '' });
-  const [mounted, setMounted] = useState(false);
   const [errors, setErrors] = useState<{
     name?: string;
     email?: string;
@@ -38,10 +38,6 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [alertMessage, setAlertMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -176,42 +172,44 @@ export default function RegisterPage() {
     }
   };
 
-  if (!mounted) {
-    return null;
-  }
-
   return (
     <AuthLayout>
-      <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-lg overflow-hidden max-w-md w-full">
-        {/* Header Section - Minimal */}
-        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800">
-          {/* Step Indicator - Minimal */}
-          <div className="flex items-center gap-2 mb-3">
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
-              step === 1 
-                ? 'bg-blue-600 dark:bg-blue-500 text-white' 
-                : 'bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+      <div className="w-full rounded-card border border-line bg-surface shadow-card overflow-hidden">
+        {/* Header strip */}
+        <div className="px-8 pt-8">
+          {/* Step Indicator */}
+          <div className="flex items-center gap-2 mb-4">
+            <div className={`size-9 rounded-full border font-mono text-[13px] flex items-center justify-center transition-colors ${
+              step === 1
+                ? 'border-accent bg-accent-wash text-accent'
+                : 'border-accent bg-accent text-on-accent'
             }`}>
-              1
+              {step === 2 ? (
+                <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                '1'
+              )}
             </div>
-            <div className={`h-0.5 w-10 rounded-full transition-all ${
-              step === 2 ? 'bg-blue-600 dark:bg-blue-500' : 'bg-gray-200 dark:bg-gray-800'
+            <div className={`h-px w-10 transition-colors ${
+              step === 2 ? 'bg-accent' : 'bg-line-strong'
             }`}></div>
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
-              step === 2 
-                ? 'bg-blue-600 dark:bg-blue-500 text-white' 
-                : 'bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+            <div className={`size-9 rounded-full border font-mono text-[13px] flex items-center justify-center transition-colors ${
+              step === 2
+                ? 'border-accent bg-accent-wash text-accent'
+                : 'border-line-strong bg-surface text-ink-muted'
             }`}>
               2
             </div>
           </div>
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h1 className="font-display text-[25px] font-medium text-ink">
             {step === 1 ? t('auth.register.title') : t('auth.register.createPasswordTitle')}
           </h1>
         </div>
 
-        {/* Form Section - Compact */}
-        <div className="p-5">
+        {/* Body */}
+        <div className="px-8 py-6">
           {alertMessage && (
             <div className="mb-6">
               <Alert
@@ -259,30 +257,21 @@ export default function RegisterPage() {
               <Button
                 type="button"
                 onClick={handleNext}
-                className="w-full h-10 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                className="w-full"
               >
                 {t('auth.register.continue')}
               </Button>
 
               {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
                 <>
-                  <div className="relative my-1">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-gray-200 dark:border-gray-800"></div>
-                    </div>
-                    <div className="relative flex justify-center">
-                      <span className="px-2 text-xs bg-white dark:bg-gray-950 text-gray-500 dark:text-gray-400">
-                        {t('auth.login.orContinueWith')}
-                      </span>
-                    </div>
-                  </div>
+                  <Divider text={t('auth.login.orContinueWith')} />
 
                   <button
                     type="button"
                     onClick={() => handleOAuthSignIn('google')}
-                    className="flex items-center justify-center gap-2 w-full h-10 px-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm font-medium text-gray-700 dark:text-gray-200"
+                    className="inline-flex w-full items-center justify-center gap-3 h-11 rounded-btn border border-line bg-surface text-[15px] font-medium text-ink hover:bg-surface-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                   >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <svg className="size-5" viewBox="0 0 24 24">
                       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                       <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                       <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
@@ -316,24 +305,24 @@ export default function RegisterPage() {
               {/* Password Strength Progress Bar - Keep this */}
               {password && (
                 <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs" aria-live="polite">
-                    <span className="text-gray-500 dark:text-gray-400">{t('auth.register.passwordStrengthLabel')}</span>
-                    <span className={`font-medium ${
-                      passwordStrength.color === 'red' ? 'text-red-600 dark:text-red-400' :
-                      passwordStrength.color === 'orange' ? 'text-orange-600 dark:text-orange-400' :
-                      passwordStrength.color === 'yellow' ? 'text-yellow-600 dark:text-yellow-400' :
-                      'text-green-600 dark:text-green-400'
+                  <div className="flex items-center justify-between" aria-live="polite">
+                    <span className="text-[12px] text-ink-muted">{t('auth.register.passwordStrengthLabel')}</span>
+                    <span className={`font-mono text-[11px] uppercase tracking-[0.12em] ${
+                      passwordStrength.color === 'red' ? 'text-danger' :
+                      passwordStrength.color === 'orange' ? 'text-signal-text' :
+                      passwordStrength.color === 'yellow' ? 'text-signal-text' :
+                      'text-accent'
                     }`}>
                       {passwordStrength.label}
                     </span>
                   </div>
-                  <div className="h-1.5 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
-                    <div 
+                  <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                    <div
                       className={`h-full transition-all duration-300 ${
-                        passwordStrength.color === 'red' ? 'bg-red-500' :
-                        passwordStrength.color === 'orange' ? 'bg-orange-500' :
-                        passwordStrength.color === 'yellow' ? 'bg-yellow-500' :
-                        'bg-green-500'
+                        passwordStrength.color === 'red' ? 'bg-danger' :
+                        passwordStrength.color === 'orange' ? 'bg-signal' :
+                        passwordStrength.color === 'yellow' ? 'bg-signal' :
+                        'bg-accent'
                       }`}
                       style={{ width: `${(passwordStrength.score / 6) * 100}%` }}
                     ></div>
@@ -358,38 +347,38 @@ export default function RegisterPage() {
               {/* Terms Checkbox - Fixed visibility with custom checkmark */}
               <label className="flex items-start gap-2.5 cursor-pointer group">
                 <div className="relative mt-0.5 flex-shrink-0">
-                  <input 
-                    type="checkbox" 
-                    required 
+                  <input
+                    type="checkbox"
+                    required
                     checked={agreedToTerms}
                     onChange={(e) => setAgreedToTerms(e.target.checked)}
-                    className="w-5 h-5 rounded border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-900 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 checked:bg-blue-600 checked:border-blue-600 dark:checked:bg-blue-500 dark:checked:border-blue-500 appearance-none cursor-pointer transition-all" 
+                    className="size-4 appearance-none rounded-[4px] border border-line-strong bg-surface checked:bg-accent checked:border-accent transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                   />
                   {agreedToTerms && (
-                    <svg 
-                      className="absolute top-0 left-0 w-5 h-5 pointer-events-none"
-                      fill="none" 
-                      viewBox="0 0 24 24" 
-                      stroke="white" 
+                    <svg
+                      className="absolute top-0 left-0 size-4 pointer-events-none text-on-accent"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
                       strokeWidth="3"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                   )}
                 </div>
-                <span className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                <span className="text-[13px] text-ink-muted leading-relaxed">
                   {t('auth.register.agreeToTerms')}{' '}
-                  <Link 
-                    href="/terms" 
-                    className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                  <Link
+                    href="/terms"
+                    className="font-medium text-accent hover:text-accent-hover underline underline-offset-2 decoration-accent/30 hover:decoration-accent transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {t('auth.register.termsOfService')}
                   </Link>{' '}
                   {t('auth.register.and')}{' '}
-                  <Link 
-                    href="/privacy" 
-                    className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                  <Link
+                    href="/privacy"
+                    className="font-medium text-accent hover:text-accent-hover underline underline-offset-2 decoration-accent/30 hover:decoration-accent transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {t('auth.register.privacyPolicy')}
@@ -397,20 +386,20 @@ export default function RegisterPage() {
                 </span>
               </label>
 
-              {/* Navigation Buttons - Fixed sizes */}
+              {/* Navigation Buttons */}
               <div className="flex gap-2">
                 <Button
                   type="button"
                   variant="secondary"
                   onClick={handleBack}
-                  className="flex-1 h-10 px-0 py-0 text-sm font-medium"
+                  className="flex-1"
                 >
                   {t('auth.register.back')}
                 </Button>
-                <Button 
-                  type="submit" 
-                  isLoading={isLoading} 
-                  className="flex-1 h-10 text-sm font-semibold bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white transition-colors shadow-lg"
+                <Button
+                  type="submit"
+                  isLoading={isLoading}
+                  className="flex-1"
                 >
                   {isLoading ? t('auth.register.creatingAccount') : t('auth.register.createAccountButton')}
                 </Button>
@@ -418,19 +407,27 @@ export default function RegisterPage() {
             </form>
           )}
 
-          {/* Sign In Link - Compact */}
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-            <p className="text-center text-xs text-gray-600 dark:text-gray-400">
+          {/* Sign In Link */}
+          <div className="mt-6 pt-4 border-t border-line">
+            <p className="text-center text-[13px] text-ink-muted">
               {t('auth.register.haveAccount')}{' '}
-              <Link 
-                href="/login" 
-                className="text-blue-600 dark:text-blue-400 font-semibold hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+              <Link
+                href="/login"
+                className="font-medium text-accent hover:text-accent-hover underline underline-offset-2 decoration-accent/30 hover:decoration-accent transition-colors"
               >
                 {t('auth.register.signIn')}
               </Link>
             </p>
           </div>
         </div>
+      </div>
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+        {['chip1', 'chip2', 'chip3'].map((c) => (
+          <span key={c} className="inline-flex items-center gap-1.5 text-[12px] text-ink-muted">
+            <svg className="size-3.5 text-success shrink-0" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10l4 4 8-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            {t(`landing.priceReassure.${c}`)}
+          </span>
+        ))}
       </div>
     </AuthLayout>
   );

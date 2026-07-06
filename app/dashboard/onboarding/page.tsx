@@ -437,10 +437,10 @@ function OnboardingPage() {
   // Prevent hydration mismatch - wait for mount
   if (!mounted || status === 'loading' || (checkingPages && currentStep === 1)) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-violet-50 dark:from-gray-950 dark:via-black dark:to-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-canvas flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-gray-300 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-300">Loading...</p>
+          <div className="size-8 animate-spin rounded-full border-2 border-line border-t-accent mx-auto mb-4"></div>
+          <p className="text-[15px] text-ink-muted">Loading...</p>
         </div>
       </div>
     );
@@ -451,63 +451,59 @@ function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-violet-50 dark:from-gray-950 dark:via-black dark:to-gray-950 flex items-center justify-center p-4">
-      {/* Background decorations */}
-      <div className="absolute top-0 left-0 w-96 h-96 bg-blue-400/10 dark:bg-blue-500/5 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-violet-400/10 dark:bg-violet-500/5 rounded-full blur-3xl"></div>
-
+    <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
       <div className="relative w-full max-w-4xl">
         {/* Progress Steps Header */}
-        <div className="mb-12">
+        <div className="mb-12 ruled-paper pt-6">
           <div className="flex items-start justify-between relative max-w-xl mx-auto px-4">
             {steps.map((step, index) => (
               <div key={step.number} className="flex flex-col items-center flex-1 relative">
                 {/* Step circle */}
                 <div className="relative z-10">
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all duration-300 ${
+                    className={`size-9 rounded-full border font-mono text-[13px] font-bold flex items-center justify-center transition-colors ${
                       currentStep > step.number
-                        ? 'bg-green-500 text-white shadow-md'
+                        ? 'bg-success-wash text-success-text'
                         : currentStep === step.number
-                        ? 'bg-gradient-to-br from-blue-600 to-violet-600 text-white shadow-lg ring-2 ring-blue-500/50'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500'
+                        ? 'border-accent bg-accent-wash text-accent'
+                        : 'border-line-strong bg-surface text-ink-muted'
                     }`}
                   >
                     {currentStep > step.number ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                      <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     ) : (
                       <span>{step.number}</span>
                     )}
                   </div>
-                  
+
                   {/* Connecting line (behind the circle) */}
                   {index < steps.length - 1 && (
-                    <div className="absolute top-5 left-10 w-full h-0.5 -z-10" style={{ width: 'calc(100% - 2.5rem)' }}>
-                      <div className="absolute inset-0 bg-gray-200 dark:bg-gray-800"></div>
+                    <div className="absolute top-[18px] left-9 w-full h-px -z-10" style={{ width: 'calc(100% - 2.5rem)' }}>
+                      <div className="absolute inset-0 hairline-x"></div>
                       <div
-                        className={`absolute inset-0 bg-gradient-to-r from-blue-600 to-violet-600 transition-all duration-500 ease-out ${
+                        className={`absolute inset-0 bg-accent transition-all duration-500 ease-out ${
                           currentStep > step.number ? 'w-full' : currentStep === step.number ? 'w-1/2' : 'w-0'
                         }`}
                       ></div>
                     </div>
                   )}
                 </div>
-                
+
                 {/* Step labels */}
                 <div className="mt-3 text-center">
-                  <p className={`text-xs font-medium mb-0.5 ${
+                  <p className={`text-[12px] font-medium mb-0.5 ${
                     currentStep >= step.number
-                      ? 'text-gray-900 dark:text-white'
-                      : 'text-gray-400 dark:text-gray-500'
+                      ? 'text-ink'
+                      : 'text-ink-muted'
                   }`}>
                     {step.title}
                   </p>
                   <p className={`text-[10px] leading-tight ${
                     currentStep >= step.number
-                      ? 'text-gray-500 dark:text-gray-400'
-                      : 'text-gray-400 dark:text-gray-600'
+                      ? 'text-ink-muted'
+                      : 'text-ink-muted/60'
                   }`}>
                     {step.description}
                   </p>
@@ -518,68 +514,68 @@ function OnboardingPage() {
         </div>
 
         {/* Main Content Card */}
-        <div className="bg-white dark:bg-gray-950 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-900 overflow-hidden">
+        <div className="rounded-card border border-line bg-surface shadow-pop overflow-hidden">
           {/* Step 1: Welcome */}
           {currentStep === 1 && (
-            <div className="p-8 sm:p-12 text-center">
-              <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-violet-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl">
-                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            <div className="p-8 text-center">
+              <div className="size-14 rounded-card border border-line bg-accent-wash text-accent flex items-center justify-center mx-auto mb-6">
+                <svg className="size-6 stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                 </svg>
               </div>
-              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              <h1 className="font-display text-[25px] sm:text-[31px] font-medium leading-[1.1] tracking-[-0.01em] text-ink mb-4">
                 {t('onboarding.welcome.title') || 'Welcome to Comment Closer! 🎉'}
               </h1>
-              <p className="text-lg text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
+              <p className="text-[16px] leading-[1.65] text-ink-muted mb-8 max-w-2xl mx-auto">
                 {t('onboarding.welcome.description') || 'Let\'s set up your account to start managing comments automatically with AI.'}
               </p>
 
               {/* Benefits Grid */}
               <div className="grid sm:grid-cols-3 gap-4 mb-8 max-w-3xl mx-auto">
-                <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-xl border border-blue-200 dark:border-blue-900">
-                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mx-auto mb-3">
-                    <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                <div className="rounded-card border border-line bg-surface p-4 shadow-card">
+                  <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center mx-auto mb-3">
+                    <svg className="size-5 stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                   </div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">{t('onboarding.welcome.benefits.fast') || 'Lightning Fast'}</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">{t('onboarding.welcome.benefits.fastDesc') || 'AI-powered responses in seconds'}</p>
+                  <p className="text-[14px] font-medium text-ink mb-1">{t('onboarding.welcome.benefits.fast') || 'Lightning Fast'}</p>
+                  <p className="text-[12px] text-ink-muted">{t('onboarding.welcome.benefits.fastDesc') || 'AI-powered responses in seconds'}</p>
                 </div>
 
-                <div className="p-4 bg-violet-50 dark:bg-violet-950 rounded-xl border border-violet-200 dark:border-violet-900">
-                  <div className="w-12 h-12 bg-violet-100 dark:bg-violet-900 rounded-lg flex items-center justify-center mx-auto mb-3">
-                    <svg className="w-6 h-6 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                <div className="rounded-card border border-line bg-surface p-4 shadow-card">
+                  <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center mx-auto mb-3">
+                    <svg className="size-5 stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                     </svg>
                   </div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">{t('onboarding.welcome.benefits.smart') || 'Smart & Safe'}</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">{t('onboarding.welcome.benefits.smartDesc') || 'Brand-safe AI responses'}</p>
+                  <p className="text-[14px] font-medium text-ink mb-1">{t('onboarding.welcome.benefits.smart') || 'Smart & Safe'}</p>
+                  <p className="text-[12px] text-ink-muted">{t('onboarding.welcome.benefits.smartDesc') || 'Brand-safe AI responses'}</p>
                 </div>
 
-                <div className="p-4 bg-green-50 dark:bg-green-950 rounded-xl border border-green-200 dark:border-green-900">
-                  <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mx-auto mb-3">
-                    <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <div className="rounded-card border border-line bg-surface p-4 shadow-card">
+                  <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center mx-auto mb-3">
+                    <svg className="size-5 stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">{t('onboarding.welcome.benefits.save') || 'Save Time'}</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">{t('onboarding.welcome.benefits.saveDesc') || 'Automate comment management'}</p>
+                  <p className="text-[14px] font-medium text-ink mb-1">{t('onboarding.welcome.benefits.save') || 'Save Time'}</p>
+                  <p className="text-[12px] text-ink-muted">{t('onboarding.welcome.benefits.saveDesc') || 'Automate comment management'}</p>
                 </div>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
                   onClick={handleNext}
-                  className="inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  className="group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-accent text-on-accent text-[15px] font-medium hover:bg-accent-hover transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                 >
                   {t('onboarding.welcome.getStarted') || 'Get Started'}
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  <svg className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
                 </button>
                 <button
                   onClick={handleSkip}
-                  className="px-8 py-3.5 text-gray-600 dark:text-gray-300 font-semibold hover:bg-gray-100 dark:hover:bg-gray-900 rounded-xl transition-all"
+                  className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn text-[15px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                 >
                   {t('onboarding.welcome.skipForNow') || 'Skip for Now'}
                 </button>
@@ -589,16 +585,16 @@ function OnboardingPage() {
 
           {/* Step 2: Connect Facebook & Instagram */}
           {currentStep === 2 && (
-            <div className="p-8 sm:p-12">
+            <div className="p-8">
               <div className="text-center mb-6">
-                <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
+                <h2 className="font-display text-[25px] font-medium leading-[1.1] text-ink">
                   {t('onboarding.facebook.title') || 'Connect Your Facebook & Instagram Pages'}
                 </h2>
               </div>
 
               {error && (
-                <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                  <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
+                <div className="mb-6 rounded-card border border-danger/30 bg-danger-wash px-4 py-3">
+                  <p className="text-danger text-[14px] leading-relaxed">{error}</p>
                 </div>
               )}
 
@@ -607,19 +603,19 @@ function OnboardingPage() {
                 <div className="mb-8 text-center">
                   <button
                     onClick={handleFacebookLogin}
-                    className="inline-flex items-center gap-3 px-6 py-3.5 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl"
+                    className="inline-flex items-center justify-center gap-3 h-11 px-5 rounded-btn bg-accent text-on-accent text-[15px] font-medium hover:bg-accent-hover transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                   >
                     <div className="flex items-center gap-2">
-                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                      <svg className="size-5" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                       </svg>
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
                       </svg>
                     </div>
                     {t('onboarding.facebook.connectButton') || 'Connect Facebook & Instagram'}
                   </button>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                  <p className="text-[13px] text-ink-muted mt-3">
                     {t('onboarding.facebook.security') || 'We\'ll only access your pages and comments. Your data is secure.'}
                   </p>
                 </div>
@@ -628,32 +624,32 @@ function OnboardingPage() {
               {/* Facebook Pages Selection */}
               {facebookConnected && (
                 <div className="space-y-3 mb-8">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
+                  <p className="text-[13px] font-medium text-ink mb-4">
                     {t('onboarding.facebook.selectPages') || 'Select Pages to Connect'} ({selectedFbPages.length} {t('onboarding.facebook.selected') || 'selected'})
                   </p>
                   
                   {fbPages.length === 0 && !error ? (
-                    <div className="text-center py-6 bg-gray-50 dark:bg-gray-900 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700">
+                    <div className="text-center py-6 rounded-card bg-surface-2 border border-dashed border-line-strong">
                       <div className="mb-4">
-                        <svg className="w-16 h-16 text-blue-500 dark:text-blue-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 1010 10A10 10 0 0012 2z" />
+                        <svg className="size-12 stroke-[1.5] text-ink-muted mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 1010 10A10 10 0 0012 2z" />
                         </svg>
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                        <h3 className="font-display text-[20px] font-extrabold text-ink mb-1">
                           {t('onboarding.facebook.noPages.title') || 'No Pages Found'}
                         </h3>
-                        <p className="text-gray-600 dark:text-gray-400">
+                        <p className="text-[15px] text-ink-muted">
                           {t('onboarding.facebook.noPages.description') || "Your Meta account is connected, but we can't see any Facebook Pages or Instagram accounts yet."}
                         </p>
                       </div>
 
-                      <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-lg p-3.5 mb-4 text-left max-w-2xl mx-auto">
-                        <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                      <div className="rounded-card border border-line bg-surface p-3.5 mb-4 text-left max-w-2xl mx-auto shadow-card">
+                        <p className="text-[14px] font-medium text-ink mb-1">
                           {t('onboarding.facebook.noPages.helperTitle') || 'Helpful tip about Page & account access'}
                         </p>
-                        <p className="text-sm text-blue-900/80 dark:text-blue-100/80 mb-2">
+                        <p className="text-[14px] text-ink-muted mb-2">
                           {t('onboarding.facebook.noPages.helperBody') || "Most of the time this happens because:"}
                         </p>
-                        <ol className="text-sm text-blue-900/80 dark:text-blue-100/80 space-y-1.5 list-decimal list-inside mb-2">
+                        <ol className="text-[14px] text-ink-muted space-y-1.5 list-decimal list-inside mb-2">
                           <li>
                             {t('onboarding.facebook.noPages.helperStep1') || 'There are no Facebook Pages or Instagram Business accounts on this Meta account.'}
                           </li>
@@ -661,7 +657,7 @@ function OnboardingPage() {
                             {t('onboarding.facebook.noPages.helperStep2') || 'The right permissions were not granted during Facebook login (for example, "Opt in to all current and future Pages" was not selected or specific Pages/accounts were not selected).'}
                           </li>
                         </ol>
-                        <p className="text-xs text-blue-900/70 dark:text-blue-200/80">
+                        <p className="text-[13px] text-ink-muted">
                           {t('onboarding.facebook.noPages.helperNote') || "Meta only shares Facebook Pages and Instagram accounts that you've explicitly granted access to this app."}
                         </p>
                       </div>
@@ -669,7 +665,7 @@ function OnboardingPage() {
                       <div className="flex flex-wrap items-center justify-center gap-3">
                         <button
                           onClick={handleFacebookLogin}
-                          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 text-white font-semibold rounded-lg transition-all shadow-md hover:shadow-lg"
+                          className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-accent text-on-accent text-[15px] font-medium hover:bg-accent-hover transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                         >
                           <Image
                             src="/meta_icon.png"
@@ -682,23 +678,23 @@ function OnboardingPage() {
                         <button
                           onClick={() => setShowDisconnectModal(true)}
                           disabled={disconnectingAccount}
-                          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-900/5 dark:bg-gray-100/5 text-gray-700 dark:text-gray-200 font-medium rounded-lg text-sm hover:bg-gray-900/10 dark:hover:bg-gray-100/10 disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn border border-danger/40 text-danger text-[15px] font-medium hover:bg-danger-wash transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                         >
                           {t('onboarding.facebook.noPages.disconnectButton') || 'Disconnect this Meta account'}
                         </button>
                       </div>
                     </div>
                   ) : fbPages.length === 0 && error ? (
-                    <div className="text-center py-8 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
-                      <p className="text-red-800 dark:text-red-200 mb-4">{error}</p>
+                    <div className="text-center py-8 px-6 rounded-card border border-danger/30 bg-danger-wash">
+                      <p className="text-danger text-[14px] leading-relaxed mb-4">{error}</p>
                         <div className="space-y-2">
                           <button
                             onClick={handleFacebookLogin}
-                            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold"
+                            className="inline-flex w-full items-center justify-center h-11 px-5 rounded-btn bg-accent text-on-accent text-[15px] font-medium hover:bg-accent-hover transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                           >
                             Reconnect Facebook & Grant Page Access
                           </button>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                          <p className="text-[13px] text-ink-muted">
                             When reconnecting, make sure to select "Opt in to all current and future Pages" or select all your pages manually.
                           </p>
                         </div>
@@ -713,38 +709,38 @@ function OnboardingPage() {
                           <div
                             key={page.id}
                             onClick={() => toggleFbPage(page.id)}
-                            className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
+                            className={`flex items-center justify-between gap-3 rounded-card border p-3 transition-colors ${
                               isSelected
-                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950 shadow-md cursor-default'
-                                : 'border-gray-200 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-800 hover:shadow-md cursor-pointer'
+                                ? 'border-accent bg-accent-wash cursor-default'
+                                : 'border-line hover:border-accent/40 cursor-pointer'
                             }`}
                           >
-                            <div className="flex items-center gap-4">
-                              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
-                                <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <div className="flex items-center gap-3">
+                              <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center">
+                                <svg className="size-5" fill="currentColor" viewBox="0 0 24 24">
                                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                                 </svg>
                               </div>
                               <div>
-                                <p className="font-semibold text-gray-900 dark:text-white">{page.name}</p>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                <p className="text-[14px] font-medium text-ink">{page.name}</p>
+                                <p className="text-[13px] text-ink-muted">
                                   Click to connect
                                 </p>
                               </div>
                             </div>
                             <div className="flex items-center gap-3">
                               {connecting === page.id && (
-                                <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                <div className="size-4 animate-spin rounded-full border-2 border-line border-t-accent"></div>
                               )}
                               <div
-                                className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                                className={`size-5 rounded-full border flex items-center justify-center transition-colors ${
                                   isSelected
-                                    ? 'border-blue-500 bg-blue-500'
-                                    : 'border-gray-300 dark:border-gray-700'
+                                    ? 'border-accent bg-accent'
+                                    : 'border-line-strong'
                                 }`}
                               >
                                 {isSelected && (
-                                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <svg className="size-3.5 text-on-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                   </svg>
                                 )}
@@ -760,28 +756,28 @@ function OnboardingPage() {
               <div className="flex flex-col sm:flex-row gap-3 justify-between">
                 <button
                   onClick={() => setCurrentStep(currentStep - 1)}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 text-gray-600 dark:text-gray-300 font-semibold hover:bg-gray-100 dark:hover:bg-gray-900 rounded-xl transition-all"
+                  className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-btn text-[15px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
                   </svg>
                   {t('onboarding.navigation.back') || 'Back'}
                 </button>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setCurrentStep(3)}
-                    className="px-6 py-3 text-gray-600 dark:text-gray-300 font-semibold hover:bg-gray-100 dark:hover:bg-gray-900 rounded-xl transition-all"
+                    className="inline-flex items-center justify-center h-10 px-4 rounded-btn text-[15px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                   >
                     {t('onboarding.navigation.skip') || 'Skip'}
                   </button>
                   <button
                     onClick={handleNext}
                     disabled={!facebookConnected || selectedFbPages.length === 0}
-                    className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-accent text-on-accent text-[15px] font-medium hover:bg-accent-hover transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                   >
                     {t('onboarding.navigation.continue') || 'Continue'}
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    <svg className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
                   </button>
                 </div>
@@ -791,51 +787,51 @@ function OnboardingPage() {
 
           {/* Step 3: Connect TikTok (optional) */}
           {currentStep === 3 && (
-            <div className="p-8 sm:p-12">
+            <div className="p-8">
               <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <svg className="w-9 h-9 text-white" viewBox="0 0 24 24" fill="currentColor">
+                <div className="size-14 rounded-card bg-[#0F0F0F] text-white dark:bg-white dark:text-[#0F0F0F] flex items-center justify-center mx-auto mb-4">
+                  <svg className="size-6" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/>
                   </svg>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                  Connect TikTok <span className="text-sm font-normal text-gray-400 ml-1">(Optional)</span>
+                <h2 className="font-display text-[25px] font-medium leading-[1.1] text-ink mb-2">
+                  Connect TikTok <span className="text-[13px] font-sans font-normal text-ink-muted ml-1">(Optional)</span>
                 </h2>
-                <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto text-sm">
+                <p className="text-ink-muted max-w-md mx-auto text-[14px]">
                   Connect your TikTok account to manage and auto-reply to comments on your organic videos.
                 </p>
               </div>
 
               {error && (
-                <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                  <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
+                <div className="mb-6 rounded-card border border-danger/30 bg-danger-wash px-4 py-3">
+                  <p className="text-danger text-[14px] leading-relaxed">{error}</p>
                 </div>
               )}
 
               {/* TikTok Organic */}
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-3 max-w-sm mx-auto">
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">TikTok — Organic</h3>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">Videos on your profile</span>
+                  <h3 className="text-[13px] font-medium text-ink">TikTok — Organic</h3>
+                  <span className="text-[12px] text-ink-muted">Videos on your profile</span>
                 </div>
                 {tiktokConnected && tiktokAccounts.length > 0 ? (
-                  <div className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-gray-200 dark:border-gray-800 max-w-sm mx-auto shadow-sm">
+                  <div className="rounded-card border border-line bg-surface p-4 max-w-sm mx-auto shadow-card">
                     {tiktokAccounts.map((account) => (
-                      <div key={account.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-700">
-                        <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center flex-shrink-0">
+                      <div key={account.id} className="flex items-center gap-3 p-3 rounded-card bg-surface-2 border border-line">
+                        <div className="size-10 bg-[#0F0F0F] rounded-btn flex items-center justify-center shrink-0">
                           {account.profileImageUrl ? (
-                            <img src={account.profileImageUrl} alt={account.pageName} className="w-10 h-10 rounded-lg object-cover" />
+                            <img src={account.profileImageUrl} alt={account.pageName} className="size-10 rounded-btn object-cover" />
                           ) : (
-                            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <svg className="size-5 text-white" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/>
                             </svg>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{account.pageName}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">TikTok Organic</p>
+                          <p className="text-[14px] font-medium text-ink truncate">{account.pageName}</p>
+                          <p className="text-[12px] text-ink-muted">TikTok Organic</p>
                         </div>
-                        <div className="px-2.5 py-1 bg-green-500/10 text-green-700 dark:text-green-400 text-xs font-medium rounded-full border border-green-200 dark:border-green-800">
+                        <div className="inline-flex items-center rounded-[6px] px-2 py-0.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] bg-accent-wash text-accent">
                           Connected
                         </div>
                       </div>
@@ -845,9 +841,9 @@ function OnboardingPage() {
                   <div className="text-center">
                     <a
                       href="/api/tiktok/connect?return_to=onboarding"
-                      className="inline-flex items-center gap-3 px-6 py-3 bg-black hover:bg-gray-900 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl"
+                      className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-[#0F0F0F] text-white border border-line-strong text-[15px] font-medium hover:opacity-90 dark:bg-white dark:text-[#0F0F0F] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                     >
-                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                      <svg className="size-4" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/>
                       </svg>
                       Connect TikTok Organic
@@ -858,35 +854,35 @@ function OnboardingPage() {
 
               {/* Divider */}
               <div className="flex items-center gap-3 max-w-sm mx-auto mb-6">
-                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
-                <span className="text-xs text-gray-400 dark:text-gray-600">or</span>
-                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
+                <div className="flex-1 h-px bg-line" />
+                <span className="text-[12px] text-ink-muted">or</span>
+                <div className="flex-1 h-px bg-line" />
               </div>
 
               {/* TikTok Ads */}
               <div className="mb-8">
                 <div className="flex items-center gap-2 mb-3 max-w-sm mx-auto">
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">TikTok — Ads</h3>
-                  <span className="text-xs px-1.5 py-0.5 bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 rounded-full border border-purple-200 dark:border-purple-800">Paid campaigns</span>
+                  <h3 className="text-[13px] font-medium text-ink">TikTok — Ads</h3>
+                  <span className="inline-flex items-center rounded-[6px] px-2 py-0.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] bg-surface-2 text-ink-muted border border-line">Paid campaigns</span>
                 </div>
                 {loadingTiktokAds ? (
                   <div className="flex justify-center py-4">
-                    <div className="w-6 h-6 border-2 border-gray-300 dark:border-gray-700 border-t-black rounded-full animate-spin" />
+                    <div className="size-6 animate-spin rounded-full border-2 border-line border-t-accent" />
                   </div>
                 ) : tiktokAdsAccounts.length > 0 ? (
-                  <div className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-gray-200 dark:border-gray-800 max-w-sm mx-auto shadow-sm space-y-2">
+                  <div className="rounded-card border border-line bg-surface p-4 max-w-sm mx-auto shadow-card space-y-2">
                     {tiktokAdsAccounts.map((account) => (
-                      <div key={account.id} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-700">
-                        <div className="w-10 h-10 bg-gradient-to-br from-gray-800 to-black rounded-lg flex items-center justify-center flex-shrink-0">
-                          <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                      <div key={account.id} className="flex items-center gap-3 p-3 rounded-card bg-surface-2 border border-line">
+                        <div className="size-10 bg-[#0F0F0F] rounded-btn flex items-center justify-center shrink-0">
+                          <svg className="size-5 text-white" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/>
                           </svg>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{account.pageName}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">TikTok Ads</p>
+                          <p className="text-[14px] font-medium text-ink truncate">{account.pageName}</p>
+                          <p className="text-[12px] text-ink-muted">TikTok Ads</p>
                         </div>
-                        <div className="px-2.5 py-1 bg-green-500/10 text-green-700 dark:text-green-400 text-xs font-medium rounded-full border border-green-200 dark:border-green-800">
+                        <div className="inline-flex items-center rounded-[6px] px-2 py-0.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] bg-accent-wash text-accent">
                           Connected
                         </div>
                       </div>
@@ -896,9 +892,9 @@ function OnboardingPage() {
                   <div className="text-center">
                     <a
                       href="/api/tiktok-ads/connect?return_to=onboarding"
-                      className="inline-flex items-center gap-3 px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl"
+                      className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-[#0F0F0F] text-white border border-line-strong text-[15px] font-medium hover:opacity-90 dark:bg-white dark:text-[#0F0F0F] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                     >
-                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                      <svg className="size-4" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/>
                       </svg>
                       Connect TikTok Ads
@@ -907,17 +903,17 @@ function OnboardingPage() {
                 )}
               </div>
 
-              <p className="text-xs text-gray-500 dark:text-gray-400 text-center mb-8">
+              <p className="text-[13px] text-ink-muted text-center mb-8">
                 You can always connect TikTok later from Settings.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-between">
                 <button
                   onClick={() => setCurrentStep(2)}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 text-gray-600 dark:text-gray-300 font-semibold hover:bg-gray-100 dark:hover:bg-gray-900 rounded-xl transition-all"
+                  className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-btn text-[15px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
                   </svg>
                   Back
                 </button>
@@ -925,18 +921,18 @@ function OnboardingPage() {
                   {!tiktokConnected && (
                     <button
                       onClick={() => setCurrentStep(4)}
-                      className="px-6 py-3 text-gray-600 dark:text-gray-300 font-semibold hover:bg-gray-100 dark:hover:bg-gray-900 rounded-xl transition-all"
+                      className="inline-flex items-center justify-center h-10 px-4 rounded-btn text-[15px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                     >
                       Skip
                     </button>
                   )}
                   <button
                     onClick={() => setCurrentStep(4)}
-                    className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl"
+                    className="group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-accent text-on-accent text-[15px] font-medium hover:bg-accent-hover transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                   >
                     Continue
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    <svg className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
                   </button>
                 </div>
@@ -946,19 +942,16 @@ function OnboardingPage() {
 
           {/* Step 4: Success/Complete */}
           {currentStep === 4 && (
-            <div className="p-6 sm:p-8 text-center">
-              <div className="relative w-16 h-16 mx-auto mb-6">
-                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 opacity-10"></div>
-                <div className="absolute inset-1 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-md">
-                  <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
+            <div className="p-8 text-center">
+              <div className="size-12 rounded-full bg-accent-wash text-accent flex items-center justify-center mx-auto mb-6">
+                <svg className="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
               </div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+              <h2 className="font-display text-[25px] font-medium leading-[1.1] text-ink mb-3">
                 {t('onboarding.success.title') || 'You\'re All Set!'}
               </h2>
-              <p className="text-base text-gray-600 dark:text-gray-300 mb-6 max-w-xl mx-auto">
+              <p className="text-[15px] text-ink-muted mb-6 max-w-xl mx-auto">
                 {tiktokConnected
                   ? 'Your Meta and TikTok accounts are connected. Start managing comments with AI!'
                   : t('onboarding.success.description') || 'Your Facebook and Instagram pages are connected. Start managing comments with AI!'}
@@ -966,17 +959,17 @@ function OnboardingPage() {
 
               {/* Connected Pages List */}
               {(connectedPages.length > 0 || tiktokAccounts.length > 0) && (
-                <div className="bg-white dark:bg-gray-900 rounded-xl p-5 mb-6 border border-gray-200 dark:border-gray-800 max-w-xl mx-auto shadow-sm">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-4 text-sm">{t('onboarding.success.connectedAccounts') || 'Connected Pages'}</h3>
+                <div className="rounded-card border border-line bg-surface p-5 mb-6 max-w-xl mx-auto shadow-card">
+                  <h3 className="text-[14px] font-medium text-ink mb-4">{t('onboarding.success.connectedAccounts') || 'Connected Pages'}</h3>
                   <div className="space-y-3 text-left">
                     {connectedPages.map((page) => (
-                      <div key={page.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3.5 flex items-center gap-3 border border-gray-100 dark:border-gray-700">
-                        <div className="relative flex-shrink-0">
+                      <div key={page.id} className="rounded-card bg-surface-2 border border-line p-3.5 flex items-center gap-3">
+                        <div className="relative shrink-0">
                           {page.profilePicture ? (
-                            <img 
-                              src={page.profilePicture} 
+                            <img
+                              src={page.profilePicture}
                               alt={page.pageName}
-                              className="w-12 h-12 rounded-lg object-cover border border-gray-200 dark:border-gray-700"
+                              className="size-12 rounded-btn object-cover ring-1 ring-line"
                               onError={(e) => {
                                 // Fallback to icon if image fails to load
                                 const target = e.target as HTMLImageElement;
@@ -989,70 +982,66 @@ function OnboardingPage() {
                               }}
                             />
                           ) : null}
-                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center fallback-icon ${
-                            page.provider === 'facebook' 
-                              ? 'bg-blue-600' 
-                              : 'bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500'
-                          }`}
+                          <div className="size-12 rounded-btn bg-accent-wash text-accent items-center justify-center fallback-icon"
                           style={{ display: page.profilePicture ? 'none' : 'flex' }}
                           >
                             {page.provider === 'facebook' ? (
-                              <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                              <svg className="size-6" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                               </svg>
                             ) : (
-                              <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                              <svg className="size-6" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
                               </svg>
                             )}
                           </div>
                           {/* Platform badge icon */}
-                          <div className="absolute -bottom-0.5 -right-0.5 bg-white dark:bg-gray-900 rounded-full p-1 shadow-md border-2 border-white dark:border-gray-900">
+                          <div className="absolute -bottom-0.5 -right-0.5 bg-surface rounded-full p-1 shadow-card border border-line">
                             {page.provider === 'facebook' ? (
-                              <svg className="w-3.5 h-3.5 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-3.5 h-3.5 text-ink-muted" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                               </svg>
                             ) : (
-                              <svg className="w-3.5 h-3.5 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-3.5 h-3.5 text-ink-muted" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
                               </svg>
                             )}
                           </div>
                         </div>
                         <div className="flex-1 text-left min-w-0">
-                          <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{page.pageName}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 capitalize mt-0.5">
+                          <p className="text-[14px] font-medium text-ink truncate">{page.pageName}</p>
+                          <p className="text-[12px] text-ink-muted capitalize mt-0.5">
                             {page.provider === 'facebook' ? 'Facebook Page' : 'Instagram Account'}
                           </p>
                         </div>
-                        <div className="px-2.5 py-1 bg-green-500/10 dark:bg-green-500/20 text-green-700 dark:text-green-400 text-xs font-medium rounded-full flex-shrink-0 border border-green-200 dark:border-green-800">
+                        <div className="inline-flex items-center rounded-[6px] px-2 py-0.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] bg-accent-wash text-accent shrink-0">
                           Connected
                         </div>
                       </div>
                     ))}
                     {tiktokAccounts.map((account) => (
-                      <div key={account.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3.5 flex items-center gap-3 border border-gray-100 dark:border-gray-700">
-                        <div className="relative flex-shrink-0">
-                          <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center">
+                      <div key={account.id} className="rounded-card bg-surface-2 border border-line p-3.5 flex items-center gap-3">
+                        <div className="relative shrink-0">
+                          <div className="size-12 bg-[#0F0F0F] rounded-btn flex items-center justify-center">
                             {account.profileImageUrl ? (
-                              <img src={account.profileImageUrl} alt={account.pageName} className="w-12 h-12 rounded-lg object-cover" />
+                              <img src={account.profileImageUrl} alt={account.pageName} className="size-12 rounded-btn object-cover" />
                             ) : (
-                              <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+                              <svg className="size-6 text-white" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/>
                               </svg>
                             )}
                           </div>
-                          <div className="absolute -bottom-0.5 -right-0.5 bg-white dark:bg-gray-900 rounded-full p-1 shadow-md border-2 border-white dark:border-gray-900">
-                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                          <div className="absolute -bottom-0.5 -right-0.5 bg-surface rounded-full p-1 shadow-card border border-line">
+                            <svg className="w-3.5 h-3.5 text-ink-muted" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/>
                             </svg>
                           </div>
                         </div>
                         <div className="flex-1 text-left min-w-0">
-                          <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{account.pageName}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">TikTok Organic</p>
+                          <p className="text-[14px] font-medium text-ink truncate">{account.pageName}</p>
+                          <p className="text-[12px] text-ink-muted mt-0.5">TikTok Organic</p>
                         </div>
-                        <div className="px-2.5 py-1 bg-green-500/10 dark:bg-green-500/20 text-green-700 dark:text-green-400 text-xs font-medium rounded-full flex-shrink-0 border border-green-200 dark:border-green-800">
+                        <div className="inline-flex items-center rounded-[6px] px-2 py-0.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] bg-accent-wash text-accent shrink-0">
                           Connected
                         </div>
                       </div>
@@ -1063,11 +1052,11 @@ function OnboardingPage() {
 
               <Link
                 href="/dashboard/pages"
-                className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 text-white font-semibold rounded-lg transition-all shadow-md hover:shadow-lg text-sm"
+                className="group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-accent text-on-accent text-[15px] font-medium hover:bg-accent-hover transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
               >
                 {t('onboarding.success.viewPages', { defaultValue: 'View Pages' }) || 'View Pages'}
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                <svg className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </Link>
             </div>
@@ -1076,29 +1065,29 @@ function OnboardingPage() {
 
         {/* Disconnect Meta account confirmation modal */}
         {showDisconnectModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div className="bg-white dark:bg-gray-950 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 max-w-md w-full mx-4 p-6">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 dark:bg-black/60">
+            <div className="relative w-full max-w-lg rounded-card border border-line bg-surface shadow-pop mx-4 p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                <div className="size-10 rounded-btn bg-danger-wash text-danger flex items-center justify-center shrink-0">
+                  <svg className="size-5 stroke-[1.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <h3 className="font-display text-[20px] font-medium text-ink">
                   Disconnect Meta account and log out?
                 </h3>
               </div>
 
               <div className="space-y-3 mb-5">
-                <p className="text-sm text-gray-700 dark:text-gray-300">
+                <p className="text-[14px] text-ink-muted">
                   This will permanently delete all your Facebook and Instagram data from our database:
                 </p>
-                <ul className="text-sm text-red-700 dark:text-red-400 space-y-1.5 pl-4 list-disc">
+                <ul className="text-[14px] text-danger space-y-1.5 pl-4 list-disc">
                   <li>All connected Facebook & Instagram pages</li>
                   <li>All stored comments and replies</li>
                   <li>All comment action history</li>
                 </ul>
-                <p className="text-sm font-medium text-gray-900 dark:text-white bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+                <p className="text-[14px] font-medium text-signal-text bg-signal-wash border border-signal/40 rounded-card px-3 py-2 leading-relaxed">
                   ⚠️ If you reconnect later, your old comments will <strong>not</strong> be restored.
                 </p>
               </div>
@@ -1106,7 +1095,7 @@ function OnboardingPage() {
               <div className="flex justify-end gap-3">
                 <button
                   onClick={() => setShowDisconnectModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900"
+                  className="inline-flex items-center justify-center h-10 px-4 rounded-btn text-[15px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                 >
                   Cancel
                 </button>
@@ -1119,7 +1108,7 @@ function OnboardingPage() {
                     }
                   }}
                   disabled={disconnectingAccount}
-                  className="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center h-11 px-5 rounded-btn bg-danger text-white text-[15px] font-medium hover:opacity-90 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                 >
                   {disconnectingAccount ? 'Disconnecting...' : 'Yes, delete everything & log out'}
                 </button>
@@ -1130,8 +1119,8 @@ function OnboardingPage() {
 
         {/* Bottom Helper Text */}
         <div className="text-center mt-6">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {t('onboarding.needHelp') || 'Need help?'} <Link href="/help" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">{t('onboarding.contactSupport') || 'Contact Support'}</Link>
+          <p className="text-[14px] text-ink-muted">
+            {t('onboarding.needHelp') || 'Need help?'} <Link href="/help" className="text-[14px] font-medium text-accent hover:text-accent-hover underline underline-offset-2 decoration-accent/30 hover:decoration-accent">{t('onboarding.contactSupport') || 'Contact Support'}</Link>
           </p>
         </div>
       </div>
@@ -1142,8 +1131,8 @@ function OnboardingPage() {
 export default function OnboardingPageWrapper() {
   return (
     <React.Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-violet-50 dark:from-gray-950 dark:via-black dark:to-gray-950 flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-gray-300 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-canvas flex items-center justify-center">
+        <div className="size-8 animate-spin rounded-full border-2 border-line border-t-accent"></div>
       </div>
     }>
       <OnboardingPage />

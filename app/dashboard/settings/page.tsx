@@ -425,30 +425,26 @@ function SettingsPageContent() {
 
   if (status === 'loading' || !mounted) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-black flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-gray-300 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin" />
+      <div className="min-h-screen bg-canvas flex items-center justify-center">
+        <div className="size-8 animate-spin rounded-full border-2 border-line border-t-accent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-black">
+    <div className="min-h-screen bg-canvas">
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-40 w-64 h-screen transition-transform ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 transition-transform ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-900`}
+        } lg:translate-x-0 border-r border-line bg-surface`}
       >
         <div className="h-full flex flex-col">
           {/* Logo */}
-          <div className="h-20 px-6 flex items-center border-b border-gray-200 dark:border-gray-900">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-violet-600 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform shadow-md">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                </svg>
-              </div>
-              <span className="text-lg font-bold text-gray-900 dark:text-white">Comment Closer</span>
+          <div className="h-16 px-5 border-b border-line flex items-center">
+            <Link href="/" className="flex items-center gap-3">
+              <span className="tick3" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span className="text-[17px] font-semibold tracking-tight text-ink">Comment Closer</span>
             </Link>
           </div>
 
@@ -467,10 +463,10 @@ function SettingsPageContent() {
                       setShowConnectPageMessage(true);
                       setTimeout(() => setShowConnectPageMessage(false), 4000);
                     }}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group text-sm cursor-pointer ${
+                    className={`relative flex items-center gap-3 h-10 px-3 rounded-btn text-[15px] font-medium transition-colors opacity-50 cursor-not-allowed hover:bg-transparent hover:text-ink-muted ${
                       isActive
-                        ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium'
-                        : 'text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900 hover:text-gray-900 dark:hover:text-gray-200'
+                        ? 'bg-accent-wash text-accent before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-accent'
+                        : 'text-ink-muted'
                     }`}
                   >
                     {item.icon}
@@ -478,15 +474,15 @@ function SettingsPageContent() {
                   </div>
                 );
               }
-              
+
               return (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group text-sm ${
+                  className={`relative flex items-center gap-3 h-10 px-3 rounded-btn text-[15px] font-medium transition-colors ${
                     isActive
-                      ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium'
-                      : 'text-gray-700 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900 hover:text-gray-900 dark:hover:text-gray-200'
+                      ? 'bg-accent-wash text-accent before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:rounded-full before:bg-accent'
+                      : 'text-ink-muted hover:bg-surface-2 hover:text-ink'
                   }`}
                 >
                   {item.icon}
@@ -497,28 +493,28 @@ function SettingsPageContent() {
           </nav>
 
           {/* Language Toggle */}
-          <div className="px-3 py-4 border-t border-gray-200 dark:border-gray-900">
+          <div className="px-3 py-4 border-t border-line">
             <div className="px-3 mb-2">
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+              <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted mb-3">
                 {t('dashboard.preferences.language')}
               </p>
-              <div className="flex items-center gap-2">
+              <div className="inline-flex w-full items-center rounded-btn border border-line bg-surface-2 p-0.5">
                 <button
                   onClick={() => changeLanguage('en')}
-                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                  className={`flex-1 h-8 px-3 rounded-[6px] font-mono text-[12px] uppercase tracking-[0.08em] font-medium transition-colors ${
                     currentLanguage === 'en' || currentLanguage.startsWith('en')
-                      ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-900'
+                      ? 'bg-surface text-ink shadow-card'
+                      : 'text-ink-muted hover:text-ink'
                   }`}
                 >
                   EN
                 </button>
                 <button
                   onClick={() => changeLanguage('el')}
-                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                  className={`flex-1 h-8 px-3 rounded-[6px] font-mono text-[12px] uppercase tracking-[0.08em] font-medium transition-colors ${
                     currentLanguage === 'el' || currentLanguage.startsWith('el')
-                      ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-900'
+                      ? 'bg-surface text-ink shadow-card'
+                      : 'text-ink-muted hover:text-ink'
                   }`}
                 >
                   ΕΛ
@@ -528,14 +524,14 @@ function SettingsPageContent() {
           </div>
 
           {/* Theme Toggle */}
-          <div className="px-3 py-4 border-t border-gray-200 dark:border-gray-900">
+          <div className="px-3 py-4 border-t border-line">
             <div className="px-3">
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+              <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted mb-3">
                 {t('dashboard.preferences.theme')}
               </p>
               <button
                 onClick={toggleTheme}
-                className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900 rounded-lg transition-all"
+                className="w-full flex items-center justify-between h-10 px-3 rounded-btn text-[15px] font-medium text-ink-muted hover:bg-surface-2 hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
               >
                 <div className="flex items-center gap-2">
                   {theme === 'light' ? (
@@ -549,7 +545,7 @@ function SettingsPageContent() {
                   )}
                   <span>{theme === 'light' ? t('dashboard.preferences.darkMode') : t('dashboard.preferences.lightMode')}</span>
                 </div>
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-ink-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
@@ -557,14 +553,14 @@ function SettingsPageContent() {
           </div>
 
           {/* Footer User Info */}
-          <div className="p-4 border-t border-gray-200 dark:border-gray-900">
-            <div className="flex items-center gap-3 px-3 py-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-violet-600 rounded-full flex items-center justify-center text-white font-semibold text-xs shadow-sm">
+          <div className="border-t border-line px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 flex items-center justify-center rounded-full border border-accent/20 bg-accent-wash font-mono text-[13px] font-medium text-accent">
                 {session?.user?.name?.charAt(0).toUpperCase() || 'U'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{session?.user?.name}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{session?.user?.email}</p>
+                <p className="text-[14px] font-medium text-ink truncate">{session?.user?.name}</p>
+                <p className="font-mono text-[11px] text-ink-muted truncate">{session?.user?.email}</p>
               </div>
             </div>
           </div>
@@ -574,7 +570,7 @@ function SettingsPageContent() {
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-gray-900/50 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-[35] bg-ink/40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         ></div>
       )}
@@ -582,18 +578,18 @@ function SettingsPageContent() {
       {/* Main content */}
       <div className="lg:ml-64">
         {/* Header */}
-        <header className="sticky top-0 z-20 h-20 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-900">
-          <div className="h-full px-6 flex items-center justify-between">
+        <header className="sticky top-0 z-30 h-16 border-b border-line bg-canvas/95 flex items-center gap-4 px-6">
+          <div className="w-full flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 -ml-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-900 rounded-lg transition-all"
+                className="lg:hidden inline-flex items-center justify-center size-9 -ml-2 rounded-btn text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+              <h1 className="font-display text-[20px] font-medium text-ink">
                 {t('dashboard.menu.settings')}
               </h1>
             </div>
@@ -605,46 +601,46 @@ function SettingsPageContent() {
         </header>
 
         {/* Settings Content */}
-        <main className="min-h-[calc(100vh-80px)] p-4 sm:p-6 lg:p-8">
+        <main className="min-h-[calc(100vh-64px)] p-4 sm:p-6 lg:p-8">
           <div className="max-w-4xl mx-auto">
             {error && (
-              <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
+              <div className="mb-6 flex items-start gap-3 rounded-card border border-danger/30 bg-danger-wash text-danger px-4 py-3 text-[14px] leading-relaxed">
+                <p>{error}</p>
               </div>
             )}
 
             {success && (
-              <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                <p className="text-green-800 dark:text-green-200 text-sm">{success}</p>
+              <div className="mb-6 flex items-start gap-3 rounded-card border border-accent/30 bg-accent-wash text-accent px-4 py-3 text-[14px] leading-relaxed">
+                <p>{success}</p>
               </div>
             )}
 
             {/* Connected Accounts Section */}
-            <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 mb-6">
-              <div className="flex items-center justify-between mb-6">
+            <div className="rounded-card border border-line bg-surface p-5 shadow-card mb-6">
+              <div className="flex items-center justify-between pb-4 border-b border-line mb-4">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('dashboard.settingsPage.metaAccount', 'Meta Account')}</h2>
-                  <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-full mt-1 inline-block">{t('dashboard.settingsPage.facebookInstagram', 'Facebook & Instagram')}</span>
+                  <h2 className="text-[16px] font-medium text-ink">{t('dashboard.settingsPage.metaAccount', 'Meta Account')}</h2>
+                  <span className="inline-flex items-center gap-1.5 rounded-[6px] px-2 py-0.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] bg-surface-2 text-ink-muted border border-line mt-1">{t('dashboard.settingsPage.facebookInstagram', 'Facebook & Instagram')}</span>
                 </div>
               </div>
 
               {loading ? (
                 <div className="flex items-center justify-center py-8">
-                  <div className="w-8 h-8 border-4 border-gray-300 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin"></div>
+                  <div className="size-8 animate-spin rounded-full border-2 border-line border-t-accent"></div>
                 </div>
               ) : metaAccount ? (
                 <div className="space-y-4">
                   {/* Meta Account Card */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-card bg-surface-2 border border-line">
                     <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                      <div className="size-10 rounded-btn bg-accent-wash text-accent flex items-center justify-center flex-shrink-0">
+                        <svg className="size-5" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
                         </svg>
                       </div>
                       <div className="min-w-0">
-                        <h3 className="font-semibold text-gray-900 dark:text-white">{t('dashboard.settingsPage.metaName', 'Meta (Facebook)')}</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <h3 className="text-[14px] font-medium text-ink">{t('dashboard.settingsPage.metaName', 'Meta (Facebook)')}</h3>
+                        <p className="text-[13px] text-ink-muted">
                           {metaAccount.connected
                             ? t('dashboard.settingsPage.fbPagesIgAccounts', '{{fbCount}} Facebook page(s), {{igCount}} Instagram account(s)', { fbCount: metaAccount.pagesCount, igCount: metaAccount.instagramCount })
                             : metaAccount.hasConnectedPages
@@ -659,14 +655,14 @@ function SettingsPageContent() {
                         <>
                           <button
                             onClick={handleReconnectMeta}
-                            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                            className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn border border-line-strong bg-surface text-ink text-[15px] font-medium hover:border-accent/40 hover:text-accent transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                           >
                             <span>{t('dashboard.settingsPage.editConnection', 'Edit connection')}</span>
                           </button>
                           <button
                             onClick={() => setShowMetaDisconnectModal(true)}
                             disabled={disconnecting}
-                            className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium text-sm"
+                            className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-danger text-white text-[15px] font-medium hover:opacity-90 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                           >
                             {disconnecting ? t('dashboard.settingsPage.disconnecting', 'Disconnecting...') : t('dashboard.settingsPage.disconnect', 'Disconnect')}
                           </button>
@@ -674,7 +670,7 @@ function SettingsPageContent() {
                       ) : (
                         <Link
                           href="/dashboard/onboarding"
-                          className="group inline-flex items-center justify-center gap-3 px-6 py-3 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                          className="group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-accent text-on-accent text-[15px] font-medium hover:bg-accent-hover transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                         >
                           <div className="flex items-center gap-2">
                             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -685,7 +681,7 @@ function SettingsPageContent() {
                             </svg>
                           </div>
                           <span>{t('dashboard.menu.connectFacebookInstagram', 'Connect Facebook & Instagram')}</span>
-                          <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                           </svg>
                         </Link>
@@ -695,13 +691,13 @@ function SettingsPageContent() {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">{t('dashboard.settingsPage.noAccountsYet', 'No accounts connected yet')}</p>
+                  <p className="text-[15px] text-ink-muted mb-4">{t('dashboard.settingsPage.noAccountsYet', 'No accounts connected yet')}</p>
                   <Link
                     href="/dashboard/onboarding"
-                    className="group inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                    className="group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-accent text-on-accent text-[15px] font-medium hover:bg-accent-hover transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                   >
                     <div className="flex items-center gap-2">
-                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                       </svg>
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -709,7 +705,7 @@ function SettingsPageContent() {
                       </svg>
                     </div>
                     <span>{t('dashboard.menu.connectFacebookInstagram', 'Connect Facebook & Instagram')}</span>
-                    <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="size-4 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
                   </Link>
@@ -718,33 +714,33 @@ function SettingsPageContent() {
             </div>
 
             {/* TikTok Organic Section */}
-            <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 mb-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
+            <div className="rounded-card border border-line bg-surface p-5 shadow-card mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-line mb-4">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('dashboard.settingsPage.tiktokOrganicTitle', 'TikTok — Organic')}</h2>
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full mt-1 inline-block">{t('dashboard.settingsPage.tiktokOrganicTag', 'Personal & Business profiles')}</span>
+                  <h2 className="text-[16px] font-medium text-ink">{t('dashboard.settingsPage.tiktokOrganicTitle', 'TikTok — Organic')}</h2>
+                  <span className="inline-flex items-center gap-1.5 rounded-[6px] px-2 py-0.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] bg-surface-2 text-ink-muted border border-line mt-1">{t('dashboard.settingsPage.tiktokOrganicTag', 'Personal & Business profiles')}</span>
                 </div>
                 <a
                   href="/api/tiktok/connect"
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-black hover:bg-gray-900 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-black text-sm font-medium rounded-lg transition-colors self-start sm:self-auto"
+                  className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-[#0F0F0F] text-white border border-line-strong text-[15px] font-medium hover:opacity-90 dark:bg-white dark:text-[#0F0F0F] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas self-start sm:self-auto"
                 >
                   <TikTokIcon className="w-4 h-4" />
                   {t('dashboard.settingsPage.connectTiktok', 'Connect TikTok')}
                 </a>
               </div>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mb-6">{t('dashboard.settingsPage.tiktokOrganicDesc', 'Manage comments on your organic (non-paid) TikTok videos.')}</p>
+              <p className="text-[13px] text-ink-muted mb-6">{t('dashboard.settingsPage.tiktokOrganicDesc', 'Manage comments on your organic (non-paid) TikTok videos.')}</p>
 
               {loadingTiktok ? (
                 <div className="flex items-center justify-center py-8">
-                  <div className="w-8 h-8 border-4 border-gray-300 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin" />
+                  <div className="size-8 animate-spin rounded-full border-2 border-line border-t-accent" />
                 </div>
               ) : tiktokAccounts.length === 0 ? (
-                <div className="text-center py-8 border border-dashed border-gray-300 dark:border-gray-700 rounded-xl">
-                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <TikTokIcon className="w-6 h-6 text-gray-400" />
+                <div className="text-center py-8 border border-dashed border-line-strong rounded-card">
+                  <div className="w-12 h-12 bg-surface-2 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <TikTokIcon className="w-6 h-6 text-ink-muted" />
                   </div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">{t('dashboard.settingsPage.noTiktokAccounts', 'No TikTok accounts connected')}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.settingsPage.connectTiktokHint', 'Connect your TikTok account to manage comments.')}</p>
+                  <p className="text-[14px] font-medium text-ink mb-1">{t('dashboard.settingsPage.noTiktokAccounts', 'No TikTok accounts connected')}</p>
+                  <p className="text-[14px] text-ink-muted">{t('dashboard.settingsPage.connectTiktokHint', 'Connect your TikTok account to manage comments.')}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -757,20 +753,20 @@ function SettingsPageContent() {
                       : null;
 
                     return (
-                    <div key={account.id} className={`p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border transition-colors ${
-                      isPaused ? 'border-orange-300 dark:border-orange-800 opacity-70' :
-                      isExpired ? 'border-red-300 dark:border-red-800' :
-                      isExpiringSoon ? 'border-yellow-300 dark:border-yellow-700' :
-                      'border-gray-200 dark:border-gray-800'
+                    <div key={account.id} className={`p-4 bg-surface-2 rounded-card border transition-colors ${
+                      isPaused ? 'border-signal/40 opacity-70' :
+                      isExpired ? 'border-danger/40' :
+                      isExpiringSoon ? 'border-signal/40' :
+                      'border-line'
                     }`}>
                       {/* Token warning banner */}
                       {(isExpired || isExpiringSoon) && (
-                        <div className={`flex items-start gap-2 mb-3 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium ${
+                        <div className={`flex items-start gap-3 mb-3 rounded-card border px-4 py-3 text-[14px] leading-relaxed ${
                           isExpired
-                            ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
-                            : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400'
+                            ? 'border-danger/30 bg-danger-wash text-danger'
+                            : 'border-signal/40 bg-signal-wash text-signal-text'
                         }`}>
-                          <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="size-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                           </svg>
                           {isExpired
@@ -784,7 +780,7 @@ function SettingsPageContent() {
                             <img
                               src={account.profileImageUrl}
                               alt={account.pageName}
-                              className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                              className="w-10 h-10 ring-1 ring-line rounded-full object-cover flex-shrink-0"
                               onError={(e) => {
                                 const img = e.currentTarget;
                                 const fb = img.nextElementSibling as HTMLElement | null;
@@ -794,16 +790,16 @@ function SettingsPageContent() {
                             />
                           ) : null}
                           <div
-                            className="w-10 h-10 bg-black rounded-full items-center justify-center flex-shrink-0"
+                            className="w-10 h-10 bg-[#0F0F0F] text-white rounded-full items-center justify-center flex-shrink-0"
                             style={{ display: account.profileImageUrl ? 'none' : 'flex' }}
                           >
                             <TikTokIcon className="w-5 h-5 text-white" />
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="font-semibold text-gray-900 dark:text-white truncate">{account.pageName}</h3>
+                              <h3 className="text-[14px] font-medium text-ink truncate">{account.pageName}</h3>
                               {account.needsReconnect && !isPaused && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50">
+                                <span className="inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] bg-danger-wash text-danger">
                                   <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                                   </svg>
@@ -813,10 +809,10 @@ function SettingsPageContent() {
                             </div>
                             <div className="flex items-center gap-1.5 mt-0.5">
                               <span className={`w-1.5 h-1.5 rounded-full ${
-                                isPaused ? 'bg-orange-500' :
-                                isExpired ? 'bg-red-500' : isExpiringSoon ? 'bg-yellow-500' : 'bg-green-500'
+                                isPaused ? 'bg-signal' :
+                                isExpired ? 'bg-danger' : isExpiringSoon ? 'bg-signal' : 'bg-accent'
                               }`} />
-                              <p className="text-sm text-gray-500 dark:text-gray-400">
+                              <p className="text-[13px] text-ink-muted">
                                 TikTok · {isPaused ? t('dashboard.settingsPage.statusPaused', 'Paused') :
                                   isExpired ? t('dashboard.settingsPage.statusExpired', 'Expired') : isExpiringSoon ? t('dashboard.settingsPage.statusExpiringSoon', 'Expiring soon') : t('dashboard.settingsPage.statusConnected', 'Connected')}
                               </p>
@@ -849,7 +845,7 @@ function SettingsPageContent() {
                                   }
                                 }}
                                 disabled={disconnectingTiktok === account.id}
-                                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white transition-colors"
+                                className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-accent text-on-accent text-[15px] font-medium hover:bg-accent-hover transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                               >
                                 {disconnectingTiktok === account.id ? t('dashboard.settingsPage.reactivating', 'Reactivating...') : t('dashboard.settingsPage.reactivate', 'Reactivate')}
                               </button>
@@ -875,7 +871,7 @@ function SettingsPageContent() {
                                   }
                                 }}
                                 disabled={disconnectingTiktok === account.id}
-                                className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium text-sm"
+                                className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-danger text-white text-[15px] font-medium hover:opacity-90 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                               >
                                 {t('dashboard.settingsPage.disconnect', 'Disconnect')}
                               </button>
@@ -884,12 +880,12 @@ function SettingsPageContent() {
                             <>
                               <a
                                 href="/api/tiktok/connect"
-                                className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                className={`inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn text-[15px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas ${
                                   isExpired
-                                    ? 'bg-red-600 hover:bg-red-700 text-white'
+                                    ? 'bg-danger text-white hover:opacity-90'
                                     : isExpiringSoon
-                                    ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
-                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                    ? 'bg-accent text-on-accent hover:bg-accent-hover'
+                                    : 'border border-line-strong bg-surface text-ink hover:border-accent/40 hover:text-accent'
                                 }`}
                               >
                                 {t('dashboard.settingsPage.reconnect', 'Reconnect')}
@@ -897,7 +893,7 @@ function SettingsPageContent() {
                               <button
                                 onClick={() => setTiktokDisconnectTarget(account.id)}
                                 disabled={disconnectingTiktok === account.id}
-                                className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium text-sm"
+                                className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-danger text-white text-[15px] font-medium hover:opacity-90 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                               >
                                 {disconnectingTiktok === account.id ? t('dashboard.settingsPage.disconnecting', 'Disconnecting...') : t('dashboard.settingsPage.disconnect', 'Disconnect')}
                               </button>
@@ -911,7 +907,7 @@ function SettingsPageContent() {
                   {tiktokAccounts.length > SETTINGS_INITIAL_VISIBLE && (
                     <button
                       onClick={() => setShowAllTiktok(!showAllTiktok)}
-                      className="w-full py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                      className="w-full h-8 rounded-btn text-[13px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors flex items-center justify-center gap-1.5"
                     >
                       {showAllTiktok ? (
                         <>
@@ -931,50 +927,50 @@ function SettingsPageContent() {
             </div>
 
             {/* TikTok Ads Section */}
-            <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 mb-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
+            <div className="rounded-card border border-line bg-surface p-5 shadow-card mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-line mb-4">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('dashboard.settingsPage.tiktokAdsTitle', 'TikTok — Ads')}</h2>
-                  <span className="text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 px-2 py-0.5 rounded-full mt-1 inline-block">{t('dashboard.settingsPage.tiktokAdsTag', 'Paid advertising accounts')}</span>
+                  <h2 className="text-[16px] font-medium text-ink">{t('dashboard.settingsPage.tiktokAdsTitle', 'TikTok — Ads')}</h2>
+                  <span className="inline-flex items-center gap-1.5 rounded-[6px] px-2 py-0.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] bg-surface-2 text-ink-muted border border-line mt-1">{t('dashboard.settingsPage.tiktokAdsTag', 'Paid advertising accounts')}</span>
                 </div>
                 <a
                   href="/api/tiktok-ads/connect"
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-black hover:bg-gray-800 text-white text-sm font-semibold rounded-lg transition-colors self-start sm:self-auto"
+                  className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-[#0F0F0F] text-white border border-line-strong text-[15px] font-medium hover:opacity-90 dark:bg-white dark:text-[#0F0F0F] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas self-start sm:self-auto"
                 >
                   <TikTokIcon className="w-4 h-4" />
                   {t('dashboard.settingsPage.connectTiktokAds', 'Connect TikTok Ads')}
                 </a>
               </div>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mb-6">{t('dashboard.settingsPage.tiktokAdsDesc', 'Manage comments on your paid TikTok ad campaigns.')}</p>
+              <p className="text-[13px] text-ink-muted mb-6">{t('dashboard.settingsPage.tiktokAdsDesc', 'Manage comments on your paid TikTok ad campaigns.')}</p>
 
               {loadingTiktokAds ? (
                 <div className="flex items-center justify-center py-8">
-                  <div className="w-8 h-8 border-4 border-gray-300 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin" />
+                  <div className="size-8 animate-spin rounded-full border-2 border-line border-t-accent" />
                 </div>
               ) : tiktokAdsAccounts.length === 0 ? (
-                <div className="border border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-10 text-center">
-                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <TikTokIcon className="w-6 h-6 text-gray-400" />
+                <div className="border border-dashed border-line-strong rounded-card p-10 text-center">
+                  <div className="w-12 h-12 bg-surface-2 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <TikTokIcon className="w-6 h-6 text-ink-muted" />
                   </div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">{t('dashboard.settingsPage.noTiktokAdsAccounts', 'No TikTok Ads accounts connected')}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.settingsPage.connectTiktokAdsHint', 'Connect your TikTok Ads Manager account to manage comments on paid content.')}</p>
+                  <p className="text-[14px] font-medium text-ink mb-1">{t('dashboard.settingsPage.noTiktokAdsAccounts', 'No TikTok Ads accounts connected')}</p>
+                  <p className="text-[14px] text-ink-muted">{t('dashboard.settingsPage.connectTiktokAdsHint', 'Connect your TikTok Ads Manager account to manage comments on paid content.')}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {(showAllTiktokAds ? tiktokAdsAccounts : tiktokAdsAccounts.slice(0, SETTINGS_INITIAL_VISIBLE)).map((account) => {
                     const isPaused = !!account.disconnectedAt;
                     return (
-                    <div key={account.id} className={`p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border transition-colors ${
-                      isPaused ? 'border-orange-300 dark:border-orange-800 opacity-70' : 'border-gray-200 dark:border-gray-800'
+                    <div key={account.id} className={`p-4 bg-surface-2 rounded-card border transition-colors ${
+                      isPaused ? 'border-signal/40 opacity-70' : 'border-line'
                     }`}>
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                           <div className="flex-shrink-0"><TikTokAdsIcon size="md" /></div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="font-semibold text-gray-900 dark:text-white truncate">{account.pageName}</h3>
+                              <h3 className="text-[14px] font-medium text-ink truncate">{account.pageName}</h3>
                               {account.needsReconnect && !isPaused && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50">
+                                <span className="inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] bg-danger-wash text-danger">
                                   <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                                   </svg>
@@ -983,8 +979,8 @@ function SettingsPageContent() {
                               )}
                             </div>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className={`w-1.5 h-1.5 rounded-full ${isPaused ? 'bg-orange-500' : 'bg-green-500'}`} />
-                              <p className="text-sm text-gray-500 dark:text-gray-400">TikTok Ads · {isPaused ? t('dashboard.settingsPage.statusPaused', 'Paused') : t('dashboard.settingsPage.statusConnected', 'Connected')}</p>
+                              <span className={`w-1.5 h-1.5 rounded-full ${isPaused ? 'bg-signal' : 'bg-accent'}`} />
+                              <p className="text-[13px] text-ink-muted">TikTok Ads · {isPaused ? t('dashboard.settingsPage.statusPaused', 'Paused') : t('dashboard.settingsPage.statusConnected', 'Connected')}</p>
                             </div>
                           </div>
                         </div>
@@ -1013,7 +1009,7 @@ function SettingsPageContent() {
                                 }
                               }}
                               disabled={disconnectingTiktokAds === account.id}
-                              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white transition-colors"
+                              className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-accent text-on-accent text-[15px] font-medium hover:bg-accent-hover transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                             >
                               {disconnectingTiktokAds === account.id ? t('dashboard.settingsPage.reactivating', 'Reactivating...') : t('dashboard.settingsPage.reactivate', 'Reactivate')}
                             </button>
@@ -1039,7 +1035,7 @@ function SettingsPageContent() {
                                 }
                               }}
                               disabled={disconnectingTiktokAds === account.id}
-                              className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium text-sm"
+                              className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-danger text-white text-[15px] font-medium hover:opacity-90 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                             >
                               {t('dashboard.settingsPage.disconnect', 'Disconnect')}
                             </button>
@@ -1048,14 +1044,14 @@ function SettingsPageContent() {
                           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                             <a
                               href="/api/tiktok-ads/connect"
-                              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                              className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn border border-line-strong bg-surface text-ink text-[15px] font-medium hover:border-accent/40 hover:text-accent transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                             >
                               {t('dashboard.settingsPage.reconnect', 'Reconnect')}
                             </a>
                             <button
                               onClick={() => setTiktokAdsDisconnectTarget(account.id)}
                               disabled={disconnectingTiktokAds === account.id}
-                              className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium text-sm"
+                              className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-danger text-white text-[15px] font-medium hover:opacity-90 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                             >
                               {disconnectingTiktokAds === account.id ? t('dashboard.settingsPage.disconnecting', 'Disconnecting...') : t('dashboard.settingsPage.disconnect', 'Disconnect')}
                             </button>
@@ -1068,7 +1064,7 @@ function SettingsPageContent() {
                   {tiktokAdsAccounts.length > SETTINGS_INITIAL_VISIBLE && (
                     <button
                       onClick={() => setShowAllTiktokAds(!showAllTiktokAds)}
-                      className="w-full py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                      className="w-full h-8 rounded-btn text-[13px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors flex items-center justify-center gap-1.5"
                     >
                       {showAllTiktokAds ? (
                         <>
@@ -1088,11 +1084,11 @@ function SettingsPageContent() {
             </div>
 
             {/* Data Deletion Section */}
-            <div className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 p-6 mb-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            <div className="rounded-card border border-danger/30 bg-danger-wash/40 p-5 mb-6">
+              <h2 className="text-[16px] font-medium text-ink mb-2">
                 Data Deletion
               </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              <p className="text-[13px] text-ink-muted mb-6">
                 You can request deletion of your account and all associated data. This action cannot be undone. All your comments, connected pages, and account information will be permanently deleted.
               </p>
 
@@ -1102,18 +1098,18 @@ function SettingsPageContent() {
                   setDeleteConfirmText('');
                   setError(null);
                 }}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium text-sm"
+                className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-danger text-white text-[15px] font-medium hover:opacity-90 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
               >
                 Delete My Account
               </button>
 
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
+              <p className="text-[13px] text-ink-muted mt-4">
                 You can also request data deletion by emailing{' '}
-                <a href="mailto:kaxiras@ariane.gr" className="text-blue-600 dark:text-blue-400 hover:underline">
+                <a href="mailto:kaxiras@ariane.gr" className="font-medium text-accent hover:text-accent-hover underline underline-offset-2 decoration-accent/30 hover:decoration-accent">
                   kaxiras@ariane.gr
                 </a>
                 {' '}with the subject "Data Deletion Request". See our{' '}
-                <Link href="/privacy" className="text-blue-600 dark:text-blue-400 hover:underline">
+                <Link href="/privacy" className="font-medium text-accent hover:text-accent-hover underline underline-offset-2 decoration-accent/30 hover:decoration-accent">
                   Privacy Policy
                 </Link>
                 {' '}for more information.
@@ -1125,14 +1121,12 @@ function SettingsPageContent() {
 
       {/* Custom Connect Page Message Toast */}
       {showConnectPageMessage && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-bottom-5 duration-300">
-          <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg shadow-lg px-4 py-3 flex items-center gap-3 max-w-md">
-            <div className="w-5 h-5 bg-yellow-100 dark:bg-yellow-900/50 rounded-full flex items-center justify-center flex-shrink-0">
-              <svg className="w-3 h-3 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-            <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+        <div className="fixed bottom-6 right-6 z-[60] animate-in slide-in-from-bottom-5 duration-300">
+          <div className="flex items-center gap-3 rounded-card border border-line border-l-2 border-l-accent bg-surface px-4 py-3 text-[14px] text-ink shadow-pop max-w-md">
+            <svg className="w-4 h-4 text-signal-text flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p className="text-[14px] font-medium text-ink">
               {t('dashboard.menu.connectPageFirst', 'Connect a page first')}
             </p>
           </div>
@@ -1142,8 +1136,8 @@ function SettingsPageContent() {
       {/* Delete Account Confirmation Modal */}
       {showDeleteConfirm && (
         <>
-          <div 
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+          <div
+            className="fixed inset-0 z-50 bg-ink/40 dark:bg-black/60"
             onClick={() => {
               if (!deletingAccount) {
                 setShowDeleteConfirm(false);
@@ -1153,14 +1147,21 @@ function SettingsPageContent() {
             }}
           ></div>
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div 
-              className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-2xl max-w-md w-full p-6"
+            <div
+              className="relative w-full max-w-lg rounded-card border border-line bg-surface shadow-pop p-6"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Delete Account
-                </h3>
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-btn bg-danger-wash text-danger flex items-center justify-center">
+                    <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="font-display text-[20px] font-medium text-ink">
+                    Delete Account
+                  </h3>
+                </div>
                 {!deletingAccount && (
                   <button
                     onClick={() => {
@@ -1168,7 +1169,7 @@ function SettingsPageContent() {
                       setDeleteConfirmText('');
                       setError(null);
                     }}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    className="size-9 p-0 inline-flex items-center justify-center rounded-btn text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1177,11 +1178,11 @@ function SettingsPageContent() {
                 )}
               </div>
 
-              <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg mb-4">
-                <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+              <div className="rounded-card bg-surface-2 border border-line p-4 mb-4">
+                <p className="text-[14px] text-ink-muted mb-2">
                   Please note: This action cannot be undone. The following will be permanently deleted:
                 </p>
-                <ul className="text-sm text-gray-600 dark:text-gray-400 list-disc list-inside ml-2">
+                <ul className="text-[14px] text-ink-muted list-disc list-inside ml-2">
                   <li>Your account and profile information</li>
                   <li>All connected Facebook Pages and Instagram accounts</li>
                   <li>All comments and comment history</li>
@@ -1190,8 +1191,8 @@ function SettingsPageContent() {
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  To confirm, please type <span className="font-mono bg-gray-100 dark:bg-gray-900 px-1 py-0.5 rounded">delete-account</span>:
+                <label className="block text-[13px] font-medium text-ink mb-1.5">
+                  To confirm, please type <span className="font-mono bg-surface-2 px-1 py-0.5 rounded-[4px]">delete-account</span>:
                 </label>
                 <input
                   type="text"
@@ -1202,11 +1203,11 @@ function SettingsPageContent() {
                   }}
                   disabled={deletingAccount}
                   placeholder="delete-account"
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full h-11 rounded-btn border border-line bg-surface px-3.5 text-[15px] text-ink placeholder:text-ink-muted/60 transition-colors focus:outline-none focus:border-accent focus:ring-2 focus:ring-ring disabled:bg-surface-2 disabled:text-ink-muted disabled:cursor-not-allowed"
                   autoFocus
                 />
                 {error && (
-                  <p className="mt-2 text-sm text-orange-600 dark:text-orange-400">{error}</p>
+                  <p className="mt-1.5 text-[13px] text-danger">{error}</p>
                 )}
               </div>
 
@@ -1214,7 +1215,7 @@ function SettingsPageContent() {
                 <button
                   onClick={deleteAccount}
                   disabled={deletingAccount || deleteConfirmText !== 'delete-account'}
-                  className="flex-1 px-4 py-2 bg-gray-700 dark:bg-gray-600 hover:bg-gray-800 dark:hover:bg-gray-500 disabled:bg-gray-400 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium text-sm"
+                  className="flex-1 inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-danger text-white text-[15px] font-medium hover:opacity-90 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                 >
                   {deletingAccount ? 'Deleting...' : 'Delete My Account'}
                 </button>
@@ -1225,7 +1226,7 @@ function SettingsPageContent() {
                     setError(null);
                   }}
                   disabled={deletingAccount}
-                  className="px-4 py-2 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-gray-900 dark:text-white rounded-lg transition-colors font-medium text-sm"
+                  className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn border border-line-strong bg-surface text-ink text-[15px] font-medium hover:border-accent/40 hover:text-accent transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                 >
                   Cancel
                 </button>
@@ -1238,29 +1239,29 @@ function SettingsPageContent() {
       {/* TikTok Organic disconnect modal */}
       {tiktokDisconnectTarget && (
         <>
-          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setTiktokDisconnectTarget(null)} />
+          <div className="fixed inset-0 z-50 bg-ink/40 dark:bg-black/60" onClick={() => setTiktokDisconnectTarget(null)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-gray-950 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 max-w-md w-full p-6">
+            <div className="relative w-full max-w-lg rounded-card border border-line bg-surface shadow-pop p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-gray-700 dark:text-gray-300" viewBox="0 0 24 24" fill="currentColor">
+                <div className="size-10 rounded-btn bg-danger-wash text-danger flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/>
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('dashboard.settingsPage.disconnectTiktokTitle', 'Disconnect TikTok account?')}</h3>
+                <h3 className="font-display text-[20px] font-medium text-ink">{t('dashboard.settingsPage.disconnectTiktokTitle', 'Disconnect TikTok account?')}</h3>
               </div>
               <div className="space-y-3 mb-5">
-                <p className="text-sm text-gray-700 dark:text-gray-300">
+                <p className="text-[14px] text-ink-muted">
                   This will stop auto-replies on your TikTok videos and revoke app access from TikTok.
                 </p>
-                <p className="text-sm text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2">
+                <p className="text-[14px] text-accent bg-accent-wash border border-accent/30 rounded-card px-3 py-2">
                   ✓ Your stored comments will remain in our database. If you reconnect the same account, your history will be fully restored.
                 </p>
               </div>
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={() => setTiktokDisconnectTarget(null)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900"
+                  className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-btn text-[15px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                 >
                   Cancel
                 </button>
@@ -1271,7 +1272,7 @@ function SettingsPageContent() {
                     await disconnectTiktokAccount(id);
                   }}
                   disabled={!!disconnectingTiktok}
-                  className="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-danger text-white text-[15px] font-medium hover:opacity-90 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                 >
                   Yes, disconnect
                 </button>
@@ -1284,29 +1285,29 @@ function SettingsPageContent() {
       {/* TikTok Ads disconnect modal */}
       {tiktokAdsDisconnectTarget && (
         <>
-          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setTiktokAdsDisconnectTarget(null)} />
+          <div className="fixed inset-0 z-50 bg-ink/40 dark:bg-black/60" onClick={() => setTiktokAdsDisconnectTarget(null)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-gray-950 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 max-w-md w-full p-6">
+            <div className="relative w-full max-w-lg rounded-card border border-line bg-surface shadow-pop p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-gray-700 dark:text-gray-300" viewBox="0 0 24 24" fill="currentColor">
+                <div className="size-10 rounded-btn bg-danger-wash text-danger flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/>
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('dashboard.settingsPage.disconnectTiktokAdsTitle', 'Disconnect TikTok Ads account?')}</h3>
+                <h3 className="font-display text-[20px] font-medium text-ink">{t('dashboard.settingsPage.disconnectTiktokAdsTitle', 'Disconnect TikTok Ads account?')}</h3>
               </div>
               <div className="space-y-3 mb-5">
-                <p className="text-sm text-gray-700 dark:text-gray-300">
+                <p className="text-[14px] text-ink-muted">
                   This will stop fetching and auto-replying to comments on your TikTok ad campaigns.
                 </p>
-                <p className="text-sm text-gray-700 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2">
+                <p className="text-[14px] text-accent bg-accent-wash border border-accent/30 rounded-card px-3 py-2">
                   ✓ Your stored comments will remain in our database. If you reconnect the same account, your history will be fully restored.
                 </p>
               </div>
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={() => setTiktokAdsDisconnectTarget(null)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900"
+                  className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-btn text-[15px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
                 >
                   Cancel
                 </button>
@@ -1317,7 +1318,7 @@ function SettingsPageContent() {
                     await disconnectTiktokAdsAccount(id);
                   }}
                   disabled={!!disconnectingTiktokAds}
-                  className="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-danger text-white text-[15px] font-medium hover:opacity-90 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                 >
                   Yes, disconnect
                 </button>
@@ -1330,28 +1331,28 @@ function SettingsPageContent() {
       {/* Meta account permanent data loss warning modal */}
       {showMetaDisconnectModal && (
         <>
-          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => setShowMetaDisconnectModal(false)} />
+          <div className="fixed inset-0 z-50 bg-ink/40 dark:bg-black/60" onClick={() => setShowMetaDisconnectModal(false)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-gray-950 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 max-w-md w-full p-6">
+            <div className="relative w-full max-w-lg rounded-card border border-line bg-surface shadow-pop p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="size-10 rounded-btn bg-danger-wash text-danger flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('dashboard.settingsPage.disconnectMetaTitle', 'Disconnect Meta account?')}</h3>
+                <h3 className="font-display text-[20px] font-medium text-ink">{t('dashboard.settingsPage.disconnectMetaTitle', 'Disconnect Meta account?')}</h3>
               </div>
 
               <div className="space-y-3 mb-5">
-                <p className="text-sm text-gray-700 dark:text-gray-300">
+                <p className="text-[14px] text-ink-muted">
                   This will permanently delete all your Facebook and Instagram data from our database:
                 </p>
-                <ul className="text-sm text-red-700 dark:text-red-400 space-y-1.5 pl-4 list-disc">
+                <ul className="text-[14px] text-danger space-y-1.5 pl-4 list-disc">
                   <li>All connected Facebook & Instagram pages</li>
                   <li>All stored comments and replies</li>
                   <li>All comment action history</li>
                 </ul>
-                <p className="text-sm font-medium text-gray-900 dark:text-white bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+                <p className="text-[14px] font-medium text-signal-text bg-signal-wash border border-signal/40 rounded-card px-3 py-2">
                   ⚠️ If you reconnect later, your old comments will <strong>not</strong> be restored.
                 </p>
               </div>
@@ -1360,7 +1361,7 @@ function SettingsPageContent() {
                 <button
                   onClick={() => setShowMetaDisconnectModal(false)}
                   disabled={disconnecting}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-btn text-[15px] font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                 >
                   Cancel
                 </button>
@@ -1370,7 +1371,7 @@ function SettingsPageContent() {
                     await disconnectMetaAccount();
                   }}
                   disabled={disconnecting}
-                  className="px-4 py-2 text-sm font-semibold rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-btn bg-danger text-white text-[15px] font-medium hover:opacity-90 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
                 >
                   {disconnecting ? 'Disconnecting...' : 'Yes, delete everything'}
                 </button>
@@ -1386,8 +1387,8 @@ function SettingsPageContent() {
 export default function SettingsPage() {
   return (
     <React.Suspense fallback={
-      <div className="min-h-screen bg-gray-50 dark:bg-black flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-gray-300 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin" />
+      <div className="min-h-screen bg-canvas flex items-center justify-center">
+        <div className="size-8 animate-spin rounded-full border-2 border-line border-t-accent" />
       </div>
     }>
       <SettingsPageContent />

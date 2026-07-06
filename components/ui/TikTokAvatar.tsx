@@ -10,7 +10,7 @@ interface TikTokAvatarProps {
   sizeClass?: string;
   /** Tailwind size classes for the fallback icon (e.g. "w-5 h-5"). */
   iconSizeClass?: string;
-  /** Border radius class (default rounded-lg). */
+  /** Border radius class (default rounded-full). */
   roundedClass?: string;
   className?: string;
 }
@@ -25,7 +25,7 @@ export function TikTokAvatar({
   alt = 'TikTok account',
   sizeClass = 'w-10 h-10',
   iconSizeClass = 'w-5 h-5',
-  roundedClass = 'rounded-lg',
+  roundedClass = 'rounded-full',
   className = '',
 }: TikTokAvatarProps) {
   const [errored, setErrored] = useState(false);
@@ -33,14 +33,14 @@ export function TikTokAvatar({
 
   if (showFallback) {
     return (
-      <div className={`${sizeClass} bg-black ${roundedClass} flex items-center justify-center shadow-sm flex-shrink-0 ${className}`}>
+      <div className={`${sizeClass} bg-[#0F0F0F] ${roundedClass} flex items-center justify-center flex-shrink-0 ${className}`}>
         <TikTokIcon className={`${iconSizeClass} text-white`} />
       </div>
     );
   }
 
   return (
-    <div className={`relative ${sizeClass} ${roundedClass} overflow-hidden flex-shrink-0 shadow-sm ${className}`}>
+    <div className={`relative ${sizeClass} ${roundedClass} ring-1 ring-line overflow-hidden flex-shrink-0 ${className}`}>
       <img
         src={src}
         alt={alt}

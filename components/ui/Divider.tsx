@@ -6,16 +6,16 @@ interface DividerProps {
 
 export const Divider: React.FC<DividerProps> = ({ text }) => {
   if (!text) {
-    return <div className="border-t border-gray-200 my-6" />;
+    return <div className="border-t border-line my-6" />;
   }
 
   return (
     <div className="relative my-6">
       <div className="absolute inset-0 flex items-center">
-        <div className="w-full border-t border-gray-200"></div>
+        <div className="w-full border-t border-line"></div>
       </div>
-      <div className="relative flex justify-center text-sm">
-        <span className="px-4 bg-white text-gray-500">{text}</span>
+      <div className="relative flex justify-center">
+        <span className="bg-surface px-3 text-[13px] text-ink-muted">{text}</span>
       </div>
     </div>
   );
