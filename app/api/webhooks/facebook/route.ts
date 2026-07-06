@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { analyzeCommentSentiment } from '@/lib/openai';
 import { generateAIReply, shouldAutoReply, detectCommentLanguage } from '@/lib/aiReplyEngine';
@@ -42,9 +42,6 @@ export async function GET(request: NextRequest) {
 
 // POST: Handle incoming webhook events
 export async function POST(request: NextRequest) {
-  const logs: string[] = [];
-  const addLog = (msg: string) => { logs.push(`[${new Date().toISOString()}] ${msg}`); };
-
   try {
     const rawBody = await request.text();
 
@@ -65,33 +62,45 @@ export async function POST(request: NextRequest) {
 
     if (body.object !== 'page') return NextResponse.json({ received: true }, { status: 200 });
 
-    for (const entry of body.entry || []) {
-      const pageId = entry.id;
-      const connectedPage = await prisma.connectedPage.findFirst({
-        where: { pageId: String(pageId), provider: 'facebook', disconnectedAt: null },
-        include: { user: true },
-      });
+    // Acknowledge Meta immediately, then do the heavy AI/moderation work AFTER
+    // the response. Meta times out webhook deliveries after a few seconds and
+    // retries, so processing synchronously (sentiment + reply, up to ~28s with
+    // web search) turned any small batch into a redelivery storm. The
+    // updateMany claim-lock in generateAndPostAutoReply keeps this idempotent
+    // against redeliveries. (AI-1)
+    after(async () => {
+      try {
+        for (const entry of body.entry || []) {
+          const pageId = entry.id;
+          const connectedPage = await prisma.connectedPage.findFirst({
+            where: { pageId: String(pageId), provider: 'facebook', disconnectedAt: null },
+            include: { user: true },
+          });
 
-      if (!connectedPage) {
-        addLog(`No page for FB: ${pageId}`);
-        continue;
-      }
+          if (!connectedPage) {
+            console.log(`[FB Webhook] No connected page for FB id ${pageId}`);
+            continue;
+          }
 
-      for (const change of entry.changes || []) {
-        if (change.field !== 'feed') continue;
-        const value = change.value || {};
-        const item = value.item;
-        const commentId = value.comment_id;
-        if (commentId || item === 'comment') {
-          await handleFeedComment(value, connectedPage);
+          for (const change of entry.changes || []) {
+            if (change.field !== 'feed') continue;
+            const value = change.value || {};
+            const item = value.item;
+            const commentId = value.comment_id;
+            if (commentId || item === 'comment') {
+              await handleFeedComment(value, connectedPage);
+            }
+          }
         }
+      } catch (err) {
+        console.error('[FB Webhook] after() processing error:', err);
       }
-    }
+    });
 
-    return NextResponse.json({ received: true, logs }, { status: 200 });
+    return NextResponse.json({ received: true }, { status: 200 });
   } catch (error: any) {
     console.error('[FB Webhook] Error:', error?.message);
-    return NextResponse.json({ received: true, error: error.message, logs }, { status: 200 });
+    return NextResponse.json({ received: true, error: error.message }, { status: 200 });
   }
 }
 
