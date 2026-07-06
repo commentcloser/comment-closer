@@ -330,8 +330,9 @@ async function processAdsComment(
       parentCommentId,
       isFromAd: true,
       adId,
-      // Store identity_id for manual replies (adAccountId field reused)
+      // Store identity_id (adAccountId field reused) + identity_type for replies
       adAccountId: comment.identity_id || null,
+      identityType: comment.identity_type || null,
       source: 'tiktok_ads',
     },
   });

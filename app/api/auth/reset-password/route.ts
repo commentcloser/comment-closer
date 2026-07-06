@@ -29,7 +29,9 @@ export async function POST(request: NextRequest) {
       where: { token },
     });
 
-    if (!verificationToken || verificationToken.expires < new Date()) {
+    // Reject a token issued for a different purpose (e.g. an email-verification
+    // token used here). Legacy tokens (type null) are still accepted (AUTH-2).
+    if (!verificationToken || verificationToken.expires < new Date() || verificationToken.type === 'VERIFY_EMAIL') {
       return NextResponse.json(
         { success: false, message: 'Invalid or expired reset token' },
         { status: 400 }

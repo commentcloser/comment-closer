@@ -56,7 +56,7 @@ async function processOneReply(comment: any): Promise<'posted' | 'failed' | 'ski
           adId: comment.adId ?? '',
           tiktokItemId: comment.postId ?? '',
           text: comment.aiGeneratedReply,
-          identityType: 'TT_USER',
+          identityType: comment.identityType || 'TT_USER',
           identityId: comment.adAccountId ?? '',
         },
       );
@@ -224,6 +224,7 @@ export async function GET(request: Request) {
       postId: true,
       adId: true,
       adAccountId: true,
+      identityType: true,
       aiGeneratedReply: true,
       aiPromptVersion: true,
       aiModel: true,

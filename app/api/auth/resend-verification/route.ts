@@ -32,15 +32,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    // Delete old tokens and create a new one
-    await prisma.verificationToken.deleteMany({ where: { identifier: normalizedEmail } });
+    // Delete old VERIFY_EMAIL tokens (scoped by type so a pending password-reset
+    // token isn't clobbered) and create a new one.
+    await prisma.verificationToken.deleteMany({ where: { identifier: normalizedEmail, type: 'VERIFY_EMAIL' } });
 
     const token = randomBytes(32).toString('hex');
     const expires = new Date();
     expires.setHours(expires.getHours() + 24);
 
     await prisma.verificationToken.create({
-      data: { identifier: normalizedEmail, token, expires },
+      data: { identifier: normalizedEmail, token, expires, type: 'VERIFY_EMAIL' },
     });
 
     try {

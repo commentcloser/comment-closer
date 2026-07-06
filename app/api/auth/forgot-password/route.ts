@@ -48,10 +48,12 @@ export async function POST(request: NextRequest) {
     const expires = new Date();
     expires.setHours(expires.getHours() + 1);
 
-    // Delete any existing reset tokens for this email
+    // Delete existing PASSWORD_RESET tokens (scoped by type so a pending
+    // email-verification token isn't clobbered).
     await prisma.verificationToken.deleteMany({
       where: {
         identifier: normalizedEmail,
+        type: 'PASSWORD_RESET',
       },
     });
 
@@ -60,6 +62,7 @@ export async function POST(request: NextRequest) {
         identifier: normalizedEmail,
         token,
         expires,
+        type: 'PASSWORD_RESET',
       },
     });
 

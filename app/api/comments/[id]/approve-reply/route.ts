@@ -102,7 +102,7 @@ export async function POST(
           adId: comment.adId ?? '',
           tiktokItemId: comment.postId ?? '',
           text: replyText!,
-          identityType: 'TT_USER',
+          identityType: comment.identityType || 'TT_USER',
           identityId: comment.adAccountId ?? '',
         });
 

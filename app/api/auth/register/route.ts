@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
         identifier: normalizedEmail,
         token,
         expires,
+        type: 'VERIFY_EMAIL',
       },
     });
 
