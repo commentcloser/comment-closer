@@ -6,6 +6,7 @@ import { shouldGenerateReply, logReplyDecision } from '@/lib/replyDecisionEngine
 import { logSkipDecision, logReplyAttempt, logReplySuccess, logReplyFailure } from '@/lib/actionLogger';
 import { autoModerateNegativeComment } from '@/lib/commentModerator';
 import { verifyWebhookSignature } from '@/lib/webhookVerification';
+import { graphFetch } from '@/lib/graphFetch';
 import * as Sentry from '@sentry/nextjs';
 
 export const maxDuration = 60;
@@ -175,7 +176,7 @@ async function handleFeedComment(value: any, connectedPage: any) {
     // Graph API fallback: fetch post's promotion_status
     if (!isFromAd && connectedPage.pageAccessToken) {
       try {
-        const postRes = await fetch(
+        const postRes = await graphFetch(
           `https://graph.facebook.com/v24.0/${postId}?access_token=${connectedPage.pageAccessToken}&fields=promotion_status,promotable_id`
         );
         if (postRes.ok) {
@@ -199,7 +200,7 @@ async function handleFeedComment(value: any, connectedPage: any) {
           select: { access_token: true },
         });
         if (account?.access_token) {
-          const postRes = await fetch(
+          const postRes = await graphFetch(
             `https://graph.facebook.com/v24.0/${postId}?access_token=${account.access_token}&fields=promotion_status`
           );
           if (postRes.ok) {
@@ -513,7 +514,7 @@ async function generateAndPostAutoReply(
     if (connectedPage.pageAccessToken) {
       console.log(`[FB Webhook] 🔍 Fetching post caption for context...`);
       try {
-        const postRes = await fetch(
+        const postRes = await graphFetch(
           `https://graph.facebook.com/v24.0/${postId}?access_token=${connectedPage.pageAccessToken}&fields=message`
         );
         if (postRes.ok) {

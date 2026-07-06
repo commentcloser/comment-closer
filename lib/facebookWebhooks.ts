@@ -6,12 +6,14 @@
  * @param accessToken - Page access token
  * @returns Object with success status and optional error message
  */
+import { graphFetch } from './graphFetch';
+
 export async function subscribePageToWebhooks(
   pageId: string,
   accessToken: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch(`https://graph.facebook.com/v24.0/${pageId}/subscribed_apps?subscribed_fields=feed&access_token=${accessToken}`, { method: 'POST' });
+    const response = await graphFetch(`https://graph.facebook.com/v24.0/${pageId}/subscribed_apps?subscribed_fields=feed&access_token=${accessToken}`, undefined, { method: 'POST' });
     const data = await response.json();
 
     if (response.ok && data.success === true) return { success: true };

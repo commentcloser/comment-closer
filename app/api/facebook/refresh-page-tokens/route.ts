@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import NextAuth from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { graphFetch } from '@/lib/graphFetch';
 
 const { auth } = NextAuth(authOptions);
 
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch fresh page tokens from Facebook
     const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?access_token=${account.access_token}&fields=id,name,access_token&limit=100`;
-    const pagesResponse = await fetch(pagesUrl);
+    const pagesResponse = await graphFetch(pagesUrl);
 
     if (!pagesResponse.ok) {
       const errorText = await pagesResponse.text();
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
 
         // Verify the fresh token has the required permissions
         const debugTokenUrl = `https://graph.facebook.com/v18.0/debug_token?input_token=${facebookPage.access_token}&access_token=${account.access_token}`;
-        const debugResponse = await fetch(debugTokenUrl);
+        const debugResponse = await graphFetch(debugTokenUrl);
         
         if (debugResponse.ok) {
           const debugData = await debugResponse.json();

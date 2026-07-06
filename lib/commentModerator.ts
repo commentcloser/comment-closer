@@ -12,6 +12,7 @@
 
 import { prisma } from './prisma';
 import { createActionLog, updateActionLog } from './actionLogger';
+import { graphFetch } from './graphFetch';
 
 const META_GRAPH_BASE = 'https://graph.facebook.com/v24.0';
 
@@ -193,7 +194,7 @@ export async function autoModerateNegativeComment({
   const deleteUrl = `${META_GRAPH_BASE}/${commentMetaId}?access_token=${encodeURIComponent(pageAccessToken)}`;
 
   try {
-    const response = await fetch(deleteUrl, {
+    const response = await graphFetch(deleteUrl, undefined, {
       method: 'DELETE',
     });
 

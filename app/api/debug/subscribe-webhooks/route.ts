@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/adminAuth';
 import { prisma } from '@/lib/prisma';
 import { subscribeInstagramToWebhooks } from '@/lib/instagramWebhooks';
 import { subscribePageToWebhooks } from '@/lib/facebookWebhooks';
+import { graphFetch } from '@/lib/graphFetch';
 
 export const dynamic = 'force-dynamic';
 
@@ -181,7 +182,7 @@ export async function GET(request: NextRequest) {
         // Check if this Instagram account is subscribed
         const checkUrl = `https://graph.facebook.com/v18.0/${instagramId}/subscribed_apps?access_token=${pageToken}`;
         
-        const response = await fetch(checkUrl);
+        const response = await graphFetch(checkUrl);
         const data = await response.json();
 
         if (response.ok) {

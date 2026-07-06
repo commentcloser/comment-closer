@@ -11,6 +11,8 @@
  * @param facebookPageId - Optional: The linked Facebook Page ID. If not provided, will be resolved via /me endpoint.
  * @returns Object with success status and optional error message
  */
+import { graphFetch } from './graphFetch';
+
 export async function subscribeInstagramToWebhooks(
   instagramAccountId: string,
   accessToken: string,
@@ -22,7 +24,7 @@ export async function subscribeInstagramToWebhooks(
 
     if (!resolvedPageId) {
       try {
-        const meResponse = await fetch(`https://graph.facebook.com/v24.0/me?access_token=${accessToken}`);
+        const meResponse = await graphFetch(`https://graph.facebook.com/v24.0/me?access_token=${accessToken}`);
         const meData = await meResponse.json();
         if (meResponse.ok && meData.id) {
           resolvedPageId = meData.id;
@@ -40,8 +42,9 @@ export async function subscribeInstagramToWebhooks(
     }
 
     // Subscribe the Facebook Page to feed webhooks — this enables Instagram comment delivery
-    const response = await fetch(
+    const response = await graphFetch(
       `https://graph.facebook.com/v24.0/${resolvedPageId}/subscribed_apps?subscribed_fields=feed&access_token=${accessToken}`,
+      undefined,
       { method: 'POST' }
     );
     const data = await response.json();

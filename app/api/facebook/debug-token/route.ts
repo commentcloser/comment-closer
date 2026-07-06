@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/adminAuth';
+import { graphFetch } from '@/lib/graphFetch';
 
 /**
  * Debug endpoint to check Facebook token and permissions.
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
     // Test 1: Check token validity
     try {
       const debugUrl = `https://graph.facebook.com/v18.0/debug_token?input_token=${token}&access_token=${token}`;
-      const debugResponse = await fetch(debugUrl);
+      const debugResponse = await graphFetch(debugUrl);
       
       if (debugResponse.ok) {
         const debugData = await debugResponse.json();
@@ -59,7 +60,7 @@ export async function GET(request: NextRequest) {
     // Test 2: Try to get user info
     try {
       const meUrl = `https://graph.facebook.com/v18.0/me?access_token=${token}`;
-      const meResponse = await fetch(meUrl);
+      const meResponse = await graphFetch(meUrl);
       
       if (meResponse.ok) {
         const meData = await meResponse.json();
@@ -76,7 +77,7 @@ export async function GET(request: NextRequest) {
     // access_token — only id/name are needed to diagnose connectivity.
     try {
       const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?access_token=${token}&fields=id,name`;
-      const pagesResponse = await fetch(pagesUrl);
+      const pagesResponse = await graphFetch(pagesUrl);
       const pagesText = await pagesResponse.text();
 
       if (pagesResponse.ok) {

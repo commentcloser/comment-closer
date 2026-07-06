@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import NextAuth from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { graphFetch } from '@/lib/graphFetch';
 
 const { auth } = NextAuth(authOptions);
 
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch all pages of ad accounts
     while (nextUrl) {
-      const adAccountsResponse: Response = await fetch(nextUrl);
+      const adAccountsResponse: Response = await graphFetch(nextUrl);
 
       if (!adAccountsResponse.ok) {
         const errorText = await adAccountsResponse.text();

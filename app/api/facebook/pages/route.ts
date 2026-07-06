@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import NextAuth from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { graphFetch } from '@/lib/graphFetch';
 import { subscribeInstagramToWebhooks } from '@/lib/instagramWebhooks';
 import { subscribePageToWebhooks } from '@/lib/facebookWebhooks';
 import { validateWebSourceUrl, isValidKeywordList } from '@/lib/validators';
@@ -106,7 +107,7 @@ export async function GET(request: NextRequest) {
         }
         
         const tokenExchangeUrl = `https://graph.facebook.com/v18.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${process.env.FACEBOOK_CLIENT_ID}&client_secret=${process.env.FACEBOOK_CLIENT_SECRET}&fb_exchange_token=${shortLivedToken}`;
-        const tokenResponse = await fetch(tokenExchangeUrl);
+        const tokenResponse = await graphFetch(tokenExchangeUrl);
         
         if (tokenResponse.ok) {
           const tokenData = await tokenResponse.json();
@@ -141,7 +142,7 @@ export async function GET(request: NextRequest) {
     // Verify user token has required permissions
     try {
       const userTokenDebugUrl = `https://graph.facebook.com/v18.0/debug_token?input_token=${accessToken}&access_token=${accessToken}`;
-      const userTokenDebugResponse = await fetch(userTokenDebugUrl);
+      const userTokenDebugResponse = await graphFetch(userTokenDebugUrl);
       
       if (userTokenDebugResponse.ok) {
         const userTokenDebugData = await userTokenDebugResponse.json();
@@ -160,7 +161,7 @@ export async function GET(request: NextRequest) {
 
     // First, verify the token has the right permissions by checking user info
     const meUrl = `https://graph.facebook.com/v18.0/me?access_token=${accessToken}`;
-    const meResponse = await fetch(meUrl);
+    const meResponse = await graphFetch(meUrl);
     
     if (!meResponse.ok) {
       const meErrorText = await meResponse.text();
@@ -189,7 +190,7 @@ export async function GET(request: NextRequest) {
     // This endpoint returns Page access tokens (not user tokens) for each page
     const pagesUrl = `https://graph.facebook.com/v24.0/me/accounts?access_token=${accessToken}&fields=id,name,access_token,category,picture.type(large)&limit=100`;
     
-    let pagesResponse = await fetch(pagesUrl);
+    let pagesResponse = await graphFetch(pagesUrl);
 
     // If token expired, try to exchange it for a long-lived token
     if (!pagesResponse.ok) {
@@ -205,7 +206,7 @@ export async function GET(request: NextRequest) {
           if (refreshedToken) {
             // Retry with refreshed token
             accessToken = refreshedToken;
-            pagesResponse = await fetch(
+            pagesResponse = await graphFetch(
               `https://graph.facebook.com/v24.0/me/accounts?access_token=${accessToken}&fields=id,name,access_token,picture.type(large)`
             );
           } else {
@@ -319,7 +320,7 @@ export async function GET(request: NextRequest) {
       const instagramPromises = facebookPages.map(async (page: any) => {
         try {
           // Check if this page has an Instagram Business account
-          const instagramAccountResponse = await fetch(
+          const instagramAccountResponse = await graphFetch(
             `https://graph.facebook.com/v18.0/${page.id}?fields=instagram_business_account&access_token=${page.access_token}`
           );
 
@@ -330,7 +331,7 @@ export async function GET(request: NextRequest) {
               const instagramAccountId = instagramAccountData.instagram_business_account.id;
               
               // Get Instagram account details
-              const instagramDetailsResponse = await fetch(
+              const instagramDetailsResponse = await graphFetch(
                 `https://graph.facebook.com/v18.0/${instagramAccountId}?fields=id,username,name,profile_picture_url&access_token=${page.access_token}`
               );
 
@@ -559,7 +560,7 @@ export async function POST(request: NextRequest) {
         if (account?.access_token) {
           // FIRST: Check if the user's main token has the permission
           const userTokenDebugUrl = `https://graph.facebook.com/v18.0/debug_token?input_token=${account.access_token}&access_token=${account.access_token}`;
-          const userTokenDebugResponse = await fetch(userTokenDebugUrl);
+          const userTokenDebugResponse = await graphFetch(userTokenDebugUrl);
           
           let userTokenHasPermission = false;
           if (userTokenDebugResponse.ok) {
@@ -570,7 +571,7 @@ export async function POST(request: NextRequest) {
           
           // Verify the page token has the required permissions
           const debugTokenUrl = `https://graph.facebook.com/v18.0/debug_token?input_token=${pageAccessToken}&access_token=${account.access_token}`;
-          const debugResponse = await fetch(debugTokenUrl);
+          const debugResponse = await graphFetch(debugTokenUrl);
           
           if (debugResponse.ok) {
             const debugData = await debugResponse.json();
@@ -581,7 +582,7 @@ export async function POST(request: NextRequest) {
               if (userTokenHasPermission) {
                 // Fetch fresh page tokens from Facebook
                 const pagesUrl = `https://graph.facebook.com/v24.0/me/accounts?access_token=${account.access_token}&fields=id,name,access_token&limit=100`;
-                const pagesResponse = await fetch(pagesUrl);
+                const pagesResponse = await graphFetch(pagesUrl);
                 
                 if (pagesResponse.ok) {
                   const pagesData = await pagesResponse.json();
@@ -590,7 +591,7 @@ export async function POST(request: NextRequest) {
                   if (page?.access_token) {
                     // Verify the fresh token has the permission
                     const freshDebugUrl = `https://graph.facebook.com/v18.0/debug_token?input_token=${page.access_token}&access_token=${account.access_token}`;
-                    const freshDebugResponse = await fetch(freshDebugUrl);
+                    const freshDebugResponse = await graphFetch(freshDebugUrl);
                     
                     if (freshDebugResponse.ok) {
                       const freshDebugData = await freshDebugResponse.json();
@@ -635,7 +636,7 @@ export async function POST(request: NextRequest) {
           if (!adAccountId) {
           // This gets ad accounts associated with the page's business portfolio
             const pageAdAccountsUrl = `https://graph.facebook.com/v24.0/${pageId}/adaccounts?access_token=${account.access_token}&fields=id,account_id,name&limit=25`;
-            const pageAdAccountsResponse = await fetch(pageAdAccountsUrl);
+            const pageAdAccountsResponse = await graphFetch(pageAdAccountsUrl);
             
             let foundAdAccounts = false;
             
@@ -656,7 +657,7 @@ export async function POST(request: NextRequest) {
             // Strategy 2: Try using page access token (for customer pages managed by you)
             if (!foundAdAccounts && finalPageAccessToken) {
             const pageTokenAdAccountsUrl = `https://graph.facebook.com/v24.0/${pageId}/adaccounts?access_token=${finalPageAccessToken}&fields=id,account_id,name&limit=25`;
-            const pageTokenAdAccountsResponse = await fetch(pageTokenAdAccountsUrl);
+            const pageTokenAdAccountsResponse = await graphFetch(pageTokenAdAccountsUrl);
             
             if (pageTokenAdAccountsResponse.ok) {
               const pageTokenAdAccountsData = await pageTokenAdAccountsResponse.json();
@@ -678,7 +679,7 @@ export async function POST(request: NextRequest) {
             try {
               // Get business manager ID from page
               const pageBusinessUrl = `https://graph.facebook.com/v24.0/${pageId}?access_token=${account.access_token}&fields=business`;
-              const pageBusinessResponse = await fetch(pageBusinessUrl);
+              const pageBusinessResponse = await graphFetch(pageBusinessUrl);
               
               if (pageBusinessResponse.ok) {
                 const pageBusinessData = await pageBusinessResponse.json();
@@ -688,7 +689,7 @@ export async function POST(request: NextRequest) {
                   
                   // Try /client_ad_accounts first (assigned client ad accounts - most common for customer pages)
                   const businessClientAdAccountsUrl = `https://graph.facebook.com/v24.0/${businessId}/client_ad_accounts?access_token=${account.access_token}&fields=id,account_id,name&limit=25`;
-                  const businessClientAdAccountsResponse = await fetch(businessClientAdAccountsUrl);
+                  const businessClientAdAccountsResponse = await graphFetch(businessClientAdAccountsUrl);
                   
                   if (businessClientAdAccountsResponse.ok) {
                     const businessClientAdAccountsData = await businessClientAdAccountsResponse.json();
@@ -712,7 +713,7 @@ export async function POST(request: NextRequest) {
                     } else {
                       // If /client_ad_accounts returned empty, try /owned_ad_accounts
                       const businessOwnedAdAccountsUrl = `https://graph.facebook.com/v24.0/${businessId}/owned_ad_accounts?access_token=${account.access_token}&fields=id,account_id,name&limit=25`;
-                      const businessOwnedAdAccountsResponse = await fetch(businessOwnedAdAccountsUrl);
+                      const businessOwnedAdAccountsResponse = await graphFetch(businessOwnedAdAccountsUrl);
                       
                       if (businessOwnedAdAccountsResponse.ok) {
                         const businessOwnedAdAccountsData = await businessOwnedAdAccountsResponse.json();
@@ -744,7 +745,7 @@ export async function POST(request: NextRequest) {
                     const errorText = await businessClientAdAccountsResponse.text();
                     const errorMessage = errorText.substring(0, 300);
                     const businessOwnedAdAccountsUrl = `https://graph.facebook.com/v24.0/${businessId}/owned_ad_accounts?access_token=${account.access_token}&fields=id,account_id,name&limit=25`;
-                    const businessOwnedAdAccountsResponse = await fetch(businessOwnedAdAccountsUrl);
+                    const businessOwnedAdAccountsResponse = await graphFetch(businessOwnedAdAccountsUrl);
                     
                     if (businessOwnedAdAccountsResponse.ok) {
                       const businessOwnedAdAccountsData = await businessOwnedAdAccountsResponse.json();
@@ -784,7 +785,7 @@ export async function POST(request: NextRequest) {
           if (!adAccountId) {
             // If all other strategies failed, try /me/adaccounts but filter/search for page-related accounts
             const userAdAccountsUrl = `https://graph.facebook.com/v24.0/me/adaccounts?access_token=${account.access_token}&fields=id,account_id,name&limit=50`;
-            const userAdAccountsResponse = await fetch(userAdAccountsUrl);
+            const userAdAccountsResponse = await graphFetch(userAdAccountsUrl);
             
             if (userAdAccountsResponse.ok) {
               const userAdAccountsData = await userAdAccountsResponse.json();
@@ -840,7 +841,7 @@ export async function POST(request: NextRequest) {
           if (!connectedFacebookPageId) {
               // Get the connected Facebook Page ID from Instagram API
             const instagramAccountUrl = `https://graph.facebook.com/v24.0/${pageId}?fields=id,username,name,connected_facebook_page&access_token=${account.access_token}`;
-            const instagramAccountResponse = await fetch(instagramAccountUrl);
+            const instagramAccountResponse = await graphFetch(instagramAccountUrl);
             
             if (instagramAccountResponse.ok) {
               const instagramAccountData = await instagramAccountResponse.json();
@@ -875,7 +876,7 @@ export async function POST(request: NextRequest) {
           // Strategy 3: Fallback - Use /me/adaccounts and get the first available ad account
           if (!adAccountId) {
             const userAdAccountsUrl = `https://graph.facebook.com/v24.0/me/adaccounts?access_token=${account.access_token}&fields=id,account_id,name,business_name&limit=50`;
-            const userAdAccountsResponse = await fetch(userAdAccountsUrl);
+            const userAdAccountsResponse = await graphFetch(userAdAccountsUrl);
                 
             if (userAdAccountsResponse.ok) {
               const userAdAccountsData = await userAdAccountsResponse.json();

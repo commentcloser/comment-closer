@@ -6,6 +6,7 @@ import { shouldGenerateReply, logReplyDecision } from '@/lib/replyDecisionEngine
 import { logSkipDecision, logReplyAttempt, logReplySuccess, logReplyFailure } from '@/lib/actionLogger';
 import { autoModerateNegativeComment } from '@/lib/commentModerator';
 import { verifyWebhookSignature } from '@/lib/webhookVerification';
+import { graphFetch } from '@/lib/graphFetch';
 import * as Sentry from '@sentry/nextjs';
 
 export const maxDuration = 60;
@@ -427,7 +428,7 @@ async function generateAndPostAutoReply(
     let postCaption: string | undefined;
     if (connectedPage.pageAccessToken) {
       try {
-        const mediaRes = await fetch(
+        const mediaRes = await graphFetch(
           `https://graph.facebook.com/v24.0/${mediaId}?access_token=${connectedPage.pageAccessToken}&fields=caption`
         );
         if (mediaRes.ok) {
