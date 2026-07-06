@@ -8,6 +8,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Dummy values so steps that load prisma.config.ts (which reads
+    # env("DATABASE_URL")) and the Next build's client init don't require real
+    # production secrets. Applies to prisma generate / typecheck / test / build.
+    env:
+      DATABASE_URL: postgresql://user:pass@localhost:5432/db
+      NEXTAUTH_SECRET: ci-dummy-secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,8 +40,3 @@ jobs:
 
       - name: Build
         run: npm run build
-        env:
-          # The app builds without a DB connection; dummy values satisfy client
-          # init so the build doesn't require production secrets.
-          DATABASE_URL: postgresql://user:pass@localhost:5432/db
-          NEXTAUTH_SECRET: ci-dummy-secret
