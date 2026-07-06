@@ -145,8 +145,9 @@
     },
     "pricing": {
       "title": "Απλή, Διαφανής Τιμολόγηση",
-      "subtitle": "Ξεκινήστε δωρεάν και πληρώστε μόνο όταν χρειαστείτε περισσότερα. Όλα τα plans περιλαμβάνουν Facebook, Instagram, TikTok Organic & Ads.",
+      "subtitle": "Προς το παρόν δωρεάν κατά την πρώιμη πρόσβαση — χωρίς χρεώσεις. Τα επί πληρωμή plans παρακάτω σχεδιάζονται για το μέλλον. Όλα τα plans περιλαμβάνουν Facebook, Instagram, TikTok Organic & Ads.",
       "mostPopular": "Πιο Δημοφιλές",
+      "comingSoon": "Σύντομα διαθέσιμο",
       "starter": {
         "name": "Free",
         "price": "$0",

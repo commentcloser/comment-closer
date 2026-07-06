@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
+import { tiktokClientKey, tiktokClientSecret, registerTikTokWebhook } from '@/lib/tiktokApi';
 
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -74,8 +75,8 @@ export async function GET(request: NextRequest) {
   cookieStore.delete('tiktok_oauth_state');
   cookieStore.delete('tiktok_linking_user_id');
 
-  const clientId = (process.env.TIKTOK_SANDBOX_CLIENT_KEY || process.env.TIKTOK_CLIENT_KEY)!;
-  const clientSecret = (process.env.TIKTOK_SANDBOX_CLIENT_SECRET || process.env.TIKTOK_CLIENT_SECRET)!;
+  const clientId = tiktokClientKey()!;
+  const clientSecret = tiktokClientSecret()!;
   const redirectUri = process.env.TIKTOK_ACCOUNTS_REDIRECT_URI || `${baseUrl}/api/tiktok/callback`;
 
   // --- Step 1: Exchange auth_code for Creator access token (Accounts API OAuth) ---
@@ -322,6 +323,18 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     console.error('[TikTok OAuth] DB save error:', err);
     return NextResponse.redirect(errorRedirect('db_save_failed'));
+  }
+
+  // Self-heal the app-level webhook registration on every connect (INTEG-6), so
+  // organic comment events keep arriving even if the one-time manual admin
+  // registration was missed or the callback URL changed. App-scoped + idempotent.
+  try {
+    const reg = await registerTikTokWebhook();
+    if (!reg.success) {
+      console.warn('[TikTok OAuth] Webhook (re)registration failed:', reg.message);
+    }
+  } catch (err) {
+    console.warn('[TikTok OAuth] Webhook (re)registration error:', err);
   }
 
   cookieStore.delete('tiktok_return_to');

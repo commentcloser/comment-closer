@@ -49,6 +49,33 @@ function parseSignedRequest(signedRequest: string, appSecret: string): any {
   }
 }
 
+// Sign an opaque, verifiable status code for a Facebook user id, so the status
+// endpoint can only be polled by someone who received it from the POST (Meta) —
+// closing the account-existence enumeration oracle (SEC-5). No storage needed.
+function signDeletionCode(facebookUserId: string): string {
+  const secret = process.env.FACEBOOK_CLIENT_SECRET || '';
+  const mac = crypto.createHmac('sha256', secret).update(facebookUserId).digest('hex');
+  return `${facebookUserId}.${mac}`;
+}
+
+function verifyDeletionCode(code: string | null): string | null {
+  if (!code) return null;
+  const dot = code.lastIndexOf('.');
+  if (dot <= 0) return null;
+  const facebookUserId = code.slice(0, dot);
+  const mac = code.slice(dot + 1);
+  const secret = process.env.FACEBOOK_CLIENT_SECRET || '';
+  const expected = crypto.createHmac('sha256', secret).update(facebookUserId).digest('hex');
+  try {
+    if (mac.length === expected.length && crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(expected))) {
+      return facebookUserId;
+    }
+  } catch {
+    // fall through
+  }
+  return null;
+}
+
 // Helper function to delete all user data
 async function deleteUserData(facebookUserId: string): Promise<{ success: boolean; message: string }> {
   try {
@@ -193,11 +220,12 @@ export async function POST(request: NextRequest) {
       baseUrl = 'https://commentcloser.com'; // Fallback
     }
     
-    const confirmationUrl = `${baseUrl}/api/facebook/data-deletion/status?user_id=${facebookUserId}`;
+    const code = signDeletionCode(facebookUserId);
+    const confirmationUrl = `${baseUrl}/api/facebook/data-deletion?code=${encodeURIComponent(code)}`;
 
     return NextResponse.json({
       url: confirmationUrl,
-      confirmation_code: `${facebookUserId}_${Date.now()}`,
+      confirmation_code: code,
     });
   } catch (error: any) {
     console.error('[Data Deletion] Unexpected error:', error);
@@ -210,33 +238,26 @@ export async function POST(request: NextRequest) {
 
 // GET: Status check endpoint (Meta can call this to verify deletion status)
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const userId = searchParams.get('user_id');
+  // Only accept an opaque, HMAC-signed code issued by the POST above. This stops
+  // the endpoint being polled with a guessed user_id to test whether an arbitrary
+  // Facebook user is a customer (SEC-5).
+  const code = request.nextUrl.searchParams.get('code');
+  const facebookUserId = verifyDeletionCode(code);
 
-  if (!userId) {
-    return NextResponse.json(
-      { error: 'Missing user_id parameter' },
-      { status: 400 }
-    );
+  if (!facebookUserId) {
+    return NextResponse.json({ error: 'Missing or invalid code' }, { status: 400 });
   }
 
-  // Check if user still exists
   const account = await prisma.account.findFirst({
     where: {
       provider: 'facebook',
-      providerAccountId: userId,
+      providerAccountId: facebookUserId,
     },
   });
 
-  if (account) {
-    return NextResponse.json({
-      status: 'pending',
-      message: 'Data deletion is in progress',
-    });
-  }
-
-  return NextResponse.json({
-    status: 'completed',
-    message: 'User data has been deleted',
-  });
+  return NextResponse.json(
+    account
+      ? { status: 'pending', message: 'Data deletion is in progress' }
+      : { status: 'completed', message: 'User data has been deleted' }
+  );
 }

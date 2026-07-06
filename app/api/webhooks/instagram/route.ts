@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { analyzeCommentSentiment } from '@/lib/openai';
 import { generateAIReply, shouldAutoReply, detectCommentLanguage } from '@/lib/aiReplyEngine';
@@ -6,6 +6,8 @@ import { shouldGenerateReply, logReplyDecision } from '@/lib/replyDecisionEngine
 import { logSkipDecision, logReplyAttempt, logReplySuccess, logReplyFailure } from '@/lib/actionLogger';
 import { autoModerateNegativeComment } from '@/lib/commentModerator';
 import { verifyWebhookSignature } from '@/lib/webhookVerification';
+import { graphFetch } from '@/lib/graphFetch';
+import * as Sentry from '@sentry/nextjs';
 
 export const maxDuration = 60;
 
@@ -42,9 +44,6 @@ export async function GET(request: NextRequest) {
 
 // POST: Handle incoming webhook events
 export async function POST(request: NextRequest) {
-  const logs: string[] = [];
-  const addLog = (msg: string) => { logs.push(`[${new Date().toISOString()}] ${msg}`); };
-
   try {
     const rawBody = await request.text();
 
@@ -64,44 +63,50 @@ export async function POST(request: NextRequest) {
 
     if (body.object !== 'instagram') return NextResponse.json({ received: true }, { status: 200 });
 
-    for (const entry of body.entry || []) {
-      const instagramBusinessAccountId = entry.id;
-      let connectedPage: Awaited<ReturnType<typeof prisma.connectedPage.findFirst>> = null;
-      const isTestWebhook = instagramBusinessAccountId === '0' || instagramBusinessAccountId === 0;
+    // Acknowledge Meta immediately; run the heavy AI/moderation work after the
+    // response so Meta's ~10s webhook timeout can't trigger redelivery storms.
+    // Idempotent via the updateMany claim-lock in generateAndPostAutoReply. (AI-1)
+    after(async () => {
+      try {
+        for (const entry of body.entry || []) {
+          const instagramBusinessAccountId = entry.id;
+          let connectedPage: Awaited<ReturnType<typeof prisma.connectedPage.findFirst>> = null;
+          const isTestWebhook = instagramBusinessAccountId === '0' || instagramBusinessAccountId === 0;
 
-      if (isTestWebhook) {
-        connectedPage = await prisma.connectedPage.findFirst({
-          where: { provider: 'instagram', instagramUserId: { not: null } },
-          include: { user: true },
-          orderBy: { createdAt: 'desc' },
-        }) ?? await prisma.connectedPage.findFirst({
-          where: { provider: 'instagram' },
-          include: { user: true },
-          orderBy: { createdAt: 'desc' },
-        });
-      } else {
-        connectedPage = await prisma.connectedPage.findFirst({
-          where: { instagramUserId: String(instagramBusinessAccountId), provider: 'instagram' },
-          include: { user: true },
-        }) ?? await prisma.connectedPage.findFirst({
-          where: { pageId: String(instagramBusinessAccountId), provider: 'instagram' },
-          include: { user: true },
-        });
+          // Meta 'Send to server' test event (entry.id === '0'). Do NOT resolve it
+          // to a real customer's page — processing would burn OpenAI and could
+          // hide/delete/reply on live data. Skip. (SEC-6)
+          if (isTestWebhook) {
+            console.log('[IG Webhook] Ignoring test webhook (entry.id=0)');
+            continue;
+          }
+
+          connectedPage = await prisma.connectedPage.findFirst({
+            where: { instagramUserId: String(instagramBusinessAccountId), provider: 'instagram' },
+            include: { user: true },
+          }) ?? await prisma.connectedPage.findFirst({
+            where: { pageId: String(instagramBusinessAccountId), provider: 'instagram' },
+            include: { user: true },
+          });
+
+          if (!connectedPage) {
+            console.log(`[IG Webhook] No connected page for IG id ${instagramBusinessAccountId}`);
+            continue;
+          }
+
+          for (const change of entry.changes || []) {
+            if (change.field === 'comments') await handleCommentChange(change.value, connectedPage);
+          }
+        }
+      } catch (err) {
+        console.error('[IG Webhook] after() processing error:', err);
+        Sentry.captureException(err);
       }
+    });
 
-      if (!connectedPage) {
-        addLog(`No page for IG: ${instagramBusinessAccountId}`);
-        continue;
-      }
-
-      for (const change of entry.changes || []) {
-        if (change.field === 'comments') await handleCommentChange(change.value, connectedPage);
-      }
-    }
-
-    return NextResponse.json({ received: true, logs }, { status: 200 });
+    return NextResponse.json({ received: true }, { status: 200 });
   } catch (error: any) {
-    return NextResponse.json({ received: true, error: error.message, logs }, { status: 200 });
+    return NextResponse.json({ received: true, error: error.message }, { status: 200 });
   }
 }
 
@@ -224,7 +229,7 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
     const isLongEnough = text.trim().length >= 2;
 
     if (!isReplyComment && !savedComment.sentiment && (isLongEnough || isEmojiOnly)) {
-      const sentiment = await analyzeCommentSentiment(text);
+      const sentiment = await analyzeCommentSentiment(text, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'instagram_webhook' });
 
       if (sentiment) {
         await prisma.comment.update({
@@ -310,13 +315,48 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
         }
       }
     } else if (savedComment.sentiment) {
+      // Redelivery / edit case: run the full decision engine so cooldown/
+      // first-comment/min-length/block-allowlist rules are enforced, instead of
+      // just the page toggles which this branch used to check (AI-3).
+      const decision = await shouldGenerateReply({
+        commentDbId: savedComment.id,
+        sentiment: savedComment.sentiment,
+        commentMessage: text,
+        authorId: commentData.from?.id || null,
+        pageId: connectedPage.id,
+        createdAt: timestamp,
+        pageRules: {
+          autoReplyEnabled: connectedPage.autoReplyEnabled,
+          autoReplyPositive: connectedPage.autoReplyPositive,
+          autoReplyNeutral: connectedPage.autoReplyNeutral,
+          replyUserCooldownMinutes: connectedPage.replyUserCooldownMinutes,
+          replyOnlyFirstComment: connectedPage.replyOnlyFirstComment,
+          replyMinCommentLength: connectedPage.replyMinCommentLength,
+          replyBlocklistKeywords: connectedPage.replyBlocklistKeywords,
+          replyAllowlistKeywords: connectedPage.replyAllowlistKeywords,
+          replyAllowlistEnabled: connectedPage.replyAllowlistEnabled,
+        },
+        commentState: {
+          replied: savedComment.replied,
+          status: savedComment.status,
+          aiGeneratedReply: savedComment.aiGeneratedReply,
+        },
+      });
+
+      logReplyDecision(decision, savedComment.id, username);
+
+      if (!decision.allowed) {
+        await logSkipDecision(savedComment.id, connectedPage.id, 'instagram', decision.ruleTriggered, decision.reason);
+        return;
+      }
+
       const shouldReply = shouldAutoReply(savedComment.sentiment, {
         autoReplyEnabled: connectedPage.autoReplyEnabled,
         autoReplyPositive: connectedPage.autoReplyPositive,
         autoReplyNeutral: connectedPage.autoReplyNeutral,
       });
 
-      if (shouldReply && !savedComment.replied && savedComment.status === 'pending') {
+      if (shouldReply) {
         await generateAndPostAutoReply(savedComment.id, savedComment.sentiment, text, username, connectedPage, mediaId);
       }
     } else if (!isReplyComment && !savedComment.sentiment) {
@@ -332,7 +372,7 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
     // ============================================================
     if (isReplyComment && !isPageComment && text.trim().length >= 2) {
       console.log(`[IG Webhook] 🔍 Analyzing sentiment for reply ${savedComment.id}...`);
-      const replySentiment = await analyzeCommentSentiment(text);
+      const replySentiment = await analyzeCommentSentiment(text, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'instagram_webhook' });
       if (replySentiment) {
         await prisma.comment.update({
           where: { id: savedComment.id },
@@ -360,8 +400,13 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
         }
       }
     }
-  } catch {
-    // handleCommentChange error - silent
+  } catch (error) {
+    // Never rethrow (the webhook must still ack 200), but log so processing
+    // failures aren't invisible in prod (QUAL-5).
+    console.error(
+      `[IG Webhook] handleCommentChange failed for comment ${commentData?.id ?? 'unknown'}:`,
+      error instanceof Error ? error.message : error,
+    );
   }
 }
 
@@ -380,7 +425,7 @@ async function generateAndPostAutoReply(
     // Idempotency: only one process may reply per comment (handles duplicate webhooks)
     const claimed = await prisma.comment.updateMany({
       where: { id: commentDbId, replied: false, status: 'pending' },
-      data: { status: 'ai_generating' },
+      data: { status: 'ai_generating', lastAttemptAt: new Date() },
     });
     if (claimed.count === 0) return;
 
@@ -388,7 +433,7 @@ async function generateAndPostAutoReply(
     let postCaption: string | undefined;
     if (connectedPage.pageAccessToken) {
       try {
-        const mediaRes = await fetch(
+        const mediaRes = await graphFetch(
           `https://graph.facebook.com/v24.0/${mediaId}?access_token=${connectedPage.pageAccessToken}&fields=caption`
         );
         if (mediaRes.ok) {
@@ -420,8 +465,8 @@ async function generateAndPostAutoReply(
       customReplyPrompt: connectedPage.customReplyPrompt ?? undefined,
       webSourceUrl: connectedPage.webSourceUrl ?? undefined,
       webSourceEnabled: connectedPage.webSourceEnabled ?? false,
-    });
-    
+    }, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'instagram_webhook' });
+
     if (!aiResult.success || !aiResult.reply) {
       await prisma.comment.update({
         where: { id: commentDbId },

@@ -1,25 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import NextAuth from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-
-const { auth } = NextAuth(authOptions);
+import { requireAdmin } from '@/lib/adminAuth';
+import { graphFetch } from '@/lib/graphFetch';
 
 /**
- * Debug endpoint to check Facebook token and permissions
+ * Debug endpoint to check Facebook token and permissions.
+ *
+ * SECURITY: admin-only, and it never returns raw access tokens to the client
+ * (only lengths / previews are unsafe to expose — a token in an HTTP response
+ * can be captured by logging or browser extensions).
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const admin = await requireAdmin();
+    if (!admin.ok) {
+      return NextResponse.json({ error: admin.error }, { status: admin.status });
     }
 
     // Get user's Facebook account
     const account = await prisma.account.findFirst({
       where: {
-        userId: session.user.id,
+        userId: admin.userId,
         provider: 'facebook',
       },
     });
@@ -35,13 +36,12 @@ export async function GET(request: NextRequest) {
     const debugInfo: any = {
       hasToken: true,
       tokenLength: token.length,
-      tokenPreview: token.substring(0, 20) + '...',
     };
 
     // Test 1: Check token validity
     try {
       const debugUrl = `https://graph.facebook.com/v18.0/debug_token?input_token=${token}&access_token=${token}`;
-      const debugResponse = await fetch(debugUrl);
+      const debugResponse = await graphFetch(debugUrl);
       
       if (debugResponse.ok) {
         const debugData = await debugResponse.json();
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     // Test 2: Try to get user info
     try {
       const meUrl = `https://graph.facebook.com/v18.0/me?access_token=${token}`;
-      const meResponse = await fetch(meUrl);
+      const meResponse = await graphFetch(meUrl);
       
       if (meResponse.ok) {
         const meData = await meResponse.json();
@@ -73,15 +73,16 @@ export async function GET(request: NextRequest) {
       debugInfo.userInfoError = String(error);
     }
 
-    // Test 3: Try to get pages
+    // Test 3: Try to get pages. Never request or return the per-page
+    // access_token — only id/name are needed to diagnose connectivity.
     try {
-      const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?access_token=${token}&fields=id,name,access_token`;
-      const pagesResponse = await fetch(pagesUrl);
+      const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?access_token=${token}&fields=id,name`;
+      const pagesResponse = await graphFetch(pagesUrl);
       const pagesText = await pagesResponse.text();
-      
+
       if (pagesResponse.ok) {
         const pagesData = JSON.parse(pagesText);
-        debugInfo.pages = pagesData.data || [];
+        debugInfo.pages = (pagesData.data || []).map((p: any) => ({ id: p.id, name: p.name }));
         debugInfo.pagesCount = pagesData.data?.length || 0;
         debugInfo.pagesError = pagesData.error;
       } else {

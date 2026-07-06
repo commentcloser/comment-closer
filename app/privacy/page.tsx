@@ -58,7 +58,7 @@ export default function PrivacyPage() {
               <ul className="list-disc pl-5 space-y-2">
                 <li><strong>Account data:</strong> Name, email address, and hashed password when you register.</li>
                 <li><strong>Social platform data:</strong> When you connect Facebook or Instagram, we receive and store page access tokens, page IDs, and comment content necessary to provide the Service.</li>
-                <li><strong>Billing data:</strong> We store your Stripe customer ID and subscription status. Full payment card details are handled exclusively by Stripe and are never stored on our servers.</li>
+                <li><strong>Billing data:</strong> The Service is currently free and we do not collect billing data. When paid plans are introduced, we will store your Stripe customer ID and subscription status; full payment card details will be handled exclusively by Stripe and never stored on our servers.</li>
                 <li><strong>Usage data:</strong> Comment counts, AI reply logs, and automation activity logs for Service operation and analytics.</li>
                 <li><strong>Technical data:</strong> IP address, browser type, and session data for security and authentication.</li>
               </ul>
@@ -71,8 +71,8 @@ export default function PrivacyPage() {
               </h2>
               <ul className="list-disc pl-5 space-y-2">
                 <li>To provide, maintain, and improve the Service.</li>
-                <li>To process payments and manage your subscription via Stripe.</li>
-                <li>To send transactional emails (account verification, password reset, billing notifications).</li>
+                <li>To process payments and manage your subscription via Stripe, once paid plans are active.</li>
+                <li>To send transactional emails (account verification, password reset, and — once paid plans are active — billing notifications).</li>
                 <li>To generate AI-powered comment replies using your connected page data.</li>
                 <li>To detect and prevent fraud or abuse.</li>
               </ul>
@@ -85,7 +85,7 @@ export default function PrivacyPage() {
               </h2>
               <p>We use the following third-party services that process data on our behalf:</p>
               <ul className="list-disc pl-5 mt-2 space-y-2">
-                <li><strong>Stripe</strong> — Payment processing.</li>
+                <li><strong>Stripe</strong> — Payment processing (used only when paid plans are active; not currently active).</li>
                 <li><strong>OpenAI</strong> — AI reply generation. Comment text may be sent to OpenAI for processing.</li>
                 <li><strong>Resend</strong> — Transactional email delivery.</li>
                 <li><strong>Meta (Facebook / Instagram)</strong> — Social platform integration.</li>
@@ -97,7 +97,7 @@ export default function PrivacyPage() {
                 <span className="w-5 h-5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0">5</span>
                 Data Retention
               </h2>
-              <p>We retain your account data for as long as your account is active. Comment logs and AI reply history are retained for a rolling 12-month period. Billing records are retained for 7 years as required by financial regulations. You may request deletion of your account and associated data by contacting us.</p>
+              <p>We retain your account data for as long as your account is active. Comment logs and AI reply history are retained for a rolling 12-month period. Once paid plans are active, billing records will be retained for 7 years as required by financial regulations. You may request deletion of your account and associated data by contacting us.</p>
             </section>
 
             <section>
@@ -121,7 +121,7 @@ export default function PrivacyPage() {
                 <span className="w-5 h-5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0">8</span>
                 Security
               </h2>
-              <p>We use industry-standard measures including encrypted connections (TLS), hashed passwords, and access controls to protect your data. Payment information is processed by Stripe and subject to PCI-DSS compliance standards.</p>
+              <p>We use industry-standard measures including encrypted connections (TLS), hashed passwords, and access controls to protect your data. When paid plans are active, payment information will be processed by Stripe and subject to PCI-DSS compliance standards.</p>
             </section>
 
             <section>

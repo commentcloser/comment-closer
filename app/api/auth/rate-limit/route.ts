@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
   const normalizedEmail = email.toLowerCase().trim();
   const key = `login:${normalizedEmail}`;
-  const result = isRateLimited(key);
+  const result = await isRateLimited(key);
 
   if (result.limited) {
     const minutes = Math.ceil((result.retryAfterMs ?? 0) / 60000);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
+import { tiktokClientKey, tiktokClientSecret } from '@/lib/tiktokApi';
 
 /**
  * TikTok Ads OAuth callback handler.
@@ -56,8 +57,8 @@ export async function GET(request: NextRequest) {
   cookieStore.delete('tiktok_ads_linking_user_id');
   cookieStore.delete('tiktok_ads_return_to');
 
-  const appId = process.env.TIKTOK_SANDBOX_CLIENT_KEY || process.env.TIKTOK_CLIENT_KEY;
-  const secret = process.env.TIKTOK_SANDBOX_CLIENT_SECRET || process.env.TIKTOK_CLIENT_SECRET;
+  const appId = tiktokClientKey();
+  const secret = tiktokClientSecret();
   const redirectUri = process.env.TIKTOK_ADS_REDIRECT_URI || `${baseUrl}/api/tiktok-ads/callback`;
 
   const isSandbox = !!process.env.TIKTOK_ADS_SANDBOX_BASE_URL && process.env.NODE_ENV !== 'production';

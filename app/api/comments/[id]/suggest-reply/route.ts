@@ -1,28 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import NextAuth from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { requireCommentOwner } from '@/lib/commentAuth';
 import { generateAIReply, detectCommentLanguage } from '@/lib/aiReplyEngine';
-
-const { auth } = NextAuth(authOptions);
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { id } = await params;
+
+    // SECURITY: only the owner of the comment's page may generate a reply.
+    // Without this, any signed-in user could request AI replies for any comment
+    // id — leaking other tenants' comment text and burning unmetered AI spend.
+    const owner = await requireCommentOwner(id);
+    if (!owner.ok) {
+      return NextResponse.json({ error: owner.error }, { status: owner.status });
+    }
 
     const comment = await prisma.comment.findUnique({
       where: { id },
       include: {
         connectedPage: {
           select: {
+            id: true,
             brandTone: true,
             emojisEnabled: true,
             ctaText: true,
@@ -58,7 +59,7 @@ export async function POST(
       customReplyPrompt: page.customReplyPrompt ?? undefined,
       webSourceUrl: page.webSourceUrl ?? undefined,
       webSourceEnabled: page.webSourceEnabled ?? false,
-    });
+    }, { userId: owner.userId, connectedPageId: page.id, source: 'suggest_reply' });
 
     if (result.success && result.reply) {
       return NextResponse.json({ reply: result.reply });

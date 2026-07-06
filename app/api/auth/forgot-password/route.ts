@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { randomBytes } from 'crypto';
 import { sendPasswordResetEmail } from '@/lib/email';
-import { isRateLimited, recordFailedAttempt } from '@/lib/rateLimit';
+import { isRateLimited, recordFailedAttempt, getClientIp } from '@/lib/rateLimit';
 import { normalizeEmail } from '@/lib/validators';
 
 export const runtime = 'nodejs';
@@ -25,11 +25,14 @@ export async function POST(request: NextRequest) {
       message: 'If an account with that email exists, we sent a password reset link.',
     };
 
-    // Throttle reset requests per email to limit enumeration/spam.
-    if (isRateLimited(`forgot:${normalizedEmail}`).limited) {
+    // Throttle reset requests per email AND per IP to limit enumeration/spam
+    // (an attacker can otherwise fan out across many emails from one IP).
+    const ip = getClientIp(request);
+    if ((await isRateLimited(`forgot-ip:${ip}`)).limited || (await isRateLimited(`forgot:${normalizedEmail}`)).limited) {
       return NextResponse.json(genericBody);
     }
-    recordFailedAttempt(`forgot:${normalizedEmail}`);
+    await recordFailedAttempt(`forgot-ip:${ip}`);
+    await recordFailedAttempt(`forgot:${normalizedEmail}`);
 
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail },
@@ -45,10 +48,12 @@ export async function POST(request: NextRequest) {
     const expires = new Date();
     expires.setHours(expires.getHours() + 1);
 
-    // Delete any existing reset tokens for this email
+    // Delete existing PASSWORD_RESET tokens (scoped by type so a pending
+    // email-verification token isn't clobbered).
     await prisma.verificationToken.deleteMany({
       where: {
         identifier: normalizedEmail,
+        type: 'PASSWORD_RESET',
       },
     });
 
@@ -57,12 +62,13 @@ export async function POST(request: NextRequest) {
         identifier: normalizedEmail,
         token,
         expires,
+        type: 'PASSWORD_RESET',
       },
     });
 
     // Send password reset email
     try {
-      await sendPasswordResetEmail(normalizedEmail, token, user.name || undefined);
+      await sendPasswordResetEmail(normalizedEmail, token, user.name || undefined, user.locale || undefined);
     } catch (emailError) {      // Don't fail the request if email fails, but log it
       // In development, the email will be logged to console
       console.error('[ForgotPassword] Failed to send reset email:', emailError);

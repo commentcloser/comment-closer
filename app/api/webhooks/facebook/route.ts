@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { analyzeCommentSentiment } from '@/lib/openai';
 import { generateAIReply, shouldAutoReply, detectCommentLanguage } from '@/lib/aiReplyEngine';
@@ -6,6 +6,9 @@ import { shouldGenerateReply, logReplyDecision } from '@/lib/replyDecisionEngine
 import { logSkipDecision, logReplyAttempt, logReplySuccess, logReplyFailure } from '@/lib/actionLogger';
 import { autoModerateNegativeComment } from '@/lib/commentModerator';
 import { verifyWebhookSignature } from '@/lib/webhookVerification';
+import { graphFetch } from '@/lib/graphFetch';
+import { cachedGraph } from '@/lib/graphCache';
+import * as Sentry from '@sentry/nextjs';
 
 export const maxDuration = 60;
 
@@ -42,9 +45,6 @@ export async function GET(request: NextRequest) {
 
 // POST: Handle incoming webhook events
 export async function POST(request: NextRequest) {
-  const logs: string[] = [];
-  const addLog = (msg: string) => { logs.push(`[${new Date().toISOString()}] ${msg}`); };
-
   try {
     const rawBody = await request.text();
 
@@ -65,33 +65,46 @@ export async function POST(request: NextRequest) {
 
     if (body.object !== 'page') return NextResponse.json({ received: true }, { status: 200 });
 
-    for (const entry of body.entry || []) {
-      const pageId = entry.id;
-      const connectedPage = await prisma.connectedPage.findFirst({
-        where: { pageId: String(pageId), provider: 'facebook', disconnectedAt: null },
-        include: { user: true },
-      });
+    // Acknowledge Meta immediately, then do the heavy AI/moderation work AFTER
+    // the response. Meta times out webhook deliveries after a few seconds and
+    // retries, so processing synchronously (sentiment + reply, up to ~28s with
+    // web search) turned any small batch into a redelivery storm. The
+    // updateMany claim-lock in generateAndPostAutoReply keeps this idempotent
+    // against redeliveries. (AI-1)
+    after(async () => {
+      try {
+        for (const entry of body.entry || []) {
+          const pageId = entry.id;
+          const connectedPage = await prisma.connectedPage.findFirst({
+            where: { pageId: String(pageId), provider: 'facebook', disconnectedAt: null },
+            include: { user: true },
+          });
 
-      if (!connectedPage) {
-        addLog(`No page for FB: ${pageId}`);
-        continue;
-      }
+          if (!connectedPage) {
+            console.log(`[FB Webhook] No connected page for FB id ${pageId}`);
+            continue;
+          }
 
-      for (const change of entry.changes || []) {
-        if (change.field !== 'feed') continue;
-        const value = change.value || {};
-        const item = value.item;
-        const commentId = value.comment_id;
-        if (commentId || item === 'comment') {
-          await handleFeedComment(value, connectedPage);
+          for (const change of entry.changes || []) {
+            if (change.field !== 'feed') continue;
+            const value = change.value || {};
+            const item = value.item;
+            const commentId = value.comment_id;
+            if (commentId || item === 'comment') {
+              await handleFeedComment(value, connectedPage);
+            }
+          }
         }
+      } catch (err) {
+        console.error('[FB Webhook] after() processing error:', err);
+        Sentry.captureException(err);
       }
-    }
+    });
 
-    return NextResponse.json({ received: true, logs }, { status: 200 });
+    return NextResponse.json({ received: true }, { status: 200 });
   } catch (error: any) {
     console.error('[FB Webhook] Error:', error?.message);
-    return NextResponse.json({ received: true, error: error.message, logs }, { status: 200 });
+    return NextResponse.json({ received: true, error: error.message }, { status: 200 });
   }
 }
 
@@ -161,46 +174,58 @@ async function handleFeedComment(value: any, connectedPage: any) {
       }
     }
 
-    // Graph API fallback: fetch post's promotion_status
-    if (!isFromAd && connectedPage.pageAccessToken) {
-      try {
-        const postRes = await fetch(
-          `https://graph.facebook.com/v24.0/${postId}?access_token=${connectedPage.pageAccessToken}&fields=promotion_status,promotable_id`
-        );
-        if (postRes.ok) {
-          const postData = await postRes.json();
-          const ps = postData.promotion_status;
-          if (ps && ps !== 'inactive') {
-            isFromAd = true;
-            source = 'facebook_ad';
-          }
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-
-    // Try with user token (page token may lack promotion_status for some post types)
-    if (!isFromAd && connectedPage.userId) {
-      try {
-        const account = await prisma.account.findFirst({
-          where: { userId: connectedPage.userId, provider: 'facebook' },
-          select: { access_token: true },
-        });
-        if (account?.access_token) {
-          const postRes = await fetch(
-            `https://graph.facebook.com/v24.0/${postId}?access_token=${account.access_token}&fields=promotion_status`
-          );
-          if (postRes.ok) {
-            const postData = await postRes.json();
-            if (postData.promotion_status && postData.promotion_status !== 'inactive') {
-              isFromAd = true;
-              source = 'facebook_ad';
+    // Graph API fallback: fetch the post's promotion_status. Cache the result
+    // per post (OBS-2) — many comments hit the same post, and this otherwise
+    // re-queries Graph (up to twice) for every one of them. Tries the page
+    // token first, then the user token (page tokens can lack promotion_status
+    // for some post types).
+    if (!isFromAd) {
+      const promoIsAd = await cachedGraph(
+        `promo:${connectedPage.id}:${postId}`,
+        5 * 60 * 1000,
+        async () => {
+          if (connectedPage.pageAccessToken) {
+            try {
+              const postRes = await graphFetch(
+                `https://graph.facebook.com/v24.0/${postId}?access_token=${connectedPage.pageAccessToken}&fields=promotion_status,promotable_id`
+              );
+              if (postRes.ok) {
+                const postData = await postRes.json();
+                const ps = postData.promotion_status;
+                if (ps && ps !== 'inactive') return true;
+              }
+            } catch {
+              /* ignore */
             }
           }
-        }
-      } catch {
-        /* ignore */
+
+          if (connectedPage.userId) {
+            try {
+              const account = await prisma.account.findFirst({
+                where: { userId: connectedPage.userId, provider: 'facebook' },
+                select: { access_token: true },
+              });
+              if (account?.access_token) {
+                const postRes = await graphFetch(
+                  `https://graph.facebook.com/v24.0/${postId}?access_token=${account.access_token}&fields=promotion_status`
+                );
+                if (postRes.ok) {
+                  const postData = await postRes.json();
+                  if (postData.promotion_status && postData.promotion_status !== 'inactive') return true;
+                }
+              }
+            } catch {
+              /* ignore */
+            }
+          }
+
+          return false;
+        },
+      );
+
+      if (promoIsAd) {
+        isFromAd = true;
+        source = 'facebook_ad';
       }
     }
 
@@ -259,7 +284,7 @@ async function handleFeedComment(value: any, connectedPage: any) {
 
     if (!isReplyComment && !savedComment.sentiment && (isLongEnough || isEmojiOnly)) {
       console.log(`[FB Webhook] 🤖 Analyzing sentiment for comment ${savedComment.id}...`);
-      const sentiment = await analyzeCommentSentiment(message);
+      const sentiment = await analyzeCommentSentiment(message, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'facebook_webhook' });
       console.log(`[FB Webhook] 📊 Sentiment result: ${sentiment || 'null'}`);
       
       if (sentiment) {
@@ -365,21 +390,55 @@ async function handleFeedComment(value: any, connectedPage: any) {
       }
     } else if (savedComment.sentiment) {
       console.log(`[FB Webhook] 🔄 Comment already has sentiment: ${savedComment.sentiment} | Replied: ${savedComment.replied} | Status: ${savedComment.status}`);
-      
-      // If sentiment already exists (update case), check auto-reply
+
+      // Redelivery / edit case. Run the FULL decision engine (not just page
+      // toggles) so cooldown/first-comment/min-length/block-allowlist rules are
+      // still enforced — this branch previously bypassed them, so a comment the
+      // engine would have skipped got auto-replied on Meta's 2nd delivery (AI-3).
+      const decision = await shouldGenerateReply({
+        commentDbId: savedComment.id,
+        sentiment: savedComment.sentiment,
+        commentMessage: message,
+        authorId: authorId,
+        pageId: connectedPage.id,
+        createdAt: timestamp,
+        pageRules: {
+          autoReplyEnabled: connectedPage.autoReplyEnabled,
+          autoReplyPositive: connectedPage.autoReplyPositive,
+          autoReplyNeutral: connectedPage.autoReplyNeutral,
+          replyUserCooldownMinutes: connectedPage.replyUserCooldownMinutes,
+          replyOnlyFirstComment: connectedPage.replyOnlyFirstComment,
+          replyMinCommentLength: connectedPage.replyMinCommentLength,
+          replyBlocklistKeywords: connectedPage.replyBlocklistKeywords,
+          replyAllowlistKeywords: connectedPage.replyAllowlistKeywords,
+          replyAllowlistEnabled: connectedPage.replyAllowlistEnabled,
+        },
+        commentState: {
+          replied: savedComment.replied,
+          status: savedComment.status,
+          aiGeneratedReply: savedComment.aiGeneratedReply,
+        },
+      });
+
+      logReplyDecision(decision, savedComment.id, authorName);
+
+      if (!decision.allowed) {
+        await logSkipDecision(savedComment.id, connectedPage.id, 'facebook', decision.ruleTriggered, decision.reason);
+        console.log(`[FB Webhook] ⏭️  Skipping auto-reply (existing sentiment): ${decision.reason}`);
+        return;
+      }
+
       const shouldReply = shouldAutoReply(savedComment.sentiment, {
         autoReplyEnabled: connectedPage.autoReplyEnabled,
         autoReplyPositive: connectedPage.autoReplyPositive,
         autoReplyNeutral: connectedPage.autoReplyNeutral,
       });
-      
-      console.log(`[FB Webhook] 🚦 Should auto-reply (existing sentiment): ${shouldReply}`);
-      
-      if (shouldReply && !savedComment.replied && savedComment.status === 'pending') {
+
+      if (shouldReply) {
         console.log(`[FB Webhook] ✨ Triggering auto-reply for existing comment ${savedComment.id}`);
         await generateAndPostAutoReply(savedComment.id, savedComment.sentiment, message, authorName, connectedPage, postId, String(commentId));
       } else {
-        console.log(`[FB Webhook] ⏭️  Skipping auto-reply | Already replied: ${savedComment.replied} | Status: ${savedComment.status}`);
+        console.log(`[FB Webhook] ⏭️  Skipping auto-reply (conditions not met)`);
       }
     } else if (!isReplyComment && !savedComment.sentiment) {
       // Too short and not emoji — mark as ignored so it doesn't stay stuck in 'pending'
@@ -395,7 +454,7 @@ async function handleFeedComment(value: any, connectedPage: any) {
     // ============================================================
     if (isReplyComment && !isPageComment && message.trim().length >= 2) {
       console.log(`[FB Webhook] 🔍 Analyzing sentiment for reply ${savedComment.id}...`);
-      const replySentiment = await analyzeCommentSentiment(message);
+      const replySentiment = await analyzeCommentSentiment(message, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'facebook_webhook' });
       if (replySentiment) {
         await prisma.comment.update({
           where: { id: savedComment.id },
@@ -444,7 +503,7 @@ async function generateAndPostAutoReply(
     // Idempotency: only one process may reply per comment (handles duplicate webhooks)
     const claimed = await prisma.comment.updateMany({
       where: { id: commentDbId, replied: false, status: 'pending' },
-      data: { status: 'ai_generating' },
+      data: { status: 'ai_generating', lastAttemptAt: new Date() },
     });
     if (claimed.count === 0) return;
 
@@ -463,24 +522,31 @@ async function generateAndPostAutoReply(
       maxReplyLength: connectedPage.maxReplyLength,
     });
     
-    // Fetch post caption for context (optional)
+    // Fetch post caption for context (optional). Cached per post (OBS-2):
+    // captions rarely change and repeat across every comment on the same post.
     let postCaption: string | undefined;
     if (connectedPage.pageAccessToken) {
       console.log(`[FB Webhook] 🔍 Fetching post caption for context...`);
-      try {
-        const postRes = await fetch(
-          `https://graph.facebook.com/v24.0/${postId}?access_token=${connectedPage.pageAccessToken}&fields=message`
-        );
-        if (postRes.ok) {
-          const postData = await postRes.json();
-          postCaption = postData.message;
-          console.log(`[FB Webhook] ✅ Post caption fetched: "${postCaption?.substring(0, 50)}${(postCaption?.length || 0) > 50 ? '...' : ''}"`);
-        } else {
-          console.log(`[FB Webhook] ⚠️  Post caption fetch failed (${postRes.status})`);
-        }
-      } catch (err: any) {
-        console.log(`[FB Webhook] ⚠️  Post caption fetch error: ${err?.message}`);
-      }
+      postCaption = await cachedGraph(
+        `caption:${connectedPage.id}:${postId}`,
+        10 * 60 * 1000,
+        async () => {
+          try {
+            const postRes = await graphFetch(
+              `https://graph.facebook.com/v24.0/${postId}?access_token=${connectedPage.pageAccessToken}&fields=message`
+            );
+            if (postRes.ok) {
+              const postData = await postRes.json();
+              return postData.message as string | undefined;
+            }
+            console.log(`[FB Webhook] ⚠️  Post caption fetch failed (${postRes.status})`);
+          } catch (err: any) {
+            console.log(`[FB Webhook] ⚠️  Post caption fetch error: ${err?.message}`);
+          }
+          return undefined;
+        },
+      );
+      console.log(`[FB Webhook] ✅ Post caption: "${postCaption?.substring(0, 50)}${(postCaption?.length || 0) > 50 ? '...' : ''}"`);
     } else {
       console.log(`[FB Webhook] ⚠️  No page access token - skipping post caption`);
     }
@@ -510,8 +576,8 @@ async function generateAndPostAutoReply(
       customReplyPrompt: connectedPage.customReplyPrompt ?? undefined,
       webSourceUrl: connectedPage.webSourceUrl ?? undefined,
       webSourceEnabled: connectedPage.webSourceEnabled ?? false,
-    });
-    
+    }, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'facebook_webhook' });
+
     console.log(`[FB Webhook] 🎯 AI generation result:`, {
       success: aiResult.success,
       replyLength: aiResult.reply?.length,

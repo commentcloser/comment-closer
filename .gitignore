@@ -44,3 +44,7 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# local sqlite dev databases (prod is Postgres)
+*.db
+*.db-journal

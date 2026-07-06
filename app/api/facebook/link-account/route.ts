@@ -14,23 +14,20 @@ import { cookies } from 'next/headers';
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    const body = await request.json().catch(() => ({}));
-    const cookieStore = await cookies();
-    
-    // Try to get original user ID from cookie (set before OAuth)
-    const linkingUserId = cookieStore.get('linking_user_id')?.value;
-    
-    // Use targetUserId from body, cookie, or current session
-    const targetUserId = body.targetUserId || linkingUserId || session?.user?.id;
-    
-    if (!targetUserId) {
+
+    // SECURITY: the account is always linked to the authenticated caller.
+    // Previously targetUserId was read from the request body (with priority
+    // over the session), letting anyone re-assign a freshly-connected Facebook
+    // account — and its access token — to an account they controlled.
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const currentUserId = targetUserId;
-    
-    // Clear the cookie after use
-    if (linkingUserId) {
+    const currentUserId = session.user.id;
+
+    // Clear the pre-OAuth linking cookie if present (no longer used for auth).
+    const cookieStore = await cookies();
+    if (cookieStore.get('linking_user_id')?.value) {
       cookieStore.delete('linking_user_id');
     }
 

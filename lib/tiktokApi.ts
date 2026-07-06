@@ -14,6 +14,59 @@ import { createHmac, timingSafeEqual } from 'crypto';
 
 const BASE = 'https://business-api.tiktok.com/open_api/v1.3';
 
+/**
+ * TikTok app credentials. The sandbox key/secret must only override production
+ * creds in a NON-production environment (INTEG-2) — otherwise a stray sandbox
+ * var in Vercel prod silently overrides the real credential and breaks OAuth
+ * and webhook verification for all live TikTok users.
+ */
+export function tiktokClientKey(): string | undefined {
+  const sandbox = process.env.NODE_ENV !== 'production' ? process.env.TIKTOK_SANDBOX_CLIENT_KEY : undefined;
+  return sandbox || process.env.TIKTOK_CLIENT_KEY;
+}
+export function tiktokClientSecret(): string | undefined {
+  const sandbox = process.env.NODE_ENV !== 'production' ? process.env.TIKTOK_SANDBOX_CLIENT_SECRET : undefined;
+  return sandbox || process.env.TIKTOK_CLIENT_SECRET;
+}
+
+/**
+ * Registers (or updates) the app-level comment.update webhook callback URL
+ * (INTEG-6). This is app-scoped — it uses only app_id + secret, no user token —
+ * and is idempotent, so it's safe to call on every OAuth connect as a
+ * self-healing measure in case the one-time manual registration was missed or
+ * the callback URL changed. Returns a small result object; never throws.
+ */
+export async function registerTikTokWebhook(): Promise<{ success: boolean; message?: string }> {
+  const appId = tiktokClientKey();
+  const secret = tiktokClientSecret();
+  if (!appId || !secret) {
+    return { success: false, message: 'TIKTOK_CLIENT_KEY or TIKTOK_CLIENT_SECRET not set' };
+  }
+
+  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const callbackUrl = `${baseUrl}/api/webhooks/tiktok`;
+
+  try {
+    const res = await fetch(`${BASE}/business/webhook/update/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        app_id: appId,
+        secret,
+        event_type: 'COMMENT',
+        callback_url: callbackUrl,
+      }),
+    });
+    const data = await res.json();
+    if (data.code === 0) {
+      return { success: true, message: callbackUrl };
+    }
+    return { success: false, message: `code ${data.code}: ${data.message}` };
+  } catch (err) {
+    return { success: false, message: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -47,11 +100,12 @@ export interface TikTokComment {
  * Returns false (blocking) in production when secret is missing.
  */
 export function verifyTikTokWebhookSignature(rawBody: string, signatureHeader: string | null): boolean {
-  const secret = process.env.TIKTOK_SANDBOX_CLIENT_SECRET || process.env.TIKTOK_CLIENT_SECRET;
+  const secret = tiktokClientSecret();
 
   if (!secret) {
     console.error('[TikTok Webhook] Client secret not set — cannot verify signature');
-    return process.env.NODE_ENV !== 'production';
+    // Fail CLOSED unless explicitly allowed for local dev (SEC-9).
+    return process.env.NODE_ENV !== 'production' && process.env.ALLOW_UNSIGNED_WEBHOOKS === '1';
   }
 
   if (!signatureHeader) {
@@ -149,8 +203,8 @@ export async function getValidTikTokAccessToken(accountId: string): Promise<stri
     return account.access_token ?? null;
   }
 
-  const clientId = process.env.TIKTOK_SANDBOX_CLIENT_KEY || process.env.TIKTOK_CLIENT_KEY;
-  const clientSecret = process.env.TIKTOK_SANDBOX_CLIENT_SECRET || process.env.TIKTOK_CLIENT_SECRET;
+  const clientId = tiktokClientKey();
+  const clientSecret = tiktokClientSecret();
 
   if (!clientId || !clientSecret) return account.access_token ?? null;
 

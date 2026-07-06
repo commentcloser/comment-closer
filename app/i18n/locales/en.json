@@ -145,8 +145,9 @@
     },
     "pricing": {
       "title": "Simple, Transparent Pricing",
-      "subtitle": "Start free and only pay when you need more. All plans include Facebook, Instagram, TikTok Organic & Ads.",
+      "subtitle": "Currently free during early access — no charges. The paid plans below are planned for the future. All plans include Facebook, Instagram, TikTok Organic & Ads.",
       "mostPopular": "Most Popular",
+      "comingSoon": "Coming soon",
       "starter": {
         "name": "Free",
         "price": "$0",

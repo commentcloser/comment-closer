@@ -23,6 +23,7 @@ model User {
   password      String?
   image         String?
   role          Role      @default(USER)
+  locale        String?   @default("en") // UI locale captured at signup, for emails
   lastLoginAt   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -66,6 +67,7 @@ model VerificationToken {
   identifier String
   token      String   @unique
   expires    DateTime
+  type       String?  // "VERIFY_EMAIL" | "PASSWORD_RESET" (nullable for legacy rows)
 
   @@unique([identifier, token])
 }
@@ -142,7 +144,8 @@ model Comment {
   isFromAd          Boolean       @default(false) // Whether this comment is from an ad
   adId              String?       // Facebook Ad ID (if comment is from an ad)
   adName            String?       // Ad name for display purposes
-  adAccountId       String?       // Ad Account ID (if comment is from an ad)
+  adAccountId       String?       // Ad Account ID (if comment is from an ad); for TikTok Ads this stores identity_id
+  identityType      String?       // TikTok Ads identity_type: "TT_USER" | "CUSTOMIZED_USER"
   source            String?       // Source of comment: "instagram_ad", "facebook_ad", "organic", etc.
   
   // Reply Detection
@@ -221,10 +224,45 @@ model CommentActionLog {
   createdAt       DateTime @default(now())
   
   comment         Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  
+
   @@index([commentId])
   @@index([connectedPageId])
   @@index([createdAt])
   @@index([actionType, status])
   @@unique([commentId, actionType], name: "unique_comment_action") // Prevent duplicate actions
+}
+
+// Per-call OpenAI usage metering. One row per billed API call.
+// Attribution is by connectedPageId (join to ConnectedPage.userId for per-user
+// cost). Kept as a plain log with no FK/cascade so metering never blocks or
+// fails a comment-processing path. See lib/aiUsage.ts.
+model AiUsageEvent {
+  id               String   @id @default(cuid())
+  userId           String?  // Owner of the page, when known
+  connectedPageId  String?  // Page the call relates to, when known
+  source           String?  // e.g. "facebook_webhook", "tiktok_ads_cron", "suggest_reply"
+  kind             String   // "sentiment" | "reply"
+  model            String   // OpenAI model used
+  promptTokens     Int?
+  completionTokens Int?
+  totalTokens      Int?
+  webSearch        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([connectedPageId, createdAt])
+  @@index([createdAt])
+}
+
+// Durable, cross-instance rate limiting (replaces the in-memory Map, which
+// resets per serverless instance). Keyed by an opaque string, e.g.
+// "login:<email>" or "forgot:<email>". See lib/rateLimit.ts.
+model RateLimit {
+  key          String    @id
+  count        Int       @default(0)
+  firstAttempt DateTime  @default(now())
+  blockedUntil DateTime?
+  updatedAt    DateTime  @updatedAt
+
+  @@index([blockedUntil])
 }

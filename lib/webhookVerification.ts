@@ -25,8 +25,9 @@ export function verifyWebhookSignature(
 
   if (!appSecret) {
     console.error('[Webhook HMAC] FACEBOOK_CLIENT_SECRET is not set — cannot verify signatures');
-    // Fail open in development, fail closed in production
-    return process.env.NODE_ENV !== 'production';
+    // Fail CLOSED everywhere unless explicitly allowed for local dev, so a secret
+    // accidentally missing in a deployed env can't silently accept forged webhooks.
+    return process.env.NODE_ENV !== 'production' && process.env.ALLOW_UNSIGNED_WEBHOOKS === '1';
   }
 
   if (!signatureHeader) {

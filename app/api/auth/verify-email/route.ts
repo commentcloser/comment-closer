@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { sendWelcomeEmail } from '@/lib/email';
 
 export const runtime = 'nodejs';
 
@@ -19,7 +20,9 @@ export async function POST(request: NextRequest) {
       where: { token },
     });
 
-    if (!verificationToken || verificationToken.expires < new Date()) {
+    // Reject a token issued for a different purpose (e.g. a password-reset token
+    // used here). Legacy tokens (type null) are still accepted (AUTH-2).
+    if (!verificationToken || verificationToken.expires < new Date() || verificationToken.type === 'PASSWORD_RESET') {
       return NextResponse.json(
         { success: false, message: 'Invalid or expired verification token' },
         { status: 400 }
@@ -43,6 +46,11 @@ export async function POST(request: NextRequest) {
       where: { id: user.id },
       data: { emailVerified: new Date() },
     });
+
+    // Fire-and-forget welcome email — must never block or fail verification.
+    sendWelcomeEmail(user.email, user.name || undefined, user.locale || undefined).catch((e) =>
+      console.error('[verify-email] welcome email failed:', e)
+    );
 
     // Delete the used token
     await prisma.verificationToken.delete({

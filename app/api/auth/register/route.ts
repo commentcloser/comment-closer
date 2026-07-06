@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { sendVerificationEmail } from '@/lib/email';
 import { isValidEmail, normalizeEmail, validatePassword } from '@/lib/validators';
+import { isRateLimited, recordFailedAttempt, getClientIp } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 
@@ -38,6 +39,17 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = normalizeEmail(email);
 
+    // IP-based throttle so one IP can't mass-create accounts / spam the Resend
+    // quota with verification emails to arbitrary addresses (AUTH-3).
+    const ip = getClientIp(request);
+    if ((await isRateLimited(`register-ip:${ip}`)).limited) {
+      return NextResponse.json(
+        { success: false, message: 'Too many attempts. Please try again in a few minutes.' },
+        { status: 429 }
+      );
+    }
+    await recordFailedAttempt(`register-ip:${ip}`);
+
     const passwordCheck = validatePassword(password);
     if (!passwordCheck.valid) {
       return NextResponse.json(
@@ -61,6 +73,11 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
+    // Capture the UI locale (from the client, falling back to Accept-Language)
+    // so transactional emails can match the user's language (AUTH-4).
+    const acceptLang = (request.headers.get('accept-language') || '').toLowerCase();
+    const locale = body.locale === 'el' || acceptLang.startsWith('el') ? 'el' : 'en';
+
     // Create user
     const user = await prisma.user.create({
       data: {
@@ -68,6 +85,7 @@ export async function POST(request: NextRequest) {
         email: normalizedEmail,
         password: hashedPassword,
         emailVerified: null,
+        locale,
       },
     });
 
@@ -81,13 +99,14 @@ export async function POST(request: NextRequest) {
         identifier: normalizedEmail,
         token,
         expires,
+        type: 'VERIFY_EMAIL',
       },
     });
 
     // Send verification email
     let emailSent = true;
     try {
-      await sendVerificationEmail(normalizedEmail, token, name);
+      await sendVerificationEmail(normalizedEmail, token, name, locale);
     } catch (emailError) {      // Don't fail registration if email fails, but log it
       // In development, the email will be logged to console
       emailSent = false;

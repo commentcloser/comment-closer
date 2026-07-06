@@ -234,12 +234,19 @@ export async function shouldGenerateReply(
       config.createdAt.getTime() - (rules.replyUserCooldownMinutes * 60 * 1000)
     );
     
-    // Find recent replies to this author on this page
+    // Find recent replies to this author on this page. Count not only posted
+    // replies (replied:true) but also in-flight ones — generated/generating or
+    // scheduled-but-not-yet-posted — otherwise a burst from one author within a
+    // reply delay / manual-review window all pass the cooldown (AI-5).
     const recentReplies = await prisma.comment.findMany({
       where: {
         pageId: config.pageId,
         authorId: config.authorId,
-        replied: true,
+        OR: [
+          { replied: true },
+          { status: { in: ['ai_generating', 'ai_generated'] } },
+          { scheduledPostAt: { not: null } },
+        ],
         createdAt: {
           gte: cooldownStart,
           lt: config.createdAt, // Only check comments BEFORE this one
@@ -405,50 +412,20 @@ export async function shouldGenerateReply(
 }
 
 // ============================================================
-// HELPER: Check if page reply already exists (Graph API check)
-// ============================================================
-
-/**
- * Additional safety: Query Graph API to check if page already replied.
- * This catches cases where reply was posted but not tracked in our DB.
- * 
- * NOTE: This is an OPTIONAL additional check for maximum safety.
- * It requires an extra API call so use judiciously.
- */
-export async function hasPageAlreadyReplied(
-  commentId: string,
-  pageAccessToken: string,
-  isInstagram: boolean
-): Promise<boolean> {
-  try {
-    const url = isInstagram
-      ? `https://graph.facebook.com/v24.0/${commentId}/replies?access_token=${pageAccessToken}&limit=1`
-      : `https://graph.facebook.com/v24.0/${commentId}/comments?access_token=${pageAccessToken}&limit=1&filter=stream`;
-    
-    const response = await fetch(url);
-    
-    if (!response.ok) return false; // Fail open - allow reply attempt
-    
-    const data = await response.json();
-    const replies = data.data || [];
-    
-    // If any replies exist, consider it already replied
-    return replies.length > 0;
-  } catch {
-    return false; // Fail open - allow reply attempt
-  }
-}
-
-// ============================================================
 // LOGGING HELPER
 // ============================================================
 
 /**
- * Log decision result with structured format for debugging
+ * Log decision result with a structured format for prod debuggability, so
+ * both allowed and skipped decisions (and which rule fired) are visible.
  */
 export function logReplyDecision(
   decision: ReplyDecisionResult,
   commentDbId: string,
   authorName: string
 ) {
+  const tag = decision.allowed ? 'ALLOW' : 'SKIP';
+  console.info(
+    `[ReplyDecision] ${tag} comment=${commentDbId} author=${authorName || 'unknown'} rule=${decision.ruleTriggered} — ${decision.reason}`
+  );
 }

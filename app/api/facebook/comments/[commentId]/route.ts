@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import NextAuth from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { graphFetch } from '@/lib/graphFetch';
 
 const { auth } = NextAuth(authOptions);
 
@@ -296,7 +297,7 @@ export async function DELETE(
 
     // Call Facebook Graph API to delete comment
     const apiUrl = `https://graph.facebook.com/v24.0/${comment.commentId}?access_token=${pageAccessToken}`;
-    const response = await fetch(apiUrl, {
+    const response = await graphFetch(apiUrl, undefined, {
       method: 'DELETE',
     });
 

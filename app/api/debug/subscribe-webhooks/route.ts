@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/adminAuth';
 import { prisma } from '@/lib/prisma';
 import { subscribeInstagramToWebhooks } from '@/lib/instagramWebhooks';
 import { subscribePageToWebhooks } from '@/lib/facebookWebhooks';
+import { graphFetch } from '@/lib/graphFetch';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +12,9 @@ export const dynamic = 'force-dynamic';
  * using the page access tokens already stored in the database
  */
 export async function POST(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production' && process.env.DEBUG_ROUTES_ENABLED !== '1') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
   const admin = await requireAdmin();
   if (!admin.ok) {
     return NextResponse.json({ error: admin.error }, { status: admin.status });
@@ -145,6 +149,9 @@ export async function POST(request: NextRequest) {
  * GET: Check current subscription status
  */
 export async function GET(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production' && process.env.DEBUG_ROUTES_ENABLED !== '1') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
   const admin = await requireAdmin();
   if (!admin.ok) {
     return NextResponse.json({ error: admin.error }, { status: admin.status });
@@ -175,7 +182,7 @@ export async function GET(request: NextRequest) {
         // Check if this Instagram account is subscribed
         const checkUrl = `https://graph.facebook.com/v18.0/${instagramId}/subscribed_apps?access_token=${pageToken}`;
         
-        const response = await fetch(checkUrl);
+        const response = await graphFetch(checkUrl);
         const data = await response.json();
 
         if (response.ok) {

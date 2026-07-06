@@ -238,10 +238,18 @@ async function processAdvertiser(advertiser: {
     await processAdsComment(comment, advertiser, accessToken, null);
   }
 
-  await prisma.connectedPage.update({
-    where: { id: advertiser.id },
-    data: { lastCommentsFetchedAt: new Date() },
-  });
+  // Only advance the watermark if every ad-group fetch succeeded. Otherwise a
+  // failed group's comments in this window would be skipped forever; leaving the
+  // watermark makes the next run re-read the window (already-processed comments
+  // dedupe via upsert). (INTEG-4)
+  if (!hasErrors) {
+    await prisma.connectedPage.update({
+      where: { id: advertiser.id },
+      data: { lastCommentsFetchedAt: new Date() },
+    });
+  } else {
+    console.warn(`[TikTok Ads Cron] Errors occurred — NOT advancing lastCommentsFetchedAt for ${advertiser.pageName} (will retry window)`);
+  }
 
   return newComments.length;
 }
@@ -322,15 +330,16 @@ async function processAdsComment(
       parentCommentId,
       isFromAd: true,
       adId,
-      // Store identity_id for manual replies (adAccountId field reused)
+      // Store identity_id (adAccountId field reused) + identity_type for replies
       adAccountId: comment.identity_id || null,
+      identityType: comment.identity_type || null,
       source: 'tiktok_ads',
     },
   });
 
   if (isReply) {
     if (message.trim().length >= 2) {
-      const sentiment = await analyzeCommentSentiment(message);
+      const sentiment = await analyzeCommentSentiment(message, { userId: advertiser.userId, connectedPageId: advertiser.id, source: 'tiktok_ads_cron' });
       if (sentiment) {
         await prisma.comment.update({ where: { id: saved.id }, data: { sentiment, status: 'ignored' } });
       }
@@ -343,7 +352,7 @@ async function processAdsComment(
     return;
   }
 
-  const sentiment = await analyzeCommentSentiment(message);
+  const sentiment = await analyzeCommentSentiment(message, { userId: advertiser.userId, connectedPageId: advertiser.id, source: 'tiktok_ads_cron' });
   if (!sentiment) return;
   await prisma.comment.update({ where: { id: saved.id }, data: { sentiment } });
 
@@ -478,7 +487,7 @@ async function generateAndPostAdsReply(opts: {
       customReplyPrompt: advertiser.customReplyPrompt ?? undefined,
       webSourceUrl: advertiser.webSourceUrl ?? undefined,
       webSourceEnabled: advertiser.webSourceEnabled ?? false,
-    });
+    }, { userId: advertiser.userId, connectedPageId: advertiser.id, source: 'tiktok_ads_cron' });
 
     if (!aiResult.success || !aiResult.reply) {
       await prisma.comment.update({

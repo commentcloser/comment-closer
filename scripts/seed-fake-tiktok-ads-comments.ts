@@ -1,5 +1,14 @@
 import { PrismaClient } from '@prisma/client';
 
+// Safety: this script writes fabricated comments. Refuse to run against the
+// production database (db.prisma.io) unless explicitly overridden.
+if (process.env.NODE_ENV === 'production' || (process.env.DATABASE_URL || '').includes('db.prisma.io')) {
+  if (process.env.ALLOW_DESTRUCTIVE_SCRIPT !== '1') {
+    console.error('[seed] Refusing to run against production. Set ALLOW_DESTRUCTIVE_SCRIPT=1 to override.');
+    process.exit(1);
+  }
+}
+
 const prisma = new PrismaClient();
 
 const ADVERTISER_PAGE_ID = '7200130832533700609';

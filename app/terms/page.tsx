@@ -55,7 +55,7 @@ export default function TermsPage() {
                 <span className="w-5 h-5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
                 Description of Service
               </h2>
-              <p>Comment Closer is a SaaS platform that uses artificial intelligence to help businesses manage, reply to, and moderate comments on social media platforms including Facebook and Instagram. The Service is provided on a subscription basis.</p>
+              <p>Comment Closer is a SaaS platform that uses artificial intelligence to help businesses manage, reply to, and moderate comments on social media platforms including Facebook and Instagram. The Service is currently provided free of charge during an early-access period.</p>
             </section>
 
             <section>
@@ -63,14 +63,13 @@ export default function TermsPage() {
                 <span className="w-5 h-5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
                 Subscription Plans &amp; Billing
               </h2>
-              <p>We offer the following plans:</p>
+              <p>Comment Closer is currently offered free of charge during an early-access period. No charges are made and all usage is free. We plan to introduce the following paid plans in the future:</p>
               <ul className="list-disc pl-5 mt-2 space-y-1">
-                <li><strong>Free Plan</strong> — 50 AI-handled comments per month, no charge.</li>
-                <li><strong>Pro Plan</strong> — $49/month, 1,000 AI-handled comments per month.</li>
-                <li><strong>Business Plan</strong> — $80/month, 2,000 AI-handled comments per month.</li>
+                <li><strong>Free Plan</strong> — 50 AI-handled comments per month (planned).</li>
+                <li><strong>Pro Plan</strong> — $49/month, 1,000 AI-handled comments per month (planned).</li>
+                <li><strong>Business Plan</strong> — $80/month, 2,000 AI-handled comments per month (planned).</li>
               </ul>
-              <p className="mt-3">All paid subscriptions are billed monthly in advance via Stripe. Comment quotas reset at the start of each billing cycle. Unused comments do not roll over.</p>
-              <p className="mt-2">Free plan users may add a payment method at any time to facilitate a future upgrade without interruption.</p>
+              <p className="mt-3">Paid plans are not yet active. When they are introduced, paid subscriptions will be billed monthly in advance via Stripe and comment quotas will reset at the start of each billing cycle. We will update these Terms and notify registered users before any paid plan or charge takes effect.</p>
             </section>
 
             <section>
@@ -78,7 +77,7 @@ export default function TermsPage() {
                 <span className="w-5 h-5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0">4</span>
                 Upgrades &amp; Downgrades
               </h2>
-              <p>You may upgrade your plan at any time. Upgrades take effect immediately. When you reach your plan&apos;s comment limit, the Service will pause AI processing until your plan is upgraded or your billing cycle resets. Downgrades take effect at the end of the current billing period.</p>
+              <p>While the Service is free, no plan limits are enforced. Once paid plans are active, you will be able to upgrade at any time (effective immediately) or downgrade at the end of the current billing period, and AI processing may pause when a plan&apos;s comment limit is reached until the plan is upgraded or the billing cycle resets.</p>
             </section>
 
             <section>
@@ -86,7 +85,7 @@ export default function TermsPage() {
                 <span className="w-5 h-5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0">5</span>
                 Cancellation
               </h2>
-              <p>You may cancel your subscription at any time through your billing dashboard. Upon cancellation, your subscription remains active until the end of the current paid period, after which your account will be downgraded to the Free plan. No partial refunds are issued for unused time.</p>
+              <p>Because the Service is currently free, there is no paid subscription to cancel. When paid plans are introduced, you will be able to cancel at any time; your subscription will remain active until the end of the current paid period, after which your account will return to the Free plan. No partial refunds will be issued for unused time.</p>
             </section>
 
             <section>
@@ -94,8 +93,8 @@ export default function TermsPage() {
                 <span className="w-5 h-5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0">6</span>
                 Payment Processing
               </h2>
-              <p>All payments are processed securely by <strong>Stripe</strong>. Comment Closer does not store your full card number, CVC, or other sensitive payment details. By adding a payment method, you authorize us to charge your selected payment method for your chosen subscription plan on a recurring monthly basis until you cancel.</p>
-              <p className="mt-2">If a payment fails, your subscription status will be marked as past due and AI processing may be suspended until payment is resolved.</p>
+              <p>Comment Closer does not currently process any payments. If and when paid plans are introduced, all payments will be processed securely by <strong>Stripe</strong>, and Comment Closer will not store your full card number, CVC, or other sensitive payment details. Adding a payment method will authorize us to charge it for your chosen subscription plan on a recurring monthly basis until you cancel.</p>
+              <p className="mt-2">If a payment fails once paid plans are active, your subscription status may be marked as past due and AI processing may be suspended until payment is resolved.</p>
             </section>
 
             <section>

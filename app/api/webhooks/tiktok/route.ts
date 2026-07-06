@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
   // Replies are not auto-replied to (only stored)
   if (isReply) {
     if (message.trim().length >= 2) {
-      const sentiment = await analyzeCommentSentiment(message);
+      const sentiment = await analyzeCommentSentiment(message, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'tiktok_webhook' });
       if (sentiment) {
         await prisma.comment.update({
           where: { id: savedComment.id },
@@ -324,7 +324,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true }, { status: 200 });
   }
 
-  const sentiment = await analyzeCommentSentiment(message);
+  const sentiment = await analyzeCommentSentiment(message, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'tiktok_webhook' });
   if (!sentiment) {
     console.warn('[TikTok Webhook] Sentiment analysis returned null for comment', savedComment.id);
     return NextResponse.json({ received: true }, { status: 200 });
@@ -449,7 +449,7 @@ async function generateAndPostTikTokReply(opts: {
     // Idempotency guard
     const claimed = await prisma.comment.updateMany({
       where: { id: commentDbId, replied: false, status: 'pending' },
-      data: { status: 'ai_generating' },
+      data: { status: 'ai_generating', lastAttemptAt: new Date() },
     });
     if (claimed.count === 0) return;
 
@@ -473,7 +473,7 @@ async function generateAndPostTikTokReply(opts: {
       customReplyPrompt: connectedPage.customReplyPrompt ?? undefined,
       webSourceUrl: connectedPage.webSourceUrl ?? undefined,
       webSourceEnabled: connectedPage.webSourceEnabled ?? false,
-    });
+    }, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'tiktok_webhook' });
 
     if (!aiResult.success || !aiResult.reply) {
       await prisma.comment.update({

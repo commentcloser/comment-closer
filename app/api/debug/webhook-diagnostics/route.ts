@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/adminAuth';
 import { prisma } from '@/lib/prisma';
+import { graphFetch } from '@/lib/graphFetch';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,9 @@ export const dynamic = 'force-dynamic';
  * Comprehensive webhook diagnostics to debug why real webhooks aren't arriving
  */
 export async function GET(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production' && process.env.DEBUG_ROUTES_ENABLED !== '1') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
   const admin = await requireAdmin();
   if (!admin.ok) {
     return NextResponse.json({ error: admin.error }, { status: admin.status });
@@ -57,7 +61,7 @@ export async function GET(request: NextRequest) {
       // Check 1: Subscription status (Hypothesis A)
       try {
         const subscriptionUrl = `https://graph.facebook.com/v24.0/${pageId}/subscribed_apps?access_token=${token}`;
-        const subscriptionResponse = await fetch(subscriptionUrl);
+        const subscriptionResponse = await graphFetch(subscriptionUrl);
         const subscriptionData = await subscriptionResponse.json();
 
         const isSubscribed = subscriptionData.data && subscriptionData.data.length > 0;
@@ -91,7 +95,7 @@ export async function GET(request: NextRequest) {
       // Check 2: Token permissions (Hypothesis C, D)
       try {
         const debugTokenUrl = `https://graph.facebook.com/v24.0/debug_token?input_token=${token}&access_token=${token}`;
-        const debugResponse = await fetch(debugTokenUrl);
+        const debugResponse = await graphFetch(debugTokenUrl);
         const debugData = await debugResponse.json();
 
         const scopes = debugData.data?.scopes || [];
@@ -141,7 +145,7 @@ export async function GET(request: NextRequest) {
         if (account.access_token) {
           try {
             const userTokenUrl = `https://graph.facebook.com/v24.0/debug_token?input_token=${account.access_token}&access_token=${account.access_token}`;
-            const userResponse = await fetch(userTokenUrl);
+            const userResponse = await graphFetch(userTokenUrl);
             const userData = await userResponse.json();
 
             const userScopes = userData.data?.scopes || [];

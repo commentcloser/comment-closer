@@ -34,19 +34,26 @@ export const authOptions = {
 
           const rateLimitKey = `login:${email}`;
 
+          // Enforce the rate limit on the server. The login page also pre-checks
+          // via /api/auth/rate-limit, but a direct POST to the credentials
+          // callback would otherwise bypass throttling and allow brute force.
+          if ((await isRateLimited(rateLimitKey)).limited) {
+            return null;
+          }
+
           const user = await prisma.user.findUnique({
             where: { email },
           });
 
           if (!user || !user.password) {
-            recordFailedAttempt(rateLimitKey);
+            await recordFailedAttempt(rateLimitKey);
             return null;
           }
 
           const isPasswordValid = await bcrypt.compare(password, user.password);
 
           if (!isPasswordValid) {
-            recordFailedAttempt(rateLimitKey);
+            await recordFailedAttempt(rateLimitKey);
             return null;
           }
 
@@ -56,7 +63,7 @@ export const authOptions = {
           }
 
           // Reset rate limit on successful login
-          resetRateLimit(rateLimitKey);
+          await resetRateLimit(rateLimitKey);
 
           return {
             id: user.id,

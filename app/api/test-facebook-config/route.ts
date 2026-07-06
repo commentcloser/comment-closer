@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/adminAuth';
 
 /**
  * Test endpoint to check if Facebook OAuth environment variables are set
- * This helps debug configuration issues
+ * This helps debug configuration issues.
+ *
+ * SECURITY: admin-only. It reports secret lengths and the NEXTAUTH_URL value,
+ * which are useful recon for an attacker and must not be exposed anonymously.
  */
 export async function GET(request: NextRequest) {
+  const admin = await requireAdmin();
+  if (!admin.ok) {
+    return NextResponse.json({ error: admin.error }, { status: admin.status });
+  }
+
   const hasClientId = !!process.env.FACEBOOK_CLIENT_ID;
   const hasClientSecret = !!process.env.FACEBOOK_CLIENT_SECRET;
   const hasNextAuthUrl = !!process.env.NEXTAUTH_URL;
