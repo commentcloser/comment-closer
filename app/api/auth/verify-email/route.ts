@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { sendWelcomeEmail } from '@/lib/email';
 
 export const runtime = 'nodejs';
 
@@ -45,6 +46,11 @@ export async function POST(request: NextRequest) {
       where: { id: user.id },
       data: { emailVerified: new Date() },
     });
+
+    // Fire-and-forget welcome email — must never block or fail verification.
+    sendWelcomeEmail(user.email, user.name || undefined).catch((e) =>
+      console.error('[verify-email] welcome email failed:', e)
+    );
 
     // Delete the used token
     await prisma.verificationToken.delete({

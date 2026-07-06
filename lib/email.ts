@@ -162,20 +162,46 @@ export async function sendVerificationEmail(email: string, token: string, name?:
   });
 }
 
-// ─── Billing emails ───────────────────────────────────────────────────────────
+export async function sendWelcomeEmail(email: string, name?: string) {
+  const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || 'https://commentcloser.com';
+  const url = `${baseUrl}/dashboard`;
+  const firstName = name ? name.split(' ')[0] : null;
 
-function billingButton(label: string, url: string): string {
-  return `
-    <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[email] (dev) Welcome email for ${email} (dashboard: ${url})`);
+  }
+
+  const content = `
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+      <tr>
+        <td style="width:44px;height:44px;background:#09090b;border-radius:10px;text-align:center;vertical-align:middle;">
+          <span style="font-size:22px;line-height:44px;">🎉</span>
+        </td>
+      </tr>
+    </table>
+    <h1 style="margin:0 0 10px;font-size:24px;font-weight:700;color:#09090b;letter-spacing:-0.5px;line-height:1.2;">
+      Welcome to Comment Closer${firstName ? `, ${firstName}` : ''}
+    </h1>
+    <p style="margin:0 0 32px;font-size:15px;color:#71717a;line-height:1.6;">
+      Your email is verified. Connect a Facebook, Instagram, or TikTok account and Comment Closer
+      will start classifying and replying to your comments automatically.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
       <tr>
         <td>
           <a href="${url}" class="btn"
              style="display:inline-block;background:#09090b;color:#ffffff;padding:12px 28px;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;letter-spacing:0.1px;">
-            ${label}
+            Open your dashboard
           </a>
         </td>
       </tr>
     </table>`;
+
+  return sendEmail({
+    to: email,
+    subject: 'Welcome to Comment Closer',
+    html: buildEmail(content, 'Welcome to Comment Closer'),
+  });
 }
 
 export async function sendPasswordResetEmail(email: string, token: string, name?: string) {
