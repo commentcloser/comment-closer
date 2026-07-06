@@ -7,6 +7,7 @@ import { logSkipDecision, logReplyAttempt, logReplySuccess, logReplyFailure } fr
 import { autoModerateNegativeComment } from '@/lib/commentModerator';
 import { verifyWebhookSignature } from '@/lib/webhookVerification';
 import { graphFetch } from '@/lib/graphFetch';
+import { cachedGraph } from '@/lib/graphCache';
 import * as Sentry from '@sentry/nextjs';
 
 export const maxDuration = 60;
@@ -173,46 +174,58 @@ async function handleFeedComment(value: any, connectedPage: any) {
       }
     }
 
-    // Graph API fallback: fetch post's promotion_status
-    if (!isFromAd && connectedPage.pageAccessToken) {
-      try {
-        const postRes = await graphFetch(
-          `https://graph.facebook.com/v24.0/${postId}?access_token=${connectedPage.pageAccessToken}&fields=promotion_status,promotable_id`
-        );
-        if (postRes.ok) {
-          const postData = await postRes.json();
-          const ps = postData.promotion_status;
-          if (ps && ps !== 'inactive') {
-            isFromAd = true;
-            source = 'facebook_ad';
-          }
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-
-    // Try with user token (page token may lack promotion_status for some post types)
-    if (!isFromAd && connectedPage.userId) {
-      try {
-        const account = await prisma.account.findFirst({
-          where: { userId: connectedPage.userId, provider: 'facebook' },
-          select: { access_token: true },
-        });
-        if (account?.access_token) {
-          const postRes = await graphFetch(
-            `https://graph.facebook.com/v24.0/${postId}?access_token=${account.access_token}&fields=promotion_status`
-          );
-          if (postRes.ok) {
-            const postData = await postRes.json();
-            if (postData.promotion_status && postData.promotion_status !== 'inactive') {
-              isFromAd = true;
-              source = 'facebook_ad';
+    // Graph API fallback: fetch the post's promotion_status. Cache the result
+    // per post (OBS-2) — many comments hit the same post, and this otherwise
+    // re-queries Graph (up to twice) for every one of them. Tries the page
+    // token first, then the user token (page tokens can lack promotion_status
+    // for some post types).
+    if (!isFromAd) {
+      const promoIsAd = await cachedGraph(
+        `promo:${connectedPage.id}:${postId}`,
+        5 * 60 * 1000,
+        async () => {
+          if (connectedPage.pageAccessToken) {
+            try {
+              const postRes = await graphFetch(
+                `https://graph.facebook.com/v24.0/${postId}?access_token=${connectedPage.pageAccessToken}&fields=promotion_status,promotable_id`
+              );
+              if (postRes.ok) {
+                const postData = await postRes.json();
+                const ps = postData.promotion_status;
+                if (ps && ps !== 'inactive') return true;
+              }
+            } catch {
+              /* ignore */
             }
           }
-        }
-      } catch {
-        /* ignore */
+
+          if (connectedPage.userId) {
+            try {
+              const account = await prisma.account.findFirst({
+                where: { userId: connectedPage.userId, provider: 'facebook' },
+                select: { access_token: true },
+              });
+              if (account?.access_token) {
+                const postRes = await graphFetch(
+                  `https://graph.facebook.com/v24.0/${postId}?access_token=${account.access_token}&fields=promotion_status`
+                );
+                if (postRes.ok) {
+                  const postData = await postRes.json();
+                  if (postData.promotion_status && postData.promotion_status !== 'inactive') return true;
+                }
+              }
+            } catch {
+              /* ignore */
+            }
+          }
+
+          return false;
+        },
+      );
+
+      if (promoIsAd) {
+        isFromAd = true;
+        source = 'facebook_ad';
       }
     }
 
@@ -509,24 +522,31 @@ async function generateAndPostAutoReply(
       maxReplyLength: connectedPage.maxReplyLength,
     });
     
-    // Fetch post caption for context (optional)
+    // Fetch post caption for context (optional). Cached per post (OBS-2):
+    // captions rarely change and repeat across every comment on the same post.
     let postCaption: string | undefined;
     if (connectedPage.pageAccessToken) {
       console.log(`[FB Webhook] 🔍 Fetching post caption for context...`);
-      try {
-        const postRes = await graphFetch(
-          `https://graph.facebook.com/v24.0/${postId}?access_token=${connectedPage.pageAccessToken}&fields=message`
-        );
-        if (postRes.ok) {
-          const postData = await postRes.json();
-          postCaption = postData.message;
-          console.log(`[FB Webhook] ✅ Post caption fetched: "${postCaption?.substring(0, 50)}${(postCaption?.length || 0) > 50 ? '...' : ''}"`);
-        } else {
-          console.log(`[FB Webhook] ⚠️  Post caption fetch failed (${postRes.status})`);
-        }
-      } catch (err: any) {
-        console.log(`[FB Webhook] ⚠️  Post caption fetch error: ${err?.message}`);
-      }
+      postCaption = await cachedGraph(
+        `caption:${connectedPage.id}:${postId}`,
+        10 * 60 * 1000,
+        async () => {
+          try {
+            const postRes = await graphFetch(
+              `https://graph.facebook.com/v24.0/${postId}?access_token=${connectedPage.pageAccessToken}&fields=message`
+            );
+            if (postRes.ok) {
+              const postData = await postRes.json();
+              return postData.message as string | undefined;
+            }
+            console.log(`[FB Webhook] ⚠️  Post caption fetch failed (${postRes.status})`);
+          } catch (err: any) {
+            console.log(`[FB Webhook] ⚠️  Post caption fetch error: ${err?.message}`);
+          }
+          return undefined;
+        },
+      );
+      console.log(`[FB Webhook] ✅ Post caption: "${postCaption?.substring(0, 50)}${(postCaption?.length || 0) > 50 ? '...' : ''}"`);
     } else {
       console.log(`[FB Webhook] ⚠️  No page access token - skipping post caption`);
     }

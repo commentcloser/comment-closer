@@ -400,8 +400,13 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
         }
       }
     }
-  } catch {
-    // handleCommentChange error - silent
+  } catch (error) {
+    // Never rethrow (the webhook must still ack 200), but log so processing
+    // failures aren't invisible in prod (QUAL-5).
+    console.error(
+      `[IG Webhook] handleCommentChange failed for comment ${commentData?.id ?? 'unknown'}:`,
+      error instanceof Error ? error.message : error,
+    );
   }
 }
 
