@@ -97,12 +97,12 @@
     "logo": "Comment Closer",
     "badge": "For brands running ads on Facebook · Instagram · TikTok",
     "titleLine1": "You paid for the ad.",
-    "titleLine2": "The comments are undoing it.",
-    "subtitle": "Nobody buys before reading the comments. Comment Closer wipes the negativity under your ads and answers everyone else — automatically.",
+    "titleLine2": "The comments are destroying it.",
+    "subtitle": "Nobody buys before reading the comments. Comment Closer wipes the negativity under your ads and replies to everyone else — automatically.",
     "startFreeTrial": "Start free — fix my comments",
     "watchDemo": "See it in action",
     "stats": {
-      "automated": "100% of comments answered",
+      "automated": "100% of comments get a reply",
       "saved": "0 negatives left visible",
       "consistent": "24/7 on every ad and post"
     },
@@ -209,7 +209,7 @@
         "desc": "Questions answered, compliments thanked, buyers nudged toward checkout. Instantly, in your brand's tone."
       },
       "step4": {
-        "title": "No comment left unreplied. Ever.",
+        "title": "No comment left without a reply. Ever.",
         "desc": "The result: a comment section that looks great and sells for you — 24/7, even while you sleep."
       }
     },
@@ -218,7 +218,7 @@
       "title": "What changes when the comments work for you",
       "stat1": {
         "value": "100%",
-        "label": "of comments answered"
+        "label": "of comments get a reply"
       },
       "stat2": {
         "value": "Seconds",
@@ -305,25 +305,6 @@
         "cta": "Get Business"
       }
     },
-    "testimonials": {
-      "title": "Brands that stopped the bleed",
-      "subtitle": "What happens after the comment section switches to your side.",
-      "testimonial1": {
-        "quote": "This tool has completely transformed how we handle customer engagement. Response times dropped from hours to seconds, and our customer satisfaction scores have never been higher.",
-        "name": "Sarah Johnson",
-        "role": "Marketing Director, TechCorp"
-      },
-      "testimonial2": {
-        "quote": "As a small team, we couldn't afford to miss comments. AI Comment Replyer allows us to compete with much larger companies by being responsive 24/7. Game changer!",
-        "name": "Michael Chen",
-        "role": "Founder, StartupXYZ"
-      },
-      "testimonial3": {
-        "quote": "The custom rules and brand voice training are incredible. Every response sounds like it came from our team, but we're getting 10x more engagement. Highly recommended!",
-        "name": "Emma Rodriguez",
-        "role": "Social Media Manager, BrandCo"
-      }
-    },
     "calc": {
       "eyebrow": "THE STAKES",
       "title": "What is your comment section costing you right now?",
@@ -352,7 +333,7 @@
         "us": "Hidden in seconds, automatically"
       },
       "row2": {
-        "label": "Comments answered",
+        "label": "Comments replied to",
         "ignore": "Never",
         "manual": "When you find the time",
         "us": "Every single one, 24/7"
@@ -403,7 +384,7 @@
       "q2": "Which platforms do you cover?",
       "a2": "Facebook, Instagram and TikTok — both organic posts and paid ads. Connect your pages and ad accounts once, and the AI watches every comment across all of them, 24/7.",
       "q3": "Will the replies really sound like my brand?",
-      "a3": "Yes. You set the tone and custom prompts per page, and the AI replies in your voice: questions get answered, compliments get thanked, buyers get nudged. No comment is left unreplied.",
+      "a3": "Yes. You set the tone and custom prompts per page, and the AI replies in your voice: questions get answered, compliments get thanked, buyers get nudged. Every comment gets a reply.",
       "q4": "Do comments really affect ad performance?",
       "a4": "Massively. Buyers read the comments before they click. Visible complaints kill trust; answered questions and live engagement build it — and feed the algorithm. Clean, active comments make the same budget perform better.",
       "q5": "What if the AI gets one wrong?",
@@ -419,10 +400,22 @@
       "eyebrow": "YOU'RE IN CONTROL",
       "title": "Automated doesn't mean out of your hands.",
       "subtitle": "You set the rules once. The AI does the work — the way you'd do it, on your terms.",
-      "c1": { "title": "Hide or delete — your call", "desc": "Choose what happens to negative comments. Nothing is removed against a rule you didn't set." },
-      "c2": { "title": "Approve before it posts", "desc": "Turn on manual review and every reply waits for your yes before it goes live." },
-      "c3": { "title": "Your voice, your rules", "desc": "Set the tone and custom prompts per page, with block and allow lists." },
-      "c4": { "title": "Every action logged", "desc": "A full audit trail in your dashboard — and you can pause automation with one click." },
+      "c1": {
+        "title": "Hide or delete — your call",
+        "desc": "Choose what happens to negative comments. Nothing is removed against a rule you didn't set."
+      },
+      "c2": {
+        "title": "Approve before it posts",
+        "desc": "Turn on manual review and every reply waits for your yes before it goes live."
+      },
+      "c3": {
+        "title": "Your voice, your rules",
+        "desc": "Set the tone and custom prompts per page, with block and allow lists."
+      },
+      "c4": {
+        "title": "Every action logged",
+        "desc": "A full audit trail in your dashboard — and you can pause automation with one click."
+      },
       "reassure": "Free during early access · No card required · Pause or cancel anytime"
     },
     "priceReassure": {
@@ -441,23 +434,44 @@
       "eyebrow": "WHO IT'S FOR",
       "title": "If you run ads, this is bleeding you too.",
       "subtitle": "Every business running paid social has a comment section working against it. Here's who turns it around with Comment Closer.",
-      "a1": { "title": "E-commerce & DTC brands", "desc": "Turn comment-section trust into checkout." },
-      "a2": { "title": "Agencies & media buyers", "desc": "Protect every client's ad spend at once." },
-      "a3": { "title": "Local businesses", "desc": "Never miss another 'how much?' or 'are you open?'." },
-      "a4": { "title": "Creators & personal brands", "desc": "Keep your feed clean at any comment volume." }
+      "a1": {
+        "title": "E-commerce & DTC brands",
+        "desc": "Turn comment-section trust into checkout."
+      },
+      "a2": {
+        "title": "Agencies & media buyers",
+        "desc": "Protect every client's ad spend at once."
+      },
+      "a3": {
+        "title": "Local businesses",
+        "desc": "Never miss another 'how much?' or 'are you open?'."
+      },
+      "a4": {
+        "title": "Creators & personal brands",
+        "desc": "Keep your feed clean at any comment volume."
+      }
     },
     "setup": {
       "eyebrow": "GET STARTED",
       "title": "Live in three minutes. Then never think about it again.",
       "subtitle": "No developers, no complicated setup. Connect once and Comment Closer runs itself.",
-      "step1": { "title": "Connect your pages", "desc": "Link Facebook, Instagram and TikTok in a few clicks — pages and ad accounts." },
-      "step2": { "title": "Set your brand voice", "desc": "Pick your tone, rules and no-go words once. Adjust anytime." },
-      "step3": { "title": "Comment Closer takes over", "desc": "Negatives vanish, everyone gets a reply — 24/7, automatically, while you sleep." },
+      "step1": {
+        "title": "Connect your pages",
+        "desc": "Link Facebook, Instagram and TikTok in a few clicks — pages and ad accounts."
+      },
+      "step2": {
+        "title": "Set your brand voice",
+        "desc": "Pick your tone, rules and no-go words once. Adjust anytime."
+      },
+      "step3": {
+        "title": "Comment Closer takes over",
+        "desc": "Negatives vanish, everyone gets a reply — 24/7, automatically, while you sleep."
+      },
       "cta": "Start free — connect in minutes"
     },
     "finalCta": {
       "title": "Every comment answered. Every negative gone. Every ad working harder.",
-      "subtitle": "Connect your pages in minutes. From then on: negatives gone, everything answered, no comment left hanging.",
+      "subtitle": "Connect your pages in minutes. From then on: negatives gone, every comment replied to, nothing left hanging.",
       "button": "Start free now",
       "microline": "Free during early access — no card required."
     },
@@ -467,7 +481,7 @@
       "testimonials": "Results"
     },
     "footer": {
-      "description": "AI that cleans your comment section and answers every comment — so your ads sell instead of apologize.",
+      "description": "AI that cleans your comment section and replies to every comment — so your ads sell instead of apologize.",
       "product": "Product",
       "company": "Company",
       "legal": "Legal",
@@ -476,6 +490,68 @@
       "about": "About",
       "blog": "Blog",
       "careers": "Careers"
+    },
+    "languages": {
+      "eyebrow": "SPEAKS EVERY LANGUAGE",
+      "title": "Your customers comment in every language. It replies in all of them — perfectly.",
+      "subtitle": "The question we're asked most: “Does it work in my language?” Yes — every language your customers use. It reads their slang, typos and emoji, then replies like a native speaker who grew up there. Not machine-translated. Actually fluent.",
+      "replyLabel": "Auto-reply",
+      "p1": {
+        "title": "Native, not translated",
+        "desc": "Every reply is written inside the language — idioms, tone and all — never run through a translator."
+      },
+      "p2": {
+        "title": "Reads how real people write",
+        "desc": "Slang, abbreviations, typos, mixed languages, emoji — it understands what your customer actually meant."
+      },
+      "p3": {
+        "title": "Auto-detects every comment",
+        "desc": "It spots each commenter's language instantly and replies in it. You set up nothing."
+      },
+      "more": "…and every other language your customers speak:",
+      "moreCount": "50+ languages, zero setup"
+    },
+    "outreplies": {
+      "eyebrow": "SMARTER THAN YOUR BEST REP",
+      "title": "It replies better than the people who built your brand.",
+      "subtitle": "Before it writes a single word, it reads your entire website — every product, price, policy and page — then answers with the exact detail your customer needs. Your best salesperson has off days, forgets specs and replies six hours late. This one never does.",
+      "reads": {
+        "title": "What it studies before it ever replies",
+        "r1": "Every product page",
+        "r2": "Prices & current offers",
+        "r3": "Shipping & returns",
+        "r4": "FAQ & policies",
+        "r5": "Past reviews & replies",
+        "r6": "Your brand's tone of voice"
+      },
+      "commentQ": "Does the Aria dress run true to size? And do you ship to Cyprus?",
+      "human": {
+        "label": "A human, on a busy day",
+        "badge": "6h late",
+        "reply": "Hi! Let me check on that and get back to you 🙏"
+      },
+      "us": {
+        "label": "Comment Closer",
+        "badge": "2 sec",
+        "reply": "Yes — the Aria runs true to size (size up if you're between sizes), and we ship to Cyprus in 3–5 days, free over €50. Here's the link 💜"
+      },
+      "p1": {
+        "title": "Knows every detail cold",
+        "desc": "Sizes, materials, stock, delivery times — it has your whole catalog memorized."
+      },
+      "p2": {
+        "title": "Never forgets a policy",
+        "desc": "Returns, warranties, offers — always accurate, never “let me check.”"
+      },
+      "p3": {
+        "title": "Always on-brand",
+        "desc": "It answers in your tone every time — no off-message replies, no bad days."
+      },
+      "p4": {
+        "title": "Seconds, not hours",
+        "desc": "The buyer gets the right answer while they still want to buy — not tomorrow."
+      },
+      "verdict": "Your best salesperson has good days and bad days. This one only has good days."
     }
   },
   "auth": {
@@ -1085,8 +1161,7 @@
       "unsavedChangesMessage": "You have unsaved changes. Save or discard?",
       "discard": "Discard",
       "manualReview": "Manual Review",
-      "manualReviewDesc": "Review AI replies before they are sent",
-      "cancel": "Cancel"
+      "manualReviewDesc": "Review AI replies before they are sent"
     },
     "inbox": {
       "title": "Comments Inbox",

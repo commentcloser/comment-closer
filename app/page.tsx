@@ -21,6 +21,23 @@ const wordVariant = {
   visible: { opacity: 1, y: 0, filter: 'blur(0px)' }
 };
 
+// Native comment→reply pairs across scripts — content stays in its own language
+// regardless of UI locale, so these live here rather than in i18n.
+const LANG_SAMPLES: { lang: string; dir: 'ltr' | 'rtl'; c: string; r: string }[] = [
+  { lang: 'Español', dir: 'ltr', c: '¿Hacéis envíos a España?', r: '¡Claro! Enviamos a toda España en 3–5 días 📦' },
+  { lang: 'Ελληνικά', dir: 'ltr', c: 'Πόσο κοστίζει και πότε έρχεται;', r: 'Κοστίζει 29€ και το έχεις σε 2–3 μέρες! 💜' },
+  { lang: 'العربية', dir: 'rtl', c: 'هل هذا متوفر الآن؟', r: 'نعم، متوفر الآن! اطلبه من الرابط 🎉' },
+  { lang: '日本語', dir: 'ltr', c: '在庫はまだありますか？', r: 'はい、在庫あります！ぜひどうぞ 😊' },
+  { lang: 'Português', dir: 'ltr', c: 'Vocês entregam no Brasil?', r: 'Sim! Entregamos para todo o Brasil 🇧🇷' },
+  { lang: 'Deutsch', dir: 'ltr', c: 'Gibt es das auch in Blau?', r: 'Ja, auch in Blau verfügbar! 💙' },
+];
+
+const MORE_LANGS = [
+  'English', 'Français', 'Italiano', 'Nederlands', 'Polski', 'Türkçe', 'Русский', '中文',
+  '한국어', 'हिन्दी', 'Svenska', 'Norsk', 'Suomi', 'Dansk', 'Čeština', 'Română',
+  'Magyar', 'ไทย', 'Tiếng Việt', 'Bahasa Indonesia', 'Українська', 'עברית', 'Srpski', 'Filipino',
+];
+
 const PlatformGlyphs = ({ className = 'size-4 text-ink-muted' }: { className?: string }) => (
   <>
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -820,6 +837,57 @@ export default function Home() {
           </div>
         </section>
 
+        {/* EVERY LANGUAGE — the #1 question, answered */}
+        <section className="bg-band text-band-ink py-16 md:py-28 lg:py-36 border-y border-band-line overflow-hidden">
+          <div className="mx-auto max-w-6xl px-6">
+            <div className="ledger-rule ledger-rule--band" data-label={t('landing.languages.eyebrow')} aria-hidden="true"></div>
+            <h2 className="font-display font-black tracking-[-0.025em] leading-[1.08] text-[clamp(2rem,5vw,3.75rem)] text-band-ink max-w-4xl">
+              {t('landing.languages.title')}
+            </h2>
+            <p className="text-[17px] leading-[1.65] text-band-ink/70 max-w-2xl mt-4">{t('landing.languages.subtitle')}</p>
+
+            {/* Native comment→reply proof, across scripts */}
+            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {LANG_SAMPLES.map((s, i) => (
+                <Reveal key={s.lang} delay={i * 0.06} className="rounded-card border border-band-line bg-surface/40 p-5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-display font-extrabold text-[15px] text-band-ink">{s.lang}</span>
+                    <span className="stamp stamp--success shrink-0">{t('landing.languages.replyLabel')}</span>
+                  </div>
+                  <div dir={s.dir} className="mt-4 space-y-2">
+                    <div className="rounded-btn border border-band-line bg-surface-2/60 px-3 py-2 text-[13px] text-band-ink/70">{s.c}</div>
+                    <div className="rounded-btn border border-accent/40 bg-accent-wash/50 px-3 py-2 text-[13px] text-band-ink flex items-start gap-2">
+                      <svg className="size-4 shrink-0 mt-0.5 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>
+                      <span>{s.r}</span>
+                    </div>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+
+            {/* Reassurance points */}
+            <div className="mt-10 grid gap-6 sm:grid-cols-3">
+              {(['p1', 'p2', 'p3'] as const).map((k, i) => (
+                <Reveal key={k} delay={i * 0.07}>
+                  <h3 className="font-display font-extrabold text-[17px] text-band-ink">{t(`landing.languages.${k}.title`)}</h3>
+                  <p className="text-[14px] leading-relaxed text-band-ink/70 mt-2">{t(`landing.languages.${k}.desc`)}</p>
+                </Reveal>
+              ))}
+            </div>
+
+            {/* …and every other language */}
+            <Reveal className="mt-12 rounded-frame border border-band-line bg-surface/30 p-6">
+              <p className="text-[13px] text-band-ink/60">{t('landing.languages.more')}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {MORE_LANGS.map((l) => (
+                  <span key={l} className="rounded-btn border border-band-line bg-surface-2/50 px-3 py-1.5 text-[13px] text-band-ink/80">{l}</span>
+                ))}
+              </div>
+              <p className="mt-5 font-mono text-[13px] text-success-text">{t('landing.languages.moreCount')}</p>
+            </Reveal>
+          </div>
+        </section>
+
         {/* YOU'RE IN CONTROL — risk reversal */}
         <section className="py-16 md:py-28 lg:py-36">
           <div className="mx-auto max-w-6xl px-6">
@@ -891,69 +959,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Testimonials (inside the #results flow) */}
-        <section className="py-16 md:py-28 lg:py-36">
-          <div className="mx-auto max-w-6xl px-6">
-            <h2 className="font-display font-black tracking-[-0.025em] leading-[1.08] text-[clamp(2rem,5vw,3.75rem)] text-ink">
-              {t('landing.testimonials.title')}
-            </h2>
-            <p className="text-[17px] leading-[1.65] text-ink-muted max-w-2xl mt-4">
-              {t('landing.testimonials.subtitle')}
-            </p>
-
-            <div className="mt-12 grid md:grid-cols-3 gap-5">
-              {[
-                {
-                  nameKey: 'landing.testimonials.testimonial1.name',
-                  roleKey: 'landing.testimonials.testimonial1.role',
-                  avatar: 'SJ',
-                  quoteKey: 'landing.testimonials.testimonial1.quote'
-                },
-                {
-                  nameKey: 'landing.testimonials.testimonial2.name',
-                  roleKey: 'landing.testimonials.testimonial2.role',
-                  avatar: 'MC',
-                  quoteKey: 'landing.testimonials.testimonial2.quote'
-                },
-                {
-                  nameKey: 'landing.testimonials.testimonial3.name',
-                  roleKey: 'landing.testimonials.testimonial3.role',
-                  avatar: 'ER',
-                  quoteKey: 'landing.testimonials.testimonial3.quote'
-                }
-              ].map((testimonial, index) => (
-                <Reveal key={index} delay={index * 0.08} className="rounded-card border border-line bg-surface p-6 shadow-card">
-                  <div className="flex items-center justify-between gap-3">
-                    {index === 1 ? (
-                      <span className="stamp stamp--success">{t('landing.stats.automated')}</span>
-                    ) : (
-                      <span></span>
-                    )}
-                    <div className="flex gap-0.5 text-signal">
-                      {[...Array(5)].map((_, i) => (
-                        <svg key={i} className="size-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="font-display text-[49px] leading-none text-accent/25 select-none mt-3" aria-hidden="true">&ldquo;</div>
-                  <p className="text-[15px] leading-relaxed text-ink-muted">"{t(testimonial.quoteKey)}"</p>
-                  <div className="mt-5 pt-4 border-t border-line flex items-center gap-3">
-                    <div className="size-10 flex items-center justify-center rounded-full border border-accent/20 bg-accent-wash font-mono text-[13px] font-medium text-accent shrink-0">
-                      {testimonial.avatar}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-[14px] font-medium text-ink truncate">{t(testimonial.nameKey)}</div>
-                      <div className="text-[12px] text-ink-muted truncate">{t(testimonial.roleKey)}</div>
-                    </div>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* WHO IT'S FOR — audience band */}
         <section className="bg-band text-band-ink py-16 md:py-28 lg:py-36 border-y border-band-line">
           <div className="mx-auto max-w-6xl px-6">
@@ -980,6 +985,65 @@ export default function Home() {
                 </Reveal>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* OUT-REPLIES YOUR SALES TEAM — it researches your whole site first */}
+        <section className="bg-accent-wash/30 dark:bg-accent-wash/20 py-16 md:py-28 lg:py-36">
+          <div className="mx-auto max-w-6xl px-6">
+            <div className="ledger-rule" data-label={t('landing.outreplies.eyebrow')} aria-hidden="true"></div>
+            <h2 className="font-display font-black tracking-[-0.025em] leading-[1.08] text-[clamp(2rem,5vw,3.75rem)] text-ink max-w-4xl">
+              {t('landing.outreplies.title')}
+            </h2>
+            <p className="text-[17px] leading-[1.65] text-ink-muted max-w-2xl mt-4">{t('landing.outreplies.subtitle')}</p>
+
+            {/* What it studies before replying */}
+            <Reveal className="mt-12 rounded-frame border border-line bg-surface p-6 shadow-card">
+              <p className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-accent">{t('landing.outreplies.reads.title')}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {(['r1', 'r2', 'r3', 'r4', 'r5', 'r6'] as const).map((k) => (
+                  <span key={k} className="inline-flex items-center gap-2 rounded-btn border border-line bg-surface-2 px-3 py-1.5 text-[13px] text-ink">
+                    <svg className="size-4 shrink-0 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 3h9l5 5v13H6z" /><path d="M14 3v6h6" /></svg>
+                    {t(`landing.outreplies.reads.${k}`)}
+                  </span>
+                ))}
+              </div>
+            </Reveal>
+
+            {/* Same question, two replies */}
+            <div className="mt-8 grid gap-5 lg:grid-cols-2 items-stretch">
+              <Reveal className="rounded-card border border-line bg-surface p-6 shadow-card">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-display font-extrabold text-[15px] text-ink-muted">{t('landing.outreplies.human.label')}</span>
+                  <span className="rounded-full bg-danger-wash text-danger text-[11px] font-mono font-bold px-2.5 py-0.5 shrink-0">{t('landing.outreplies.human.badge')}</span>
+                </div>
+                <div className="mt-4 rounded-btn border border-line bg-surface-2 px-3 py-2 text-[13px] text-ink-muted">{t('landing.outreplies.commentQ')}</div>
+                <div className="mt-2 rounded-btn border border-danger/25 bg-surface-2 px-3 py-2 text-[13px] text-ink-muted italic">{t('landing.outreplies.human.reply')}</div>
+              </Reveal>
+
+              <Reveal delay={0.1} className="relative rounded-card p-6 text-on-accent [background:var(--u-grad-cta)] rim shadow-pop">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-display font-black text-[16px]">{t('landing.outreplies.us.label')}</span>
+                  <span className="rounded-full bg-white/15 text-on-accent text-[11px] font-mono font-bold px-2.5 py-0.5 shrink-0">{t('landing.outreplies.us.badge')}</span>
+                </div>
+                <div className="mt-4 rounded-btn border border-white/20 bg-white/10 px-3 py-2 text-[13px] text-on-accent/85">{t('landing.outreplies.commentQ')}</div>
+                <div className="mt-2 rounded-btn border border-white/25 bg-white/15 px-3 py-2 text-[13px] text-on-accent">{t('landing.outreplies.us.reply')}</div>
+              </Reveal>
+            </div>
+
+            {/* Why it wins */}
+            <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {(['p1', 'p2', 'p3', 'p4'] as const).map((k, i) => (
+                <Reveal key={k} delay={i * 0.07} className="rounded-card border border-line bg-surface p-6 shadow-card">
+                  <h3 className="font-display font-extrabold text-[17px] text-ink">{t(`landing.outreplies.${k}.title`)}</h3>
+                  <p className="text-[14px] leading-relaxed text-ink-muted mt-2">{t(`landing.outreplies.${k}.desc`)}</p>
+                </Reveal>
+              ))}
+            </div>
+
+            <Reveal>
+              <p className="mt-10 font-display font-black text-[clamp(1.25rem,2.6vw,1.9rem)] tracking-[-0.01em] text-ink text-balance max-w-3xl">{t('landing.outreplies.verdict')}</p>
+            </Reveal>
           </div>
         </section>
 
