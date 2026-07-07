@@ -422,7 +422,7 @@ export default function Home() {
 
       <main className="ledger-sections">
         {/* HERO — engine-room floor */}
-        <section className="relative pt-32 pb-20 overflow-hidden ruled-paper">
+        <section className="relative pt-24 md:pt-32 pb-14 md:pb-20 overflow-hidden ruled-paper">
           <div className="relative mx-auto max-w-6xl px-6">
             <div className="grid lg:grid-cols-[52fr_48fr] gap-12 items-center">
               <div>
@@ -543,7 +543,7 @@ export default function Home() {
         </section>
 
         {/* 01 · THE PROBLEM */}
-        <section id="problem" className="bg-band text-band-ink py-28 md:py-36">
+        <section id="problem" className="bg-band text-band-ink py-16 md:py-28 lg:py-36">
           <div className="mx-auto max-w-6xl px-6">
             <div className="ledger-rule ledger-rule--band" data-label={t('landing.problem.eyebrow')} aria-hidden="true"></div>
             <h2 className="font-display font-black tracking-[-0.025em] leading-[1.08] text-[clamp(2rem,5vw,3.75rem)] text-band-ink">
@@ -618,7 +618,7 @@ export default function Home() {
         </section>
 
         {/* THE STAKES — leak calculator */}
-        <section className="py-28 md:py-36">
+        <section className="py-16 md:py-28 lg:py-36">
           <div className="mx-auto max-w-6xl px-6">
             <div className="ledger-rule" data-label={t('landing.calc.eyebrow')} aria-hidden="true"></div>
             <h2 className="font-display font-black tracking-[-0.025em] leading-[1.08] text-[clamp(2rem,5vw,3.75rem)] text-ink">{t('landing.calc.title')}</h2>
@@ -628,7 +628,7 @@ export default function Home() {
         </section>
 
         {/* 02 · THE FLIP */}
-        <section className="py-28 md:py-36">
+        <section className="py-16 md:py-28 lg:py-36">
           <div className="mx-auto max-w-6xl px-6">
             <div className="ledger-rule" data-label={t('landing.flip.eyebrow')} aria-hidden="true"></div>
             <h2 className="font-display font-black tracking-[-0.025em] leading-[1.08] text-[clamp(2rem,5vw,3.75rem)]">
@@ -725,7 +725,7 @@ export default function Home() {
         </section>
 
         {/* 03 · HOW IT WORKS */}
-        <section id="how" className="bg-accent-wash/40 dark:bg-accent-wash/30 py-28 md:py-36">
+        <section id="how" className="bg-accent-wash/40 dark:bg-accent-wash/30 py-16 md:py-28 lg:py-36">
           <div className="mx-auto max-w-6xl px-6">
             <div className="ledger-rule" data-label={t('landing.how.eyebrow')} aria-hidden="true"></div>
             <h2 className="font-display font-black tracking-[-0.025em] leading-[1.08] text-[clamp(2rem,5vw,3.75rem)] text-ink">
@@ -821,7 +821,7 @@ export default function Home() {
         </section>
 
         {/* YOU'RE IN CONTROL — risk reversal */}
-        <section className="py-28 md:py-36">
+        <section className="py-16 md:py-28 lg:py-36">
           <div className="mx-auto max-w-6xl px-6">
             <div className="ledger-rule" data-label={t('landing.control.eyebrow')} aria-hidden="true"></div>
             <h2 className="font-display font-black tracking-[-0.025em] leading-[1.08] text-[clamp(2rem,5vw,3.75rem)] text-ink">
@@ -851,7 +851,7 @@ export default function Home() {
         </section>
 
         {/* PULL QUOTE — urgency */}
-        <section className="py-24 md:py-32">
+        <section className="py-14 md:py-20 lg:py-32">
           <div className="mx-auto max-w-4xl px-6 text-center">
             <Reveal>
               <p className="font-display font-black leading-[1.1] tracking-[-0.02em] text-[clamp(1.75rem,4.5vw,3.25rem)] text-ink text-balance">
@@ -863,7 +863,7 @@ export default function Home() {
         </section>
 
         {/* 04 · RESULTS */}
-        <section id="results" className="bg-band text-band-ink py-28 md:py-36">
+        <section id="results" className="bg-band text-band-ink py-16 md:py-28 lg:py-36">
           <div className="mx-auto max-w-6xl px-6">
             <div className="ledger-rule ledger-rule--band" data-label={t('landing.results.eyebrow')} aria-hidden="true"></div>
             <h2 className="font-display font-black tracking-[-0.025em] leading-[1.08] text-[clamp(2rem,5vw,3.75rem)] text-band-ink">
@@ -892,7 +892,7 @@ export default function Home() {
         </section>
 
         {/* Testimonials (inside the #results flow) */}
-        <section className="py-28 md:py-36">
+        <section className="py-16 md:py-28 lg:py-36">
           <div className="mx-auto max-w-6xl px-6">
             <h2 className="font-display font-black tracking-[-0.025em] leading-[1.08] text-[clamp(2rem,5vw,3.75rem)] text-ink">
               {t('landing.testimonials.title')}
@@ -955,7 +955,7 @@ export default function Home() {
         </section>
 
         {/* WHO IT'S FOR — audience band */}
-        <section className="bg-band text-band-ink py-28 md:py-36 border-y border-band-line">
+        <section className="bg-band text-band-ink py-16 md:py-28 lg:py-36 border-y border-band-line">
           <div className="mx-auto max-w-6xl px-6">
             <div className="ledger-rule ledger-rule--band" data-label={t('landing.audience.eyebrow')} aria-hidden="true"></div>
             <h2 className="font-display font-black tracking-[-0.025em] leading-[1.08] text-[clamp(2rem,5vw,3.75rem)] text-band-ink">
@@ -984,7 +984,7 @@ export default function Home() {
         </section>
 
         {/* THE CHOICE — comparison table */}
-        <section className="py-28 md:py-36">
+        <section className="py-16 md:py-28 lg:py-36">
           <div className="mx-auto max-w-6xl px-6">
             <div className="ledger-rule" data-label={t('landing.compare.eyebrow')} aria-hidden="true"></div>
             <h2 className="font-display font-black tracking-[-0.025em] leading-[1.08] text-[clamp(2rem,5vw,3.75rem)] text-ink">{t('landing.compare.title')}</h2>
@@ -993,7 +993,7 @@ export default function Home() {
         </section>
 
         {/* GET STARTED — 3-step setup */}
-        <section className="py-28 md:py-36 bg-accent-wash/30 dark:bg-accent-wash/20">
+        <section className="py-16 md:py-28 lg:py-36 bg-accent-wash/30 dark:bg-accent-wash/20">
           <div className="mx-auto max-w-6xl px-6">
             <div className="ledger-rule" data-label={t('landing.setup.eyebrow')} aria-hidden="true"></div>
             <h2 className="font-display font-black tracking-[-0.025em] leading-[1.08] text-[clamp(2rem,5vw,3.75rem)] text-ink">
@@ -1026,7 +1026,7 @@ export default function Home() {
         </section>
 
         {/* 05 · PRICING */}
-        <section id="pricing" className="py-28 md:py-36 overflow-x-hidden">
+        <section id="pricing" className="py-16 md:py-28 lg:py-36 overflow-x-hidden">
           <div className="mx-auto max-w-6xl px-6">
             <div className="ledger-rule" data-label={t('landing.navigation.pricing')} aria-hidden="true"></div>
             <h2 className="font-display font-black tracking-[-0.025em] leading-[1.08] text-[clamp(2rem,5vw,3.75rem)] text-ink">
@@ -1112,7 +1112,7 @@ export default function Home() {
         </section>
 
         {/* PRICE REASSURANCE — value anchor + risk reversal */}
-        <section className="pb-24 md:pb-28">
+        <section className="pb-16 md:pb-24 lg:pb-28">
           <div className="mx-auto max-w-3xl px-6 text-center">
             <Reveal>
               <p className="text-[16px] text-ink-muted">{t('landing.priceReassure.line1')}</p>
@@ -1132,7 +1132,7 @@ export default function Home() {
         </section>
 
         {/* 06 · FAQ */}
-        <section className="bg-band text-band-ink py-28 md:py-36">
+        <section className="bg-band text-band-ink py-16 md:py-28 lg:py-36">
           <div className="mx-auto max-w-6xl px-6">
             <div className="ledger-rule ledger-rule--band" data-label={t('landing.faq.title')} aria-hidden="true"></div>
             <h2 className="font-display font-black tracking-[-0.025em] leading-[1.08] text-[clamp(2rem,5vw,3.75rem)] text-band-ink">
@@ -1182,7 +1182,7 @@ export default function Home() {
         </section>
 
         {/* COST OF INACTION — urgency band */}
-        <section className="bg-band text-band-ink py-24 md:py-32 border-y border-band-line">
+        <section className="bg-band text-band-ink py-14 md:py-20 lg:py-32 border-y border-band-line">
           <div className="mx-auto max-w-5xl px-6 text-center">
             <div className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-danger">{t('landing.inaction.eyebrow')}</div>
             <h2 className="font-display font-black tracking-[-0.02em] leading-[1.1] text-[clamp(1.9rem,4.5vw,3.25rem)] text-band-ink mt-5 text-balance">{t('landing.inaction.title')}</h2>
@@ -1204,7 +1204,7 @@ export default function Home() {
         </section>
 
         {/* FINAL CTA — full-bleed inverted gradient slab */}
-        <section className="relative overflow-hidden ruled-paper ruled-paper--faint [background:var(--u-grad-slab)] text-on-accent py-32 md:py-40">
+        <section className="relative overflow-hidden ruled-paper ruled-paper--faint [background:var(--u-grad-slab)] text-on-accent py-20 md:py-32 lg:py-40">
           <div className="relative max-w-4xl mx-auto px-6 text-center">
             <h2 className="font-display font-black text-[clamp(2.25rem,5.5vw,5rem)] leading-[1.05] tracking-[-0.025em]">
               {t('landing.finalCta.title')}
