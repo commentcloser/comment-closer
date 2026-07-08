@@ -105,6 +105,73 @@ function CommentAvatar({ ch }: { ch: string }) {
   );
 }
 
+/* Mock ad creative — a bright product ad inside the dark UI so the demo
+   reads like a real Facebook/Instagram sponsored post, not a wireframe. */
+function AdCreative() {
+  const { t } = useTranslation();
+  return (
+    <div className="relative mx-4 h-28 md:h-32 overflow-hidden rounded-card">
+      {/* bright studio backdrop */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(120% 130% at 80% -10%, #FCEFF7 0%, #F4D9EE 30%, #DFC0FF 60%, #A784F2 100%)",
+        }}
+      />
+      {/* top sheen */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,0.4), rgba(255,255,255,0) 42%)",
+        }}
+      />
+
+      {/* product — serum dropper bottle on a soft podium */}
+      <svg
+        viewBox="0 0 128 128"
+        className="absolute bottom-0 left-2 h-full w-auto"
+        fill="none"
+        aria-hidden="true"
+      >
+        <ellipse cx="64" cy="120" rx="42" ry="7" fill="#6E3D82" opacity="0.22" />
+        <rect x="42" y="48" width="44" height="64" rx="13" fill="#F4B8D6" />
+        <rect x="42" y="74" width="44" height="38" rx="13" fill="#E888B8" opacity="0.7" />
+        <rect x="49" y="78" width="30" height="26" rx="4" fill="#FFFFFF" opacity="0.9" />
+        <rect x="53" y="84" width="22" height="3" rx="1.5" fill="#8E5FE0" />
+        <rect x="53" y="90" width="14" height="2.4" rx="1.2" fill="#C0A6FF" />
+        <rect x="53" y="95" width="17" height="2.4" rx="1.2" fill="#C0A6FF" />
+        <rect x="56" y="36" width="16" height="14" rx="3" fill="#D98FC0" />
+        <rect x="59" y="16" width="10" height="22" rx="5" fill="#7C4E96" />
+        <rect x="47" y="54" width="5" height="46" rx="2.5" fill="#FFFFFF" opacity="0.45" />
+      </svg>
+
+      {/* kicker */}
+      <span className="absolute right-3 top-3 rounded-full bg-white/40 px-2 py-0.5 font-mono text-[9px] font-bold tracking-[0.16em] text-[#5A2A63] backdrop-blur-sm">
+        {t(K + "adKicker")}
+      </span>
+
+      {/* CTA */}
+      <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full bg-[#141031] px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm">
+        {t(K + "adCta")}
+        <svg
+          className="size-3"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      </span>
+    </div>
+  );
+}
+
 function TypedText({ text }: { text: string }) {
   const chars = useMemo(() => Array.from(text), [text]);
   return (
@@ -496,8 +563,8 @@ function StaticDemo() {
                     }`}
                   >
                     {after
-                      ? `+€ ${MONEY.recovered.toFixed(2)}`
-                      : `−€ ${MONEY.wasted.toFixed(2)}`}
+                      ? `+ ${MONEY.recovered.toFixed(2)}${t("landing.currency")}`
+                      : `− ${MONEY.wasted.toFixed(2)}${t("landing.currency")}`}
                     <span className="ml-1.5 text-[11px] font-medium text-ink-muted">
                       · {t(K + (after ? "recoveredLabel" : "wastedLabel"))}
                     </span>
@@ -505,7 +572,7 @@ function StaticDemo() {
                 }
               />
 
-              <div className="mx-4 h-24 md:h-28 rounded-card [background:var(--u-grad-cta)] opacity-80" />
+              <AdCreative />
 
               <div className="h-[380px] overflow-hidden px-4 pt-3">
                 {rows.map((def) => (
@@ -711,8 +778,9 @@ function LiveDemo({ running }: { running: boolean }) {
                   lost ? "text-danger" : "text-success"
                 }`}
               >
-                {lost ? "−€ " : "+€ "}
+                {lost ? "− " : "+ "}
                 <motion.span>{moneyText}</motion.span>
+                {t("landing.currency")}
                 <span className="ml-1.5 text-[11px] font-medium text-ink-muted">
                   · {t(K + (lost ? "wastedLabel" : "recoveredLabel"))}
                 </span>
@@ -720,8 +788,8 @@ function LiveDemo({ running }: { running: boolean }) {
             }
           />
 
-          {/* creative placeholder */}
-          <div className="mx-4 h-24 md:h-28 rounded-card [background:var(--u-grad-cta)] opacity-80" />
+          {/* mock ad creative */}
+          <AdCreative />
 
           {/* fixed-height comment feed — zero CLS */}
           <div className="relative h-[380px] overflow-hidden px-4 pt-3">

@@ -586,7 +586,7 @@ export default function Home() {
                 <div className="mt-6">
                   <div className="inline-block rounded-card shadow-glow-danger">
                     <span className="font-mono font-bold text-[40px] leading-none text-danger">
-                      <CountUp to={47.2} prefix="€ " decimals={2} />
+                      <CountUp to={47.2} suffix={t('landing.currency')} decimals={2} />
                     </span>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -599,30 +599,57 @@ export default function Home() {
               </Reveal>
             </div>
 
-            {/* Anatomy of a dying ad */}
+            {/* Anatomy of a dying ad — one card per comment: what it is + what it costs */}
             <div className="mt-16">
-              <h3 className="font-display font-extrabold text-[20px] tracking-[-0.01em] text-band-ink">
+              <h3 className="font-display font-extrabold text-[clamp(1.35rem,2.5vw,1.75rem)] tracking-[-0.01em] text-band-ink">
                 {t('landing.problem.anatomy.title')}
               </h3>
-              <div className="grid lg:grid-cols-2 gap-10 items-center mt-6">
-                {/* Mini static feed */}
-                <div className="rounded-frame border border-band-line bg-surface/40 p-5 space-y-3">
-                  {anatomyComments.map((comment, i) => (
-                    <div key={i} className="flex items-start gap-3 rounded-card border border-danger/30 bg-surface p-3.5">
+              <p className="text-[15px] leading-[1.6] text-band-ink/70 mt-2 max-w-2xl">
+                {t('landing.problem.anatomy.subtitle')}
+              </p>
+              <div className="mt-8 space-y-4">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="grid md:grid-cols-[1fr_auto_1fr] items-center gap-4 md:gap-6 rounded-frame border border-band-line bg-surface/40 p-4 md:p-5"
+                  >
+                    {/* the live comment, exactly as buyers see it */}
+                    <div className="flex items-start gap-3 rounded-card border border-danger/40 bg-surface p-3.5">
                       <span className="size-8 rounded-full bg-surface-2 border border-line shrink-0" aria-hidden="true"></span>
-                      <span className="text-[14px] text-ink line-through decoration-danger/60">{comment}</span>
+                      <div className="min-w-0">
+                        <p className="text-[14px] leading-snug text-ink">{anatomyComments[i]}</p>
+                        <span className="mt-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-danger">
+                          <span className="size-1.5 rounded-full bg-danger" aria-hidden="true"></span>
+                          {t('landing.problem.anatomy.liveLabel')}
+                        </span>
+                      </div>
                     </div>
-                  ))}
-                </div>
-                {/* Callout rows */}
-                <div className="space-y-6">
-                  {anatomyLabels.map((label, i) => (
-                    <div key={i} className="flex gap-3 items-start">
-                      <span className="hairline-x w-6 shrink-0 mt-2.5" aria-hidden="true"></span>
-                      <span className="font-mono text-[13px] text-danger leading-relaxed">{label}</span>
+
+                    {/* connector: this comment → this cost */}
+                    <svg
+                      className="hidden md:block size-6 shrink-0 justify-self-center text-danger/50"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M5 12h14M13 6l6 6-6 6" />
+                    </svg>
+
+                    {/* what it actually costs you */}
+                    <div>
+                      <span className="inline-block rounded-full border border-danger/40 bg-danger-wash px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-danger">
+                        {t(`landing.problem.anatomy.tag${i + 1}`)}
+                      </span>
+                      <p className="text-[14px] leading-[1.55] text-band-ink/85 mt-2">
+                        {anatomyLabels[i]}
+                      </p>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
             </div>
 
