@@ -20,11 +20,13 @@ export function LeakCalculator() {
   const lostSales = Math.max(1, Math.round(wasted / 60)); // ~€60 value per lost order
   const recovered = Math.round(wasted * 0.9);
 
+  // USD ($) in English, EUR (€) in Greek — symbol always at the end.
+  const currency = t("landing.currency");
   const fmt = (n: number) =>
-    new Intl.NumberFormat(
-      i18n.language?.startsWith("el") ? "el-GR" : "en-IE",
-      { style: "currency", currency: "EUR", maximumFractionDigits: 0 }
-    ).format(n);
+    `${new Intl.NumberFormat(
+      i18n.language?.startsWith("el") ? "el-GR" : "en-US",
+      { maximumFractionDigits: 0 }
+    ).format(n)}${currency}`;
 
   return (
     <>

@@ -126,7 +126,7 @@
         "c3": "dm me for a cheaper version of this",
         "c4": "Do you ship to Cyprus?",
         "c5": "Best thing I've bought this year",
-        "r4": "We do — free shipping over €40. Link in bio.",
+        "r4": "We do — free shipping over 40$. Link in bio.",
         "r5": "Thank you! You made our day. 💜",
         "chipNegative": "NEGATIVE",
         "chipQuestion": "QUESTION",
@@ -140,7 +140,9 @@
         "scoreLose": "This feed loses money",
         "scorePrint": "This feed prints money",
         "flipBefore": "Before",
-        "flipAfter": "After"
+        "flipAfter": "After",
+        "adKicker": "NEW IN",
+        "adCta": "Shop now"
       }
     },
     "ticker": {
@@ -176,9 +178,14 @@
         "c1": "Total scam, don't waste your money!!",
         "c2": "How much is shipping to Thessaloniki?",
         "c3": "dm me for the same thing way cheaper",
-        "label1": "the algorithm feeds it oxygen",
-        "label2": "the question that was a sale",
-        "label3": "your budget pays to show it"
+        "label1": "The algorithm shows it to more people — so your budget pays to spread your own worst review.",
+        "label2": "A ready-to-buy customer, ignored. They scroll on and buy from whoever answered.",
+        "label3": "A rival stealing your buyers, right under the ad you paid for.",
+        "subtitle": "One comment section, three quiet killers — and what each one is costing you.",
+        "liveLabel": "Live · seen by every buyer",
+        "tag1": "Negative review",
+        "tag2": "Unanswered question",
+        "tag3": "Competitor poaching"
       }
     },
     "flip": {
@@ -274,7 +281,7 @@
       "comingSoon": "Coming soon",
       "starter": {
         "name": "Free",
-        "price": "$0",
+        "price": "0$",
         "period": "/month",
         "feature1": "50 AI replies per month",
         "feature2": "Facebook, Instagram, TikTok Organic & Ads",
@@ -284,7 +291,7 @@
       },
       "pro": {
         "name": "Pro",
-        "price": "$49",
+        "price": "49$",
         "period": "/month",
         "feature1": "1,000 AI replies per month",
         "feature2": "Everything in Free",
@@ -295,7 +302,7 @@
       },
       "enterprise": {
         "name": "Business",
-        "price": "$80",
+        "price": "80$",
         "period": "/month",
         "feature1": "2,000 AI replies per month",
         "feature2": "Everything in Pro",
@@ -533,7 +540,7 @@
       "us": {
         "label": "Comment Closer",
         "badge": "2 sec",
-        "reply": "Yes — the Aria runs true to size (size up if you're between sizes), and we ship to Cyprus in 3–5 days, free over €50. Here's the link 💜"
+        "reply": "Yes — the Aria runs true to size (size up if you're between sizes), and we ship to Cyprus in 3–5 days, free over 50$. Here's the link 💜"
       },
       "p1": {
         "title": "Knows every detail cold",
@@ -552,7 +559,8 @@
         "desc": "The buyer gets the right answer while they still want to buy — not tomorrow."
       },
       "verdict": "Your best salesperson has good days and bad days. This one only has good days."
-    }
+    },
+    "currency": "$"
   },
   "auth": {
     "login": {
