@@ -2,38 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import NextAuth from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { getTikTokAdsAccessToken, fetchTikTokAdsAdGroups } from '@/lib/tiktokAdsApi';
+import { getTikTokAdsAccessToken, fetchTikTokAdsAdGroups, isTikTokAdsAuthError } from '@/lib/tiktokAdsApi';
 
 const { auth } = NextAuth(authOptions);
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Strict auth-error detection. Only specific TikTok codes count as
- * "needs reconnect" — rate limits, network glitches, and generic
- * errors do NOT flag the account.
- *
- * TikTok auth error codes:
- *   40002 — authorization canceled by user
- *   40100 — invalid access token
- *   40101 — access token expired
- */
-function isAuthError(msg: string): boolean {
-  const m = msg.toLowerCase();
-  // Match explicit code patterns to avoid false positives from generic
-  // text mentioning "access token" in unrelated error messages.
-  if (/\(code\s*40002\)/.test(m)) return true;
-  if (/\(code\s*40100\)/.test(m)) return true;
-  if (/\(code\s*40101\)/.test(m)) return true;
-  if (m.includes('authorization canceled')) return true;
-  if (m.includes('authorization cancelled')) return true;
-  return false;
-}
-
-/**
  * Pings each TikTok Ads account with a lightweight API call to detect
- * revoked/expired tokens. Updates the `needsReconnect` flag for any
- * account whose token is no longer valid.
+ * revoked tokens. Sets `needsReconnect` when the token is genuinely dead
+ * (per isTikTokAdsAuthError — rate limits and network glitches never flag),
+ * and clears it when the token answers, so stale false positives self-heal.
  *
  * Runs sequentially (not in parallel) to avoid hitting TikTok's
  * rate limits, which would cause false-positive flags.
@@ -50,7 +29,7 @@ export async function POST(_request: NextRequest) {
       provider: 'tiktok_ads',
       disconnectedAt: null,
     },
-    select: { id: true, pageId: true, pageName: true },
+    select: { id: true, pageId: true, pageName: true, needsReconnect: true },
   });
 
   const results: Array<{ id: string; needsReconnect: boolean; error?: string }> = [];
@@ -70,15 +49,23 @@ export async function POST(_request: NextRequest) {
 
     try {
       await fetchTikTokAdsAdGroups(accessToken, acc.pageId, { pageSize: 1 });
-      // NOTE: do NOT clear the flag on success. Different TikTok endpoints
-      // have different scopes — /adgroup/get may succeed while /comment/post
-      // fails with 40002. The flag only clears via OAuth callback after a
-      // real reconnect.
-      console.log(`[TikTok Ads Health] ${acc.pageName}: adgroup OK (not clearing flag)`);
+      // Token answered a real API call → it is alive. Clear any stale flag:
+      // advertiser tokens never expire, and a genuinely revoked token fails
+      // every endpoint (40105), so success here means an existing flag was a
+      // false positive. Real failures re-flag on the next cron/reply attempt.
+      if (acc.needsReconnect) {
+        await prisma.connectedPage.update({
+          where: { id: acc.id },
+          data: { needsReconnect: false },
+        }).catch(() => {});
+        console.log(`[TikTok Ads Health] ${acc.pageName}: adgroup OK — cleared stale flag`);
+      } else {
+        console.log(`[TikTok Ads Health] ${acc.pageName}: adgroup OK`);
+      }
       results.push({ id: acc.id, needsReconnect: false });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      const isAuth = isAuthError(msg);
+      const isAuth = isTikTokAdsAuthError(msg);
       console.log(`[TikTok Ads Health] ${acc.pageName}: error="${msg}" isAuth=${isAuth}`);
       if (isAuth) {
         await prisma.connectedPage.update({

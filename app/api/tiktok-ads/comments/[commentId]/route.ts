@@ -2,37 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import NextAuth from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { getTikTokAdsAccessToken, replyToTikTokAdsComment, hideTikTokAdsComment, fetchTikTokAdsIdentity } from '@/lib/tiktokAdsApi';
+import { getTikTokAdsAccessToken, replyToTikTokAdsComment, hideTikTokAdsComment, fetchTikTokAdsIdentity, isTikTokAdsAuthError, isTikTokAdsRateLimitError } from '@/lib/tiktokAdsApi';
 
 const { auth } = NextAuth(authOptions);
 
 /**
  * Convert raw TikTok API errors into user-friendly messages.
- * TikTok error codes reference:
- *   40002 = authorization canceled / token revoked
- *   40100 = invalid access token
- *   40101 = token expired
+ * Classification lives in lib/tiktokAdsApi.ts — only genuinely dead tokens
+ * (revoked/expired per TikTok's return codes) flag the account for
+ * reconnect; rate limits are transient and never do.
  */
 function friendlyTikTokAdsError(rawMessage: string): { message: string; needsReconnect: boolean } {
   const m = rawMessage.toLowerCase();
-  const isAuth =
-    /\(code\s*40002\)/.test(m) ||
-    /\(code\s*40100\)/.test(m) ||
-    /\(code\s*40101\)/.test(m) ||
-    /\(code\s*40104\)/.test(m) ||
-    /\(code\s*40105\)/.test(m) ||
-    /\(code\s*40106\)/.test(m) ||
-    m.includes('authorization canceled') ||
-    m.includes('authorization cancelled') ||
-    m.includes('token expired') ||
-    m.includes('invalid token');
-  if (isAuth) {
+  if (isTikTokAdsAuthError(rawMessage)) {
     return {
       message: 'Your TikTok Ads connection has expired. Please reconnect the account from Settings to resume replies.',
       needsReconnect: true,
     };
   }
-  if (m.includes('rate limit') || /\(code\s*40016\)/.test(m)) {
+  if (isTikTokAdsRateLimitError(rawMessage)) {
     return { message: 'TikTok rate limit reached. Please try again in a few minutes.', needsReconnect: false };
   }
   if (m.includes('permission') || /\(code\s*40003\)/.test(m)) {

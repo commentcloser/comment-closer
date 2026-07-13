@@ -11,6 +11,7 @@ import {
   replyToTikTokAdsComment,
   getTikTokAdsAccessToken,
   parseTikTokAdsCreateTime,
+  isTikTokAdsAuthError,
   type TikTokAdsComment,
 } from '@/lib/tiktokAdsApi';
 
@@ -53,6 +54,7 @@ export async function GET(request: Request) {
       userId: true,
       pageId: true,
       pageName: true,
+      needsReconnect: true,
       lastCommentsFetchedAt: true,
       autoReplyEnabled: true,
       autoReplyPositive: true,
@@ -103,6 +105,7 @@ async function processAdvertiser(advertiser: {
   userId: string;
   pageId: string;
   pageName: string;
+  needsReconnect: boolean;
   lastCommentsFetchedAt: Date | null;
   autoReplyEnabled: boolean;
   autoReplyPositive: boolean;
@@ -140,28 +143,26 @@ async function processAdvertiser(advertiser: {
   const since = advertiser.lastCommentsFetchedAt ?? new Date(Date.now() - 24 * 60 * 60 * 1000);
   const newComments: TikTokAdsComment[] = [];
 
-  const isAuthError = (msg: string) => {
-    const m = msg.toLowerCase();
-    if (/\(code\s*40002\)/.test(m)) return true;
-    if (/\(code\s*40100\)/.test(m)) return true;
-    if (/\(code\s*40101\)/.test(m)) return true;
-    if (m.includes('authorization canceled')) return true;
-    if (m.includes('authorization cancelled')) return true;
-    return false;
-  };
-
   // Step 1: Fetch all ad groups for this advertiser
   let adGroupIds: string[] = [];
   try {
     const result = await fetchTikTokAdsAdGroups(accessToken, advertiser.pageId, { pageSize: 100 });
     adGroupIds = result.adGroups.map((ag) => ag.adgroup_id);
-    // NOTE: do NOT clear needsReconnect on success — different TikTok
-    // endpoints have different scopes (/adgroup/get may succeed while
-    // /comment/post fails with 40002). Flag clears via OAuth callback.
+    // The token answered a real API call, so it is alive — clear any stale
+    // needsReconnect flag. Advertiser tokens never expire; a genuinely
+    // revoked one fails every endpoint, so a real failure re-flags within
+    // one cron cycle anyway.
+    if (advertiser.needsReconnect) {
+      await prisma.connectedPage.update({
+        where: { id: advertiser.id },
+        data: { needsReconnect: false },
+      }).catch(() => {});
+      console.log(`[TikTok Ads Cron] Cleared stale needsReconnect for ${advertiser.pageName}`);
+    }
   } catch (err) {
     console.error(`[TikTok Ads Cron] Failed to list ad groups for ${advertiser.pageId}:`, err);
     const msg = err instanceof Error ? err.message : String(err);
-    if (isAuthError(msg)) {
+    if (isTikTokAdsAuthError(msg)) {
       await prisma.connectedPage.update({
         where: { id: advertiser.id },
         data: { needsReconnect: true },
