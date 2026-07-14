@@ -2,17 +2,16 @@ name: Backfill organic TikTok comments
 
 # Safety-net backfill for organic TikTok (provider 'tiktok'), which is otherwise
 # purely webhook-driven (INTEG-6). Re-polls comments on known videos and inserts
-# any the webhook missed. Runs hourly rather than every 5 min because it makes a
-# TikTok comment/list call per known video and is only a fallback for dropped or
-# unregistered webhook events — not the primary ingestion path.
+# any the webhook missed.
+#
+# MANUAL FALLBACK ONLY. The hourly schedule moved to Vercel Crons (vercel.json)
+# because GitHub's `schedule:` trigger proved wildly unreliable for this repo.
+# Kept as workflow_dispatch for debugging or if Vercel crons are down.
 #
 # Requires the same CRON_SECRET repository secret as cron.yml (must match the
-# production Vercel CRON_SECRET). Scheduled workflows only run from the default
-# branch, so this takes effect once merged to main.
+# production Vercel CRON_SECRET).
 
 on:
-  schedule:
-    - cron: '17 * * * *'
   workflow_dispatch: {}
 
 concurrency:

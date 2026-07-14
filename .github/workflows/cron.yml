@@ -1,24 +1,18 @@
-name: Cron jobs
+name: Cron jobs (manual fallback)
 
-# Drives the two background cron endpoints every 5 minutes.
+# MANUAL FALLBACK ONLY. Scheduling moved to Vercel Crons (vercel.json) because
+# GitHub's `schedule:` trigger proved wildly unreliable for this repo — the
+# "*/5" schedule actually fired only ~4-5 times per DAY. Vercel invokes the
+# same endpoints with the same `Authorization: Bearer $CRON_SECRET` header
+# (injected automatically from the CRON_SECRET env var on the project).
 #
-# Both routes require `Authorization: Bearer $CRON_SECRET` (they return 401
-# without it and 503 if the server has no CRON_SECRET configured). The previous
-# workflow sent no header, so every run silently 401'd while still reporting
-# success. This version sends the header, hits BOTH endpoints, and fails loudly
-# on any non-2xx response so a broken schedule is visible.
+# Keep this workflow_dispatch so the endpoints can be triggered by hand
+# (`gh workflow run cron.yml`) for debugging or if Vercel crons are down.
 #
 # Requires a repository secret CRON_SECRET whose value matches the CRON_SECRET
 # environment variable in the production (Vercel) deployment.
-#
-# NOTE: scheduled workflows only run from the default branch, so this must be on
-# `main` to take effect. GitHub may delay scheduled runs under load; if you move
-# to Vercel Pro you can replace this with a `crons` block in vercel.json (Vercel
-# injects the same Bearer $CRON_SECRET header automatically) and delete this file.
 
 on:
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch: {}
 
 # Never let two ticks overlap (a slow tick would otherwise double-process).

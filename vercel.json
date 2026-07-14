@@ -1,1 +1,9 @@
-{}
+{
+  "crons": [
+    { "path": "/api/cron/post-scheduled-replies", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/fetch-tiktok-ads-comments", "schedule": "1-56/5 * * * *" },
+    { "path": "/api/cron/backfill-sentiment", "schedule": "3-58/5 * * * *" },
+    { "path": "/api/cron/backfill-tiktok-comments", "schedule": "17 * * * *" },
+    { "path": "/api/cron/refresh-meta-tokens", "schedule": "43 2 * * *" }
+  ]
+}
