@@ -155,10 +155,14 @@ export async function POST(
     const isInstagram = provider === 'instagram';
     const token = comment.connectedPage.pageAccessToken;
 
+    // Meta allows only two comment levels — replies to a nested comment live
+    // under its top-level parent, so search there.
+    const threadTargetId = comment.parentCommentId ?? comment.commentId;
+
     // Fetch existing replies to find the page's own reply
     const repliesUrl = isInstagram
-      ? `https://graph.facebook.com/v24.0/${comment.commentId}/replies?fields=id,text,from,username,timestamp`
-      : `https://graph.facebook.com/v24.0/${comment.commentId}/comments?fields=id,message,from`;
+      ? `https://graph.facebook.com/v24.0/${threadTargetId}/replies?fields=id,text,from,username,timestamp`
+      : `https://graph.facebook.com/v24.0/${threadTargetId}/comments?fields=id,message,from`;
 
     const repliesResponse = await fetch(repliesUrl, {
       headers: { Authorization: `Bearer ${token}` },

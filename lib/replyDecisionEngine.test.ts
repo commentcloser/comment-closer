@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, type Mock } from 'vitest';
 
 // No-op prisma: all these cases resolve from the pre-loaded pageRules/commentState
 // so the engine never touches the DB (cooldown/first-comment are disabled here).
@@ -10,6 +10,7 @@ vi.mock('./prisma', () => ({
 }));
 
 import { shouldGenerateReply } from './replyDecisionEngine';
+import { prisma } from './prisma';
 
 const baseRules = {
   autoReplyEnabled: true,
@@ -85,5 +86,34 @@ describe('shouldGenerateReply', () => {
       cfg({ commentMessage: 'what is the price?', pageRules: { ...baseRules, replyAllowlistEnabled: true, replyAllowlistKeywords: JSON.stringify(['price']) } })
     );
     expect(r.allowed).toBe(true);
+  });
+
+  describe('thread reply cap (nested replies)', () => {
+    it('allows a nested reply when under the cap', async () => {
+      (prisma.comment.count as Mock).mockResolvedValueOnce(2);
+      const r = await shouldGenerateReply(cfg({ parentCommentId: 'parent1' }));
+      expect(r.allowed).toBe(true);
+    });
+
+    it('blocks a nested reply once the per-thread cap is reached', async () => {
+      (prisma.comment.count as Mock).mockResolvedValueOnce(3);
+      const r = await shouldGenerateReply(cfg({ parentCommentId: 'parent1' }));
+      expect(r.allowed).toBe(false);
+      expect(r.ruleTriggered).toBe('thread_reply_limit');
+    });
+
+    it('does not apply the cap to top-level comments', async () => {
+      (prisma.comment.count as Mock).mockClear();
+      const r = await shouldGenerateReply(cfg({ parentCommentId: null }));
+      expect(r.allowed).toBe(true);
+      expect(prisma.comment.count).not.toHaveBeenCalled();
+    });
+
+    it('does not apply the cap when the author is unknown', async () => {
+      (prisma.comment.count as Mock).mockClear();
+      const r = await shouldGenerateReply(cfg({ parentCommentId: 'parent1', authorId: null }));
+      expect(r.allowed).toBe(true);
+      expect(prisma.comment.count).not.toHaveBeenCalled();
+    });
   });
 });

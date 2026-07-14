@@ -121,12 +121,28 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
 
     if (!commentId || !mediaId) return;
 
-    // Check if comment is from the page itself (mark as reply to hide from dashboard)
-    const isPageComment = username.toLowerCase() === connectedPage.pageName.toLowerCase();
+    const authorId = commentData.from?.id ? String(commentData.from.id) : null;
+
+    // Check if comment is from the page itself. Match by ID first: the page's
+    // own comments echo back with from.id equal to the IG Business Account ID
+    // this webhook is keyed on. The username comparison alone is unreliable —
+    // pageName often stores the display name, not the handle — and this check
+    // is load-bearing loop protection now that nested replies get auto-replies.
+    const igAccountId = String(connectedPage.instagramUserId ?? connectedPage.pageId);
+    const isPageComment =
+      (authorId !== null && authorId === igAccountId) ||
+      username.toLowerCase() === connectedPage.pageName.toLowerCase();
 
     // Detect if this is a reply to another comment (has parent_id in webhook payload)
     const parentCommentId = commentData.parent_id || null;
     const isReplyComment = isPageComment || !!parentCommentId;
+
+    // Automation exclusion (loop protection). Only the page's OWN comments —
+    // plus nested replies whose author Meta didn't identify (we can't rule out
+    // it's us) — are kept out of the reply pipeline. Customers' nested replies
+    // flow through the same sentiment → moderation → decision-engine pipeline
+    // as top-level comments, so follow-up questions in threads get answered.
+    const isAutomationExcluded = isPageComment || (!!parentCommentId && !authorId);
 
     // Check if this is a new comment or an update
     const existingComment = await prisma.comment.findUnique({
@@ -200,7 +216,7 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
         commentId: commentId,
         message: text,
         authorName: username,
-        authorId: commentData.from?.id || null,
+        authorId,
         createdAt: timestamp,
         isFromAd: isFromAd,
         postId: mediaId,
@@ -210,7 +226,7 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
         adName: adName,
         isReply: isReplyComment,
         parentCommentId: parentCommentId,
-        status: isReplyComment ? 'ignored' : 'pending',
+        status: isAutomationExcluded ? 'ignored' : 'pending',
       },
     });
 
@@ -228,7 +244,7 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
     const isEmojiOnly = /^[\p{Emoji}\s]+$/u.test(text.trim()) && !/[a-zA-Z0-9]/.test(text);
     const isLongEnough = text.trim().length >= 2;
 
-    if (!isReplyComment && !savedComment.sentiment && (isLongEnough || isEmojiOnly)) {
+    if (!isAutomationExcluded && !savedComment.sentiment && (isLongEnough || isEmojiOnly)) {
       const sentiment = await analyzeCommentSentiment(text, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'instagram_webhook' });
 
       if (sentiment) {
@@ -252,7 +268,11 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
           connectedPageId: connectedPage.id,
           provider: 'instagram',
           pageAccessToken: connectedPage.pageAccessToken,
-          autoModerationEnabled: connectedPage.autoModerationEnabled ?? true,
+          // Nested replies keep their own moderation toggle (autoModerateReplies);
+          // top-level comments use the page-wide toggle.
+          autoModerationEnabled: parentCommentId
+            ? (connectedPage.autoModerateReplies ?? false) && (connectedPage.autoModerationEnabled ?? true)
+            : (connectedPage.autoModerationEnabled ?? true),
           autoHideNegativeEnabled: connectedPage.autoHideNegativeEnabled ?? true,
           sentiment,
         });
@@ -269,9 +289,10 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
           commentDbId: savedComment.id,
           sentiment: sentiment,
           commentMessage: text,
-          authorId: commentData.from?.id || null,
+          authorId,
           pageId: connectedPage.id,
           createdAt: timestamp,
+          parentCommentId,
           pageRules: {
             autoReplyEnabled: connectedPage.autoReplyEnabled,
             autoReplyPositive: connectedPage.autoReplyPositive,
@@ -322,9 +343,10 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
         commentDbId: savedComment.id,
         sentiment: savedComment.sentiment,
         commentMessage: text,
-        authorId: commentData.from?.id || null,
+        authorId,
         pageId: connectedPage.id,
         createdAt: timestamp,
+        parentCommentId,
         pageRules: {
           autoReplyEnabled: connectedPage.autoReplyEnabled,
           autoReplyPositive: connectedPage.autoReplyPositive,
@@ -359,7 +381,7 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
       if (shouldReply) {
         await generateAndPostAutoReply(savedComment.id, savedComment.sentiment, text, username, connectedPage, mediaId);
       }
-    } else if (!isReplyComment && !savedComment.sentiment) {
+    } else if (!isAutomationExcluded && !savedComment.sentiment) {
       // Too short and not emoji — mark as ignored so it doesn't stay stuck in 'pending'
       await prisma.comment.update({
         where: { id: savedComment.id },
@@ -368,9 +390,11 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
     }
 
     // ============================================================
-    // Reply: always analyze sentiment, moderate only if toggle on
+    // Authorless nested reply (excluded from automation because we can't
+    // rule out it's our own): still analyze sentiment for the dashboard and
+    // moderate if the replies toggle is on — but never auto-reply.
     // ============================================================
-    if (isReplyComment && !isPageComment && text.trim().length >= 2) {
+    if (isAutomationExcluded && !isPageComment && !savedComment.sentiment && text.trim().length >= 2) {
       console.log(`[IG Webhook] 🔍 Analyzing sentiment for reply ${savedComment.id}...`);
       const replySentiment = await analyzeCommentSentiment(text, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'instagram_webhook' });
       if (replySentiment) {
@@ -520,10 +544,14 @@ async function generateAndPostAutoReply(
     // Post reply to Instagram
     const comment = await prisma.comment.findUnique({
       where: { id: commentDbId },
-      select: { commentId: true },
+      select: { commentId: true, parentCommentId: true },
     });
-    
+
     if (!comment || !connectedPage.pageAccessToken) return;
+
+    // Meta allows only two comment levels — a nested reply is answered on its
+    // top-level parent comment (lands in the same thread).
+    const replyTargetId = comment.parentCommentId ?? comment.commentId;
     
     // NEW: Log reply attempt
     const webLogOptions = {
@@ -541,7 +569,7 @@ async function generateAndPostAutoReply(
       webLogOptions
     );
     
-    const replyUrl = `https://graph.facebook.com/v24.0/${comment.commentId}/replies`;
+    const replyUrl = `https://graph.facebook.com/v24.0/${replyTargetId}/replies`;
     const replyResponse = await fetch(replyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

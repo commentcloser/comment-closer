@@ -140,6 +140,13 @@ async function handleFeedComment(value: any, connectedPage: any) {
     const parentCommentId = isTopLevelComment ? null : rawParentId;
     const isReplyComment = isPageComment || !!parentCommentId;
 
+    // Automation exclusion (loop protection). Only the page's OWN comments —
+    // plus nested replies whose author Meta didn't identify (we can't rule out
+    // it's us) — are kept out of the reply pipeline. Customers' nested replies
+    // flow through the same sentiment → moderation → decision-engine pipeline
+    // as top-level comments, so follow-up questions in threads get answered.
+    const isAutomationExcluded = isPageComment || (!!parentCommentId && !authorId);
+
     const timestamp = createdTime ? new Date(createdTime * 1000) : new Date();
 
     // Detect if comment is from an ad:
@@ -261,7 +268,7 @@ async function handleFeedComment(value: any, connectedPage: any) {
         adName,
         isReply: isReplyComment,
         parentCommentId: parentCommentId,
-        status: isReplyComment ? 'ignored' : 'pending',
+        status: isAutomationExcluded ? 'ignored' : 'pending',
       },
     });
 
@@ -282,7 +289,7 @@ async function handleFeedComment(value: any, connectedPage: any) {
     const isEmojiOnly = /^[\p{Emoji}\s]+$/u.test(message.trim()) && !/[a-zA-Z0-9]/.test(message);
     const isLongEnough = message.trim().length >= 2;
 
-    if (!isReplyComment && !savedComment.sentiment && (isLongEnough || isEmojiOnly)) {
+    if (!isAutomationExcluded && !savedComment.sentiment && (isLongEnough || isEmojiOnly)) {
       console.log(`[FB Webhook] 🤖 Analyzing sentiment for comment ${savedComment.id}...`);
       const sentiment = await analyzeCommentSentiment(message, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'facebook_webhook' });
       console.log(`[FB Webhook] 📊 Sentiment result: ${sentiment || 'null'}`);
@@ -309,7 +316,11 @@ async function handleFeedComment(value: any, connectedPage: any) {
           connectedPageId: connectedPage.id,
           provider: 'facebook',
           pageAccessToken: connectedPage.pageAccessToken,
-          autoModerationEnabled: connectedPage.autoModerationEnabled ?? true,
+          // Nested replies keep their own moderation toggle (autoModerateReplies);
+          // top-level comments use the page-wide toggle.
+          autoModerationEnabled: parentCommentId
+            ? (connectedPage.autoModerateReplies ?? false) && (connectedPage.autoModerationEnabled ?? true)
+            : (connectedPage.autoModerationEnabled ?? true),
           autoHideNegativeEnabled: connectedPage.autoHideNegativeEnabled ?? true,
           sentiment,
         });
@@ -330,6 +341,7 @@ async function handleFeedComment(value: any, connectedPage: any) {
           authorId: authorId,
           pageId: connectedPage.id,
           createdAt: timestamp,
+          parentCommentId,
           pageRules: {
             autoReplyEnabled: connectedPage.autoReplyEnabled,
             autoReplyPositive: connectedPage.autoReplyPositive,
@@ -381,7 +393,9 @@ async function handleFeedComment(value: any, connectedPage: any) {
         
         if (shouldReply) {
           console.log(`[FB Webhook] ✨ Triggering auto-reply for comment ${savedComment.id}`);
-          await generateAndPostAutoReply(savedComment.id, sentiment, message, authorName, connectedPage, postId, String(commentId));
+          // Meta allows only two comment levels — a nested reply is answered
+          // on its top-level parent comment (lands in the same thread).
+          await generateAndPostAutoReply(savedComment.id, sentiment, message, authorName, connectedPage, postId, String(parentCommentId ?? commentId));
         } else {
           console.log(`[FB Webhook] ⏭️  Skipping auto-reply (conditions not met)`);
         }
@@ -402,6 +416,7 @@ async function handleFeedComment(value: any, connectedPage: any) {
         authorId: authorId,
         pageId: connectedPage.id,
         createdAt: timestamp,
+        parentCommentId,
         pageRules: {
           autoReplyEnabled: connectedPage.autoReplyEnabled,
           autoReplyPositive: connectedPage.autoReplyPositive,
@@ -436,11 +451,12 @@ async function handleFeedComment(value: any, connectedPage: any) {
 
       if (shouldReply) {
         console.log(`[FB Webhook] ✨ Triggering auto-reply for existing comment ${savedComment.id}`);
-        await generateAndPostAutoReply(savedComment.id, savedComment.sentiment, message, authorName, connectedPage, postId, String(commentId));
+        // Meta allows only two comment levels — see note at the other call site.
+        await generateAndPostAutoReply(savedComment.id, savedComment.sentiment, message, authorName, connectedPage, postId, String(parentCommentId ?? commentId));
       } else {
         console.log(`[FB Webhook] ⏭️  Skipping auto-reply (conditions not met)`);
       }
-    } else if (!isReplyComment && !savedComment.sentiment) {
+    } else if (!isAutomationExcluded && !savedComment.sentiment) {
       // Too short and not emoji — mark as ignored so it doesn't stay stuck in 'pending'
       console.log(`[FB Webhook] ⏭️  Comment too short (${message.trim().length} chars) - marking as ignored`);
       await prisma.comment.update({
@@ -450,9 +466,11 @@ async function handleFeedComment(value: any, connectedPage: any) {
     }
 
     // ============================================================
-    // Reply: always analyze sentiment, moderate only if toggle on
+    // Authorless nested reply (excluded from automation because we can't
+    // rule out it's our own): still analyze sentiment for the dashboard and
+    // moderate if the replies toggle is on — but never auto-reply.
     // ============================================================
-    if (isReplyComment && !isPageComment && message.trim().length >= 2) {
+    if (isAutomationExcluded && !isPageComment && !savedComment.sentiment && message.trim().length >= 2) {
       console.log(`[FB Webhook] 🔍 Analyzing sentiment for reply ${savedComment.id}...`);
       const replySentiment = await analyzeCommentSentiment(message, { connectedPageId: connectedPage.id, userId: connectedPage.userId, source: 'facebook_webhook' });
       if (replySentiment) {
