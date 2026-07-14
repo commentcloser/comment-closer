@@ -1,12 +1,14 @@
 name: Refresh Meta tokens
 
-# Daily proactive refresh of Facebook long-lived user tokens (INTEG-1). Tokens
-# last ~60 days, so daily is plenty. Requires the CRON_SECRET repository secret
-# (same value as the production CRON_SECRET env var).
+# Daily proactive refresh of Facebook long-lived user tokens (INTEG-1).
+#
+# MANUAL FALLBACK ONLY. The daily schedule moved to Vercel Crons (vercel.json,
+# 02:43 UTC) with the rest of the crons — GitHub's scheduler proved unreliable
+# and keeping both would double-fire. Kept as workflow_dispatch for debugging.
+# Requires the CRON_SECRET repository secret (same value as the production
+# CRON_SECRET env var).
 
 on:
-  schedule:
-    - cron: '17 4 * * *' # 04:17 UTC daily
   workflow_dispatch: {}
 
 jobs:

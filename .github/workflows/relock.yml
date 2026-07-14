@@ -1,0 +1,48 @@
+name: Relock package-lock.json (Linux)
+
+# Regenerates package-lock.json on a Linux runner and commits it back to the
+# branch. Needed because this lockfile contains nested wasm32-wasi optional
+# deps that only a LINUX `npm install` populates — a lockfile rewritten on
+# Windows/macOS breaks CI's `npm ci` (see PR #5).
+#
+# Run it whenever package.json changes: `gh workflow run relock.yml --ref <branch>`
+# (workflow_dispatch works for any branch once this file is on main), or push
+# to a branch matching relock/** to trigger it automatically.
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - 'fix/sentiment-reanalysis-and-stripe' # temporary: fire for this PR pre-merge
+
+permissions:
+  contents: write
+
+jobs:
+  relock:
+    runs-on: ubuntu-latest
+    # Self-loop guard (belt-and-braces; GITHUB_TOKEN pushes don't retrigger anyway)
+    if: ${{ !contains(github.event.head_commit.message, '[relock]') }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Reconcile lockfile with package.json on Linux
+        run: npm install --ignore-scripts
+
+      - name: Commit lockfile if changed
+        run: |
+          if git diff --quiet package-lock.json; then
+            echo "Lockfile already in sync — nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore(deps): relock package-lock.json on Linux [relock]"
+          git push
