@@ -97,8 +97,8 @@ export async function analyzeCommentSentiment(
   }
 
   // If none of the simple rules match, use AI for analysis.
-  // Sentiment is a one-word classification, so use the cheaper model with
-  // minimal reasoning and a tiny output cap (see lib/aiConfig.ts).
+  // Sentiment is a one-word classification, so run it with no reasoning and
+  // a tiny output cap (see lib/aiConfig.ts).
   const model = AI_SENTIMENT_MODEL;
 
   try {
