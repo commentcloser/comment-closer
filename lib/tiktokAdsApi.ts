@@ -11,6 +11,85 @@
 const ADS_BASE = 'https://business-api.tiktok.com/open_api/v1.3';
 
 // ---------------------------------------------------------------------------
+// Error classification — per TikTok's official Return Codes appendix
+// (business-api.tiktok.com/portal/docs?id=1737172488964097)
+// ---------------------------------------------------------------------------
+
+/**
+ * True when the error means the stored access token is dead and only a user
+ * re-auth (OAuth reconnect) can fix it:
+ *   40102 — access token expired
+ *   40104 — access token empty
+ *   40105 — invalid or incorrect access token ("incorrect or has been revoked")
+ *   40106 — core user invalid
+ *   40002 — authorization canceled by the advertiser
+ *
+ * Deliberately NOT auth errors:
+ *   40100 / 40016 / 40133 — rate limits ("Requests made too frequently").
+ *     40100 was previously misclassified as "invalid token", which let one
+ *     throttled cron run flag every healthy account as "Reconnect required".
+ *   40101 — invalid auth params during the auth_code exchange; never returned
+ *     for runtime calls made with a stored token.
+ *   40001 — missing permission scope, not token validity.
+ */
+export function isTikTokAdsAuthError(msg: string): boolean {
+  const m = msg.toLowerCase();
+  if (/\(code\s*40002\)/.test(m)) return true;
+  if (/\(code\s*40102\)/.test(m)) return true;
+  if (/\(code\s*40104\)/.test(m)) return true;
+  if (/\(code\s*40105\)/.test(m)) return true;
+  if (/\(code\s*40106\)/.test(m)) return true;
+  if (m.includes('authorization canceled')) return true;
+  if (m.includes('authorization cancelled')) return true;
+  if (m.includes('token expired')) return true;
+  if (m.includes('invalid token')) return true;
+  if (m.includes('access token is incorrect')) return true;
+  if (m.includes('has been revoked')) return true;
+  return false;
+}
+
+/** True for TikTok QPS/rate-limit responses — transient, safe to retry. */
+export function isTikTokAdsRateLimitError(msg: string): boolean {
+  const m = msg.toLowerCase();
+  if (/\(code\s*(40100|40016|40133)\)/.test(m)) return true;
+  if (m.includes('too frequently')) return true;
+  if (m.includes('rate limit')) return true;
+  return false;
+}
+
+const RATE_LIMIT_BACKOFF_MS = 1500;
+
+/**
+ * fetch + JSON + code check with an optional single backoff-retry on rate
+ * limits. TikTok returns HTTP 200 with a non-zero body `code` on errors, so
+ * the HTTP status alone is meaningless.
+ *
+ * Retries are kept cheap (1 × 1.5s max) and disabled for the high-volume
+ * comment/list pagination — the cron loops over up to 100 ad groups
+ * sequentially under maxDuration=60, so a throttle storm must fail fast
+ * there (the fetch watermark makes the next run pick up where it left off).
+ */
+async function tikTokAdsRequest(
+  label: string,
+  url: string,
+  init?: RequestInit,
+  rateLimitRetries = 1,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any> {
+  let message = '';
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, init);
+    const data = await res.json();
+    if (data.code === 0) return data;
+    message = `TikTok Ads ${label} failed (code ${data.code}): ${data.message}`;
+    if (attempt >= rateLimitRetries || !isTikTokAdsRateLimitError(message)) break;
+    console.warn(`[TikTok Ads] ${label} rate-limited (code ${data.code}) — retrying in ${RATE_LIMIT_BACKOFF_MS}ms`);
+    await new Promise((r) => setTimeout(r, RATE_LIMIT_BACKOFF_MS));
+  }
+  throw new Error(message);
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -91,15 +170,11 @@ export async function fetchTikTokAdsComments(
     page_size: String(options.pageSize ?? 50),
   });
 
-  const res = await fetch(`${ADS_BASE}/comment/list/?${params}`, {
+  // No retry: this is called in a tight per-adgroup pagination loop by the
+  // cron — fail fast and let the fetch watermark resume next cycle.
+  const data = await tikTokAdsRequest('comment/list', `${ADS_BASE}/comment/list/?${params}`, {
     headers: { 'Access-Token': accessToken },
-  });
-
-  const data = await res.json();
-
-  if (data.code !== 0) {
-    throw new Error(`TikTok Ads comment/list failed (code ${data.code}): ${data.message}`);
-  }
+  }, 0);
 
   const list: TikTokAdsComment[] = data.data?.comments ?? [];
   const totalCount: number = data.data?.page_info?.total_number ?? 0;
@@ -132,15 +207,9 @@ export async function fetchTikTokAdsAdGroups(
     page_size: String(options?.pageSize ?? 100),
   });
 
-  const res = await fetch(`${ADS_BASE}/adgroup/get/?${params}`, {
+  const data = await tikTokAdsRequest('/adgroup/get/', `${ADS_BASE}/adgroup/get/?${params}`, {
     headers: { 'Access-Token': accessToken },
   });
-
-  const data = await res.json();
-
-  if (data.code !== 0) {
-    throw new Error(`TikTok Ads /adgroup/get/ failed (code ${data.code}): ${data.message}`);
-  }
 
   const list = data.data?.list ?? [];
   const adGroups: TikTokAdGroupInfo[] = list.map((ag: Record<string, unknown>) => ({
@@ -175,7 +244,7 @@ export async function replyToTikTokAdsComment(
     identityId: string;
   },
 ): Promise<string> {
-  const res = await fetch(`${ADS_BASE}/comment/post/`, {
+  const data = await tikTokAdsRequest('comment/post', `${ADS_BASE}/comment/post/`, {
     method: 'POST',
     headers: {
       'Access-Token': accessToken,
@@ -193,12 +262,6 @@ export async function replyToTikTokAdsComment(
     }),
   });
 
-  const data = await res.json();
-
-  if (data.code !== 0) {
-    throw new Error(`TikTok Ads comment/post failed (code ${data.code}): ${data.message}`);
-  }
-
   return data.data?.comment_id ?? '';
 }
 
@@ -212,7 +275,7 @@ export async function hideTikTokAdsComment(
   commentId: string,
   hide: boolean,
 ): Promise<void> {
-  const res = await fetch(`${ADS_BASE}/comment/status/update/`, {
+  await tikTokAdsRequest('comment/status/update', `${ADS_BASE}/comment/status/update/`, {
     method: 'POST',
     headers: {
       'Access-Token': accessToken,
@@ -224,12 +287,6 @@ export async function hideTikTokAdsComment(
       operation: hide ? 'HIDDEN' : 'PUBLIC',
     }),
   });
-
-  const data = await res.json();
-
-  if (data.code !== 0) {
-    throw new Error(`TikTok Ads comment/status/update failed (code ${data.code}): ${data.message}`);
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -256,14 +313,13 @@ export async function fetchTikTokAdsIdentity(
     identity_type: 'AUTH_CODE',
   });
 
-  const res = await fetch(`${ADS_BASE}/identity/get/?${params}`, {
-    headers: { 'Access-Token': accessToken },
-  });
-
-  const data = await res.json();
-
-  if (data.code !== 0) {
-    console.warn(`[TikTok Ads] /identity/get/ failed (code ${data.code}): ${data.message}`);
+  let data;
+  try {
+    data = await tikTokAdsRequest('/identity/get/', `${ADS_BASE}/identity/get/?${params}`, {
+      headers: { 'Access-Token': accessToken },
+    });
+  } catch (err) {
+    console.warn(`[TikTok Ads] ${err instanceof Error ? err.message : String(err)}`);
     return null;
   }
 
