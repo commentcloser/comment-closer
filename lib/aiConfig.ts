@@ -2,20 +2,20 @@
  * Central OpenAI model / cost configuration.
  *
  * Everything here is env-overridable so models and caps can be tuned in Vercel
- * without a code change. Defaults are chosen to cut cost sharply versus the
- * previous "flagship gpt-5 for everything, no caps" setup:
+ * without a code change.
  *
- *  - Sentiment is a trivial one-word classifier → a small model with minimal
- *    reasoning is plenty and ~an order of magnitude cheaper.
- *  - Replies keep the flagship model (public-facing quality) but run at low
- *    reasoning effort with a generous output cap to bound runaway cost.
+ * Both sentiment and replies run on gpt-5.6-luna (owner's choice, 2026-07-14).
+ * Sentiment stays cheap via reasoning effort 'none' and a tiny output cap;
+ * replies run at low reasoning effort with a generous cap to bound cost.
  */
 
-export const AI_SENTIMENT_MODEL = process.env.OPENAI_SENTIMENT_MODEL || 'gpt-5-mini';
-export const AI_REPLY_MODEL = process.env.OPENAI_REPLY_MODEL || 'gpt-5';
+export const AI_SENTIMENT_MODEL = process.env.OPENAI_SENTIMENT_MODEL || 'gpt-5.6-luna';
+export const AI_REPLY_MODEL = process.env.OPENAI_REPLY_MODEL || 'gpt-5.6-luna';
 
-// Reasoning effort for the gpt-5 family: 'minimal' | 'low' | 'medium' | 'high'.
-export const AI_SENTIMENT_EFFORT = process.env.OPENAI_SENTIMENT_EFFORT || 'minimal';
+// Reasoning effort. The gpt-5.6 family accepts 'none' | 'low' | 'medium' |
+// 'high' | 'xhigh' — it REJECTS the gpt-5-era 'minimal' with a 400, so the
+// sentiment default is 'none' (verified live against gpt-5.6-luna).
+export const AI_SENTIMENT_EFFORT = process.env.OPENAI_SENTIMENT_EFFORT || 'none';
 export const AI_REPLY_EFFORT = process.env.OPENAI_REPLY_EFFORT || 'low';
 
 // Output-token caps. For reasoning models these bound reasoning + output tokens
