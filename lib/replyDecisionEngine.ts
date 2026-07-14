@@ -24,6 +24,7 @@ export interface ReplyDecisionConfig {
   authorId: string | null;       // Social media author ID
   pageId: string;                // ConnectedPage DB ID
   createdAt: Date;               // Comment creation time
+  parentCommentId?: string | null; // Parent comment ID when this is a nested reply
   pageRules?: PageReplyRules;    // Pre-loaded page rules (avoids DB fetch)
   commentState?: {               // Pre-loaded comment state (avoids DB fetch)
     replied: boolean;
@@ -31,6 +32,16 @@ export interface ReplyDecisionConfig {
     aiGeneratedReply: string | null;
   };
 }
+
+/**
+ * Max auto-replies to the SAME author's NESTED replies within ONE thread.
+ * Loop protection: the per-user cooldown defaults to 0 (disabled), so without
+ * this cap another auto-replying bot account could ping-pong with us
+ * indefinitely inside a single thread. The author's answered top-level comment
+ * is not counted (it has no parentCommentId), so one author can receive at
+ * most 1 + THREAD_REPLY_CAP auto-replies per thread in total.
+ */
+const THREAD_REPLY_CAP = 3;
 
 export interface ReplyDecisionResult {
   allowed: boolean;              // true = proceed, false = skip
@@ -282,6 +293,41 @@ export async function shouldGenerateReply(
     }
   }
   
+  // ============================================================
+  // STEP 4.5: Thread reply cap (nested replies only)
+  // ============================================================
+
+  if (config.parentCommentId && config.authorId) {
+    // Count posted AND in-flight replies to this author inside this thread
+    // (same in-flight semantics as the cooldown check above).
+    const priorThreadReplies = await prisma.comment.count({
+      where: {
+        pageId: config.pageId,
+        authorId: config.authorId,
+        parentCommentId: config.parentCommentId,
+        OR: [
+          { replied: true },
+          { status: { in: ['ai_generating', 'ai_generated'] } },
+          { scheduledPostAt: { not: null } },
+        ],
+      },
+    });
+
+    if (priorThreadReplies >= THREAD_REPLY_CAP) {
+      return {
+        allowed: false,
+        reason: `Already replied ${priorThreadReplies} times to this author in this thread (cap: ${THREAD_REPLY_CAP})`,
+        ruleTriggered: 'thread_reply_limit',
+        debugInfo: {
+          authorId: config.authorId,
+          parentCommentId: config.parentCommentId,
+          priorThreadReplies,
+          cap: THREAD_REPLY_CAP,
+        },
+      };
+    }
+  }
+
   // ============================================================
   // STEP 5: First comment only check
   // ============================================================

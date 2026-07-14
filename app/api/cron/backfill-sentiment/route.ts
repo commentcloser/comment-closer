@@ -41,11 +41,14 @@ export async function GET(request: Request) {
       // pending / sentiment:null during its multi-second OpenAI call). A webhook
       // processes in seconds, so a 10-minute-old comment's webhook is long done.
       const staleCutoff = new Date(Date.now() - 10 * 60 * 1000);
+      // Nested replies (isReply) are included: since they get auto-replies now,
+      // they are created 'pending' like top-level comments and need the same
+      // stuck-sentiment recovery. Page-authored and old-regime reply rows are
+      // 'ignored', so the status filter keeps them out.
       const stuck = await prisma.comment.findMany({
         where: {
           status: 'pending',
           sentiment: null,
-          isReply: false,
           message: { not: '' },
           attemptCount: { lt: MAX_ATTEMPTS },
           createdAt: { lt: staleCutoff },
@@ -55,6 +58,7 @@ export async function GET(request: Request) {
           commentId: true,
           message: true,
           attemptCount: true,
+          isReply: true,
           connectedPage: {
             select: {
               id: true,
@@ -63,6 +67,7 @@ export async function GET(request: Request) {
               pageAccessToken: true,
               autoModerationEnabled: true,
               autoHideNegativeEnabled: true,
+              autoModerateReplies: true,
               autoNegativeAction: true,
             },
           },
@@ -106,7 +111,9 @@ export async function GET(request: Request) {
             (cp.provider === 'facebook' || cp.provider === 'instagram') &&
             cp.pageAccessToken &&
             cp.autoModerationEnabled &&
-            cp.autoHideNegativeEnabled
+            cp.autoHideNegativeEnabled &&
+            // Nested replies have their own moderation opt-in
+            (!comment.isReply || cp.autoModerateReplies)
           ) {
             await autoModerateNegativeComment({
               mode: (cp.autoNegativeAction as 'hide' | 'delete') || 'hide',

@@ -144,9 +144,12 @@ async function processOneReply(comment: any): Promise<'posted' | 'failed' | 'ski
   }
 
   const isInstagram = provider === 'instagram';
+  // Meta allows only two comment levels — a nested reply is answered on its
+  // top-level parent comment (lands in the same thread).
+  const replyTargetId = comment.parentCommentId ?? comment.commentId;
   const replyUrl = isInstagram
-    ? `https://graph.facebook.com/v24.0/${comment.commentId}/replies`
-    : `https://graph.facebook.com/v24.0/${comment.commentId}/comments`;
+    ? `https://graph.facebook.com/v24.0/${replyTargetId}/replies`
+    : `https://graph.facebook.com/v24.0/${replyTargetId}/comments`;
 
   const actionLogId = await logReplyAttempt(
     comment.id,
@@ -221,6 +224,7 @@ export async function GET(request: Request) {
     select: {
       id: true,
       commentId: true,
+      parentCommentId: true,
       postId: true,
       adId: true,
       adAccountId: true,
