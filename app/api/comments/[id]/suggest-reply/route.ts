@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireCommentOwner } from '@/lib/commentAuth';
 import { generateAIReply, detectCommentLanguage } from '@/lib/aiReplyEngine';
+import { getTikTokAdsAccessToken, fetchTikTokAdsAdDetails, type TikTokAdDetails } from '@/lib/tiktokAdsApi';
 
 export async function POST(
   request: NextRequest,
@@ -24,6 +25,8 @@ export async function POST(
         connectedPage: {
           select: {
             id: true,
+            pageId: true,
+            provider: true,
             brandTone: true,
             emojisEnabled: true,
             ctaText: true,
@@ -47,6 +50,21 @@ export async function POST(
       language = detectCommentLanguage(comment.message || '');
     }
 
+    // TikTok Ads comments: resolve the ad's name/creative/landing page so the
+    // suggestion knows which product the commenter means. Best-effort.
+    let adContext: TikTokAdDetails | null = null;
+    if (page.provider === 'tiktok_ads' && comment.adId) {
+      try {
+        const accessToken = await getTikTokAdsAccessToken(page.pageId);
+        if (accessToken) {
+          const details = await fetchTikTokAdsAdDetails(accessToken, page.pageId, [String(comment.adId)]);
+          adContext = details.get(String(comment.adId)) ?? null;
+        }
+      } catch (err) {
+        console.warn('[Suggest Reply] Ad-details fetch failed (continuing without ad context):', err);
+      }
+    }
+
     const result = await generateAIReply({
       commentText: comment.message || '',
       authorName: comment.authorName || 'User',
@@ -56,6 +74,9 @@ export async function POST(
       ctaText: page.ctaText || undefined,
       language,
       maxLength: page.maxReplyLength || 100,
+      adName: adContext?.adName || comment.adName || undefined,
+      adCreativeText: adContext?.adText || undefined,
+      landingPageUrl: adContext?.landingPageUrl || undefined,
       customReplyPrompt: page.customReplyPrompt ?? undefined,
       webSourceUrl: page.webSourceUrl ?? undefined,
       webSourceEnabled: page.webSourceEnabled ?? false,

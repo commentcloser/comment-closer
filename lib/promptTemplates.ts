@@ -15,6 +15,39 @@ export interface PromptVariables {
   authorName: string;
   postCaption?: string; // Context from the original post
   threadContext?: string; // Previous replies in the thread (limited)
+  adName?: string; // Ad the comment was posted on (ads only)
+  adCreativeText?: string; // The ad's creative text (ads only)
+  landingPageUrl?: string; // Product page the ad links to (ads only)
+}
+
+/** Strip query/tracking params for display inside prompts (UTM noise, TikTok macros). */
+export function cleanDisplayUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    return u.origin + (u.pathname !== '/' ? u.pathname : '');
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Shared CONTEXT lines describing the ad a comment was posted on, so the
+ * model knows WHICH product the commenter is asking about. The URL is
+ * context only — the chat-path prompts have no global no-URL rule, so the
+ * instruction rides along with the line itself.
+ */
+export function adContextLines(vars: Pick<PromptVariables, 'adName' | 'adCreativeText' | 'landingPageUrl'>): string[] {
+  const lines: string[] = [];
+  if (vars.adName) {
+    lines.push(`This comment was posted on the ad "${vars.adName}".`);
+  }
+  if (vars.adCreativeText) {
+    lines.push(`Ad text: "${vars.adCreativeText.substring(0, 500)}${vars.adCreativeText.length > 500 ? '...' : ''}"`);
+  }
+  if (vars.landingPageUrl) {
+    lines.push(`The ad promotes the product at: ${cleanDisplayUrl(vars.landingPageUrl)} (context only — do NOT include this or any URL in the reply)`);
+  }
+  return lines;
 }
 
 export interface PromptTemplate {
@@ -76,6 +109,8 @@ Return ONLY the reply text. No question marks. Statements only.`,
     if (vars.postCaption) {
       parts.push(`Original post: "${vars.postCaption.substring(0, 150)}${vars.postCaption.length > 150 ? '...' : ''}"`);
     }
+
+    parts.push(...adContextLines(vars));
 
     if (vars.threadContext) {
       parts.push(`Previous replies: ${vars.threadContext}`);
@@ -161,7 +196,8 @@ Return ONLY the reply text. No question marks. Statements only.`,
       parts.push(`Original post: "${vars.postCaption.substring(0, 150)}${vars.postCaption.length > 150 ? '...' : ''}"`);
     }
 
-    
+    parts.push(...adContextLines(vars));
+
     if (vars.threadContext) {
       parts.push(`Previous replies: ${vars.threadContext}`);
     }

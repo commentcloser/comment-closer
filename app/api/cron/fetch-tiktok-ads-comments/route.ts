@@ -7,12 +7,14 @@ import { logSkipDecision, logReplyAttempt, logReplySuccess, logReplyFailure } fr
 import {
   fetchTikTokAdsComments,
   fetchTikTokAdsAdGroups,
+  fetchTikTokAdsAdDetails,
   hideTikTokAdsComment,
   replyToTikTokAdsComment,
   getTikTokAdsAccessToken,
   parseTikTokAdsCreateTime,
   isTikTokAdsAuthError,
   type TikTokAdsComment,
+  type TikTokAdDetails,
 } from '@/lib/tiktokAdsApi';
 
 export const dynamic = 'force-dynamic';
@@ -235,8 +237,22 @@ async function processAdvertiser(advertiser: {
 
   console.log(`[TikTok Ads Cron] ${advertiser.pageName}: ${newComments.length} new comment(s)`);
 
+  // Resolve ad context (name, creative text, landing page) once per distinct
+  // ad, so the AI knows WHICH product each comment is about. Best-effort:
+  // failures degrade to no ad context, never block replies.
+  let adDetails = new Map<string, TikTokAdDetails>();
+  const distinctAdIds = [...new Set(newComments.map((c) => c.ad_id).filter(Boolean).map(String))];
+  if (distinctAdIds.length > 0) {
+    try {
+      adDetails = await fetchTikTokAdsAdDetails(accessToken, advertiser.pageId, distinctAdIds);
+      console.log(`[TikTok Ads Cron] Resolved ad context for ${adDetails.size}/${distinctAdIds.length} ad(s)`);
+    } catch (err) {
+      console.warn(`[TikTok Ads Cron] Ad-details fetch failed (continuing without ad context):`, err);
+    }
+  }
+
   for (const comment of newComments) {
-    await processAdsComment(comment, advertiser, accessToken, null);
+    await processAdsComment(comment, advertiser, accessToken, null, adDetails.get(String(comment.ad_id)) ?? null);
   }
 
   // Only advance the watermark if every ad-group fetch succeeded. Otherwise a
@@ -287,6 +303,7 @@ async function processAdsComment(
   },
   accessToken: string,
   resolvedIdentity: { identity_id: string; identity_type: string } | null,
+  adContext: TikTokAdDetails | null = null,
 ) {
   const commentId = comment.comment_id;
   const message = comment.content ?? '';
@@ -316,9 +333,14 @@ async function processAdsComment(
     return;
   }
 
+  // Ad name for dashboard display: /ad/get details win, comment/list's
+  // ad_name is the free fallback.
+  const adName = adContext?.adName || comment.ad_name || null;
+
   const saved = await prisma.comment.upsert({
     where: { pageId_commentId: { pageId: advertiser.id, commentId } },
-    update: { message, authorName, authorId, postId: videoId, isReply, parentCommentId, adId },
+    // adName only when resolved — never null-clobber a previously stored one
+    update: { message, authorName, authorId, postId: videoId, isReply, parentCommentId, adId, ...(adName ? { adName } : {}) },
     create: {
       pageId: advertiser.id,
       commentId,
@@ -331,6 +353,7 @@ async function processAdsComment(
       parentCommentId,
       isFromAd: true,
       adId,
+      adName,
       // Store identity_id (adAccountId field reused) + identity_type for replies
       adAccountId: comment.identity_id || null,
       identityType: comment.identity_type || null,
@@ -431,6 +454,9 @@ async function processAdsComment(
     identityType: resolvedIdentity?.identity_type || comment.identity_type || 'TT_USER',
     identityId: resolvedIdentity?.identity_id || comment.identity_id || '',
     accessToken,
+    adContext: adContext ?? (comment.ad_name || comment.ad_text
+      ? { adName: comment.ad_name || '', adText: comment.ad_text || '', landingPageUrl: '' }
+      : null),
   });
 }
 
@@ -460,8 +486,9 @@ async function generateAndPostAdsReply(opts: {
   identityType: string;
   identityId: string;
   accessToken: string;
+  adContext?: TikTokAdDetails | null;
 }) {
-  const { commentDbId, sentiment, commentText, authorName, advertiser, commentId, adId, tiktokItemId, identityType, identityId, accessToken } = opts;
+  const { commentDbId, sentiment, commentText, authorName, advertiser, commentId, adId, tiktokItemId, identityType, identityId, accessToken, adContext } = opts;
 
   try {
     const claimed = await prisma.comment.updateMany({
@@ -485,6 +512,9 @@ async function generateAndPostAdsReply(opts: {
       commentText,
       authorName,
       sentiment: sentiment as 'positive' | 'neutral',
+      adName: adContext?.adName || undefined,
+      adCreativeText: adContext?.adText || undefined,
+      landingPageUrl: adContext?.landingPageUrl || undefined,
       customReplyPrompt: advertiser.customReplyPrompt ?? undefined,
       webSourceUrl: advertiser.webSourceUrl ?? undefined,
       webSourceEnabled: advertiser.webSourceEnabled ?? false,
