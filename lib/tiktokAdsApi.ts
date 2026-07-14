@@ -122,11 +122,20 @@ export interface TikTokAdsComment {
   original_comment_id: string;   // set only when comment_type === 'REPLY'
   comment_status: 'HIDDEN' | 'PUBLIC';
   ad_id: string;
+  ad_name?: string;              // present in /comment/list/ responses (verified live)
+  ad_text?: string;              // ad title/creative text; often empty here — /ad/get/ is authoritative
   adgroup_id: string;
   campaign_id: string;
   tiktok_item_id: string;        // TikTok video ID
   identity_id: string;           // Advertiser identity ID (needed for reply)
   identity_type: string;         // 'TT_USER' | 'CUSTOMIZED_USER'
+}
+
+/** Per-ad product context resolved from /ad/get/ — feeds the AI reply prompt. */
+export interface TikTokAdDetails {
+  adName: string;
+  adText: string;          // the ad's creative text ("Ad title")
+  landingPageUrl: string;  // the product page the ad clicks through to
 }
 
 export interface TikTokAdsCommentPage {
@@ -226,6 +235,56 @@ export async function fetchTikTokAdsAdGroups(
     adGroups,
     hasMore: page * pageSize < totalCount,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Ad details — resolve ad_id → { name, creative text, landing page URL }
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetches ad details (including landing_page_url and ad_text) for a set of
+ * ad IDs via /ad/get/. Works with the comment-scoped advertiser token
+ * (verified live 2026-07-14). Returns a map keyed by ad_id; ads TikTok does
+ * not return (deleted etc.) are simply absent.
+ */
+export async function fetchTikTokAdsAdDetails(
+  accessToken: string,
+  advertiserId: string,
+  adIds: string[],
+): Promise<Map<string, TikTokAdDetails>> {
+  const details = new Map<string, TikTokAdDetails>();
+
+  // /ad/get/ filtering accepts at most 100 ad_ids per call. A failed chunk
+  // only loses its own ads — earlier chunks' results are kept.
+  for (let i = 0; i < adIds.length; i += 100) {
+    const chunk = adIds.slice(i, i + 100).map(String);
+    const params = new URLSearchParams({
+      advertiser_id: advertiserId,
+      filtering: JSON.stringify({ ad_ids: chunk }),
+      page: '1',
+      page_size: '100',
+    });
+
+    try {
+      const data = await tikTokAdsRequest('/ad/get/', `${ADS_BASE}/ad/get/?${params}`, {
+        headers: { 'Access-Token': accessToken },
+      });
+
+      for (const ad of data.data?.list ?? []) {
+        if (!ad?.ad_id) continue;
+        details.set(String(ad.ad_id), {
+          adName: String(ad.ad_name ?? ''),
+          adText: String(ad.ad_text ?? ''),
+          landingPageUrl: String(ad.landing_page_url ?? ''),
+        });
+      }
+    } catch (err) {
+      if (i === 0 && adIds.length <= 100) throw err; // single-chunk call: let the caller log it
+      console.warn(`[TikTok Ads] /ad/get/ chunk ${i / 100 + 1} failed (keeping ${details.size} resolved):`, err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  return details;
 }
 
 // ---------------------------------------------------------------------------

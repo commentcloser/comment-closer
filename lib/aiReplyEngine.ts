@@ -10,6 +10,8 @@ import OpenAI from 'openai';
 import {
   PromptVariables,
   getTemplateForSentiment,
+  adContextLines,
+  cleanDisplayUrl,
 } from './promptTemplates';
 import { getDomainFromWebSourceUrl } from './validators';
 import {
@@ -53,6 +55,12 @@ export interface AIReplyConfig {
   // Optional context
   postCaption?: string;
   threadContext?: string; // Previous replies in conversation
+
+  // Ad/product context — set when the comment was posted on an ad, so the
+  // model knows which product the commenter means (TikTok Ads today).
+  adName?: string | null;
+  adCreativeText?: string | null;
+  landingPageUrl?: string | null; // the ad's product landing page
 
   // Per-page override: when set, used as system prompt for both positive and neutral
   customReplyPrompt?: string | null;
@@ -160,6 +168,8 @@ interface WebSearchReplyParams {
   webSourceUrl: string;
   domain: string;
   requestId?: string;
+  landingPageUrl?: string | null;
+  adCreativeText?: string | null;
 }
 
 interface PriceExtractionResult {
@@ -198,14 +208,25 @@ function parsePriceExtractionResponse(rawText: string): PriceExtractionResult | 
  */
 async function runStructuredPriceSearch(
   client: OpenAI,
-  params: { commentText: string; domain: string; requestId?: string },
+  params: { commentText: string; domain: string; requestId?: string; landingPageUrl?: string | null; adCreativeText?: string | null },
   startTime: number,
   ctx?: AiUsageContext
 ): Promise<{ result: PriceExtractionResult | null; rawOutput: string; generationTimeMs: number }> {
-  const { commentText, domain, requestId = '' } = params;
+  const { commentText, domain, requestId = '', landingPageUrl, adCreativeText } = params;
   const rid = requestId ? ` [${requestId}]` : '';
 
-  const instructions = `You MUST run web search queries in this exact order:
+  // When the ad's landing page is known, read THAT page first — for a shop
+  // with thousands of products, site-wide search finds A price, not THE price.
+  const instructions = landingPageUrl
+    ? `The comment was posted on an ad for a specific product. The product's page is: ${landingPageUrl}
+You MUST run web search queries in this exact order:
+1) Open and read ${landingPageUrl} and extract the product's price from it.
+2) Only if that page has no price: site:${domain} (${adCreativeText ? `"${adCreativeText.substring(0, 80)}" ` : ''}τιμή OR price OR κόστος OR cost OR €)
+Extract the first exact numeric price found (e.g. "10€", "15.99 EUR").
+Return JSON only in this format, no other text:
+{"found_price": boolean, "price_text": string | null}
+Do not write any natural language explanation. Never invent a price. If no price found, set found_price to false and price_text to null.`
+    : `You MUST run web search queries in this exact order:
 1) site:${domain} (τιμή OR τιμές OR κόστος OR χρέωση OR πόσο OR price OR pricing OR cost OR how much OR €)
 2) site:${domain} (product or service name if mentioned in the comment)
 Extract the first exact numeric price found (e.g. "10€", "15.99 EUR").
@@ -213,8 +234,11 @@ Return JSON only in this format, no other text:
 {"found_price": boolean, "price_text": string | null}
 Do not write any natural language explanation. Never invent a price. If no price found, set found_price to false and price_text to null.`;
 
-  const userInput = `Comment: "${commentText}"
-Output only valid JSON: {"found_price": true|false, "price_text": "<exact price string or null>"}`;
+  const userInput = [
+    `Comment: "${commentText}"`,
+    adCreativeText ? `The ad the comment was posted on says: "${adCreativeText.substring(0, 300)}"` : null,
+    `Output only valid JSON: {"found_price": true|false, "price_text": "<exact price string or null>"}`,
+  ].filter(Boolean).join('\n');
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), WEB_RESPONSE_TIMEOUT_MS);
@@ -355,13 +379,17 @@ async function generateWebSearchReply(
     webSourceUrl,
     domain,
     requestId = '',
+    landingPageUrl,
+    adCreativeText,
   } = params;
 
   const rid = requestId ? ` [${requestId}]` : '';
 
   const baseInstructions = [
     'You are a social media assistant.',
-    `IMPORTANT: Restrict your answer to information from the website ${domain} only. Prefer searching or referring only to ${domain}; do not use or cite other sources.`,
+    landingPageUrl
+      ? `IMPORTANT: The comment was posted on an ad for a specific product. The product's page is ${landingPageUrl} — answer from that page first, falling back to ${domain} only if it lacks the answer. Do not use or cite other sources.`
+      : `IMPORTANT: Restrict your answer to information from the website ${domain} only. Prefer searching or referring only to ${domain}; do not use or cite other sources.`,
     'Keep the reply to 1–2 sentences.',
     languageRule.trim(),
   ].join(' ');
@@ -372,9 +400,10 @@ async function generateWebSearchReply(
   const userInput = [
     `Comment to reply to: "${commentText}"`,
     `From: ${authorName}`,
+    adCreativeText ? `The ad the comment was posted on says: "${adCreativeText.substring(0, 300)}"` : null,
     language !== 'auto' ? `Language: ${language}.` : "Match the comment's language.",
     'Return ONLY the reply text, no quotes or extra explanation.',
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 
   const fallbackReply = webFallbackMessage(language, webSourceUrl, commentText);
 
@@ -486,6 +515,19 @@ export async function generateAIReply(
   const webUrl = config.webSourceUrl?.trim();
   const webEnabled = config.webSourceEnabled === true;
   const useWebPath = webEnabled && !!webUrl;
+  const landingPageUrl = config.landingPageUrl?.trim() || null;
+  const adCreativeText = config.adCreativeText?.trim() || null;
+  // Fallback replies link the ad's product page when known — a root-domain
+  // link under a specific product question reads as a non-answer. Strip
+  // tracking params, and only use it if the fallback copy (+~95 chars) still
+  // fits maxLength — cleanReplyText would otherwise truncate mid-URL and post
+  // a broken link publicly.
+  const fallbackUrl = (() => {
+    if (!landingPageUrl) return webUrl;
+    const clean = cleanDisplayUrl(landingPageUrl);
+    if (clean.length <= Math.max(config.maxLength - 95, 20)) return clean;
+    return webUrl || clean;
+  })();
 
   console.info(`${LOG_PREFIX}${rid} 2/5 Web settings: enabled=${webEnabled}, url=${webUrl ? 'set' : 'none'} => useWebPath=${useWebPath}`);
 
@@ -499,7 +541,7 @@ export async function generateAIReply(
         const extractStart = Date.now();
         const { result: priceResult, rawOutput, generationTimeMs: extractMs } = await runStructuredPriceSearch(
           client,
-          { commentText: config.commentText, domain, requestId },
+          { commentText: config.commentText, domain, requestId, landingPageUrl, adCreativeText },
           extractStart,
           ctx
         );
@@ -520,7 +562,7 @@ export async function generateAIReply(
               language: config.language,
               maxLength: config.maxLength,
               customReplyPrompt: config.customReplyPrompt,
-              webSourceUrl: webUrl,
+              webSourceUrl: fallbackUrl!,
               requestId,
             },
             startTime,
@@ -532,7 +574,7 @@ export async function generateAIReply(
         }
 
         // No price found or parse failed → safe fallback, never invent
-        const fallbackReply = cleanReplyText(webFallbackMessage(config.language, webUrl, config.commentText), config.maxLength);
+        const fallbackReply = cleanReplyText(webFallbackMessage(config.language, fallbackUrl!, config.commentText), config.maxLength);
         const totalMs = Date.now() - startTime;
         console.info(`${LOG_PREFIX}${rid} 5/5 Done (structured price fallback). web_used=true, price_found=false, no invention`);
         return {
@@ -557,9 +599,11 @@ export async function generateAIReply(
           language: config.language,
           maxLength: config.maxLength,
           customReplyPrompt: config.customReplyPrompt,
-          webSourceUrl: webUrl,
+          webSourceUrl: fallbackUrl!,
           domain,
           requestId,
+          landingPageUrl,
+          adCreativeText,
         },
         startTime,
         ctx
@@ -589,6 +633,11 @@ export async function generateAIReply(
     if (config.postCaption) {
       parts.push(`Post context: "${config.postCaption.substring(0, 150)}${config.postCaption.length > 150 ? '...' : ''}"`);
     }
+    parts.push(...adContextLines({
+      adName: config.adName ?? undefined,
+      adCreativeText: adCreativeText ?? undefined,
+      landingPageUrl: landingPageUrl ?? undefined,
+    }));
     if (config.threadContext) {
       parts.push(`Previous replies: ${config.threadContext}`);
     }
@@ -614,6 +663,9 @@ export async function generateAIReply(
       authorName: config.authorName,
       postCaption: config.postCaption,
       threadContext: config.threadContext,
+      adName: config.adName ?? undefined,
+      adCreativeText: adCreativeText ?? undefined,
+      landingPageUrl: landingPageUrl ?? undefined,
     };
     systemPrompt = template.systemPrompt;
     userPrompt = template.userPrompt(promptVars);
