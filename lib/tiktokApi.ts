@@ -190,6 +190,27 @@ function isTikTokAuthErrorCode(code: unknown): boolean {
   return typeof code === 'number' && TIKTOK_AUTH_ERROR_CODES.includes(code);
 }
 
+/** The throttle codes named above. Transient — never an auth failure. */
+const TIKTOK_RATE_LIMIT_ERROR_CODES = [40100, 40016, 40133];
+
+export function isTikTokRateLimitCode(code: unknown): boolean {
+  return typeof code === 'number' && TIKTOK_RATE_LIMIT_ERROR_CODES.includes(code);
+}
+
+/**
+ * Carries TikTok's numeric response code alongside the message, so a paging
+ * caller can tell a throttle from a real failure without re-parsing the text.
+ */
+export class TikTokApiError extends Error {
+  readonly code: number;
+
+  constructor(endpoint: string, code: number, message: string) {
+    super(`TikTok ${endpoint} failed (code ${code}): ${message}`);
+    this.name = 'TikTokApiError';
+    this.code = code;
+  }
+}
+
 /**
  * Detects a refresh that a concurrent invocation won while ours was in flight,
  * and returns its access token. Two independent signals, because TikTok does
@@ -341,18 +362,31 @@ export async function getValidTikTokAccessToken(accountId: string): Promise<stri
 // Comment list
 // ---------------------------------------------------------------------------
 
+export interface TikTokCommentPage {
+  comments: TikTokComment[];
+  cursor: string | null;
+  hasMore: boolean;
+}
+
 /**
- * Fetches specific comment(s) from a TikTok video.
+ * Fetches ONE page of comments from a TikTok video.
  *
  * Uses the v1.3 GET /business/comment/list/ endpoint.
- * Pass `commentIds` to fetch one or more specific comments (max 30).
+ * Pass `commentIds` to fetch one or more specific comments (max 30),
+ * `cursor` to continue from a previous page, `maxCount` to size the page.
+ *
+ * `cursor`/`maxCount` are only sent when asked for, so a caller that wants a
+ * single lookup issues exactly the request it always did. `hasMore` is true
+ * only when the response says so explicitly: if this endpoint does not page the
+ * way the reply endpoint does, an absent has_more reads as false and callers
+ * stop after one page rather than re-reading page 1 forever.
  */
-export async function fetchTikTokComments(
+export async function fetchTikTokCommentsPage(
   accessToken: string,
   openId: string,
   videoId: string,
-  commentIds?: string[],
-): Promise<TikTokComment[]> {
+  options?: { commentIds?: string[]; cursor?: string | null; maxCount?: number },
+): Promise<TikTokCommentPage> {
   const params = new URLSearchParams({
     business_id: openId,
     video_id: videoId,
@@ -360,8 +394,14 @@ export async function fetchTikTokComments(
     include_replies: 'true',
   });
 
-  if (commentIds && commentIds.length > 0) {
-    params.set('comment_ids', JSON.stringify(commentIds));
+  if (options?.commentIds && options.commentIds.length > 0) {
+    params.set('comment_ids', JSON.stringify(options.commentIds));
+  }
+  if (options?.maxCount !== undefined) {
+    params.set('max_count', String(options.maxCount));
+  }
+  if (options?.cursor) {
+    params.set('cursor', options.cursor);
   }
 
   const url = `${BASE}/business/comment/list/?${params.toString()}`;
@@ -372,10 +412,38 @@ export async function fetchTikTokComments(
   const data = await res.json();
 
   if (data.code !== 0) {
-    throw new Error(`TikTok comment/list failed (code ${data.code}): ${data.message}`);
+    throw new TikTokApiError('comment/list', data.code, data.message);
   }
 
-  return (data.data?.comments ?? []) as TikTokComment[];
+  // Cursors are opaque, so carry them as strings. Note this does NOT protect a
+  // huge numeric cursor the way the comment_id/video_id string-wrapping does:
+  // res.json() has already parsed it by the time we get here. A mangled cursor
+  // fails safe — it trips the repeat-cursor guard in the caller and the video is
+  // reported not fully read rather than looping.
+  const cursor: unknown = data.data?.cursor;
+
+  return {
+    comments: (data.data?.comments ?? []) as TikTokComment[],
+    cursor: cursor === null || cursor === undefined || cursor === '' ? null : String(cursor),
+    hasMore: data.data?.has_more === true,
+  };
+}
+
+/**
+ * Fetches specific comment(s) from a TikTok video (first page only).
+ *
+ * Pass `commentIds` to fetch one or more specific comments (max 30).
+ * Callers that need every comment on a video should page with
+ * fetchTikTokCommentsPage instead.
+ */
+export async function fetchTikTokComments(
+  accessToken: string,
+  openId: string,
+  videoId: string,
+  commentIds?: string[],
+): Promise<TikTokComment[]> {
+  const page = await fetchTikTokCommentsPage(accessToken, openId, videoId, { commentIds });
+  return page.comments;
 }
 
 /**
