@@ -41,6 +41,8 @@ function OnboardingPage() {
   const [hasLoadedPages, setHasLoadedPages] = useState(false);
   const [checkingPages, setCheckingPages] = useState(true);
   const hasCheckedOnMountRef = useRef(false);
+  const hasAutoAdvancedRef = useRef(false);
+  const oauthErrorRef = useRef(false);
   const [tiktokConnected, setTiktokConnected] = useState(false);
   const [tiktokAccounts, setTiktokAccounts] = useState<{ id: string; pageName: string; profileImageUrl: string | null }[]>([]);
   const [loadingTiktok, setLoadingTiktok] = useState(false);
@@ -106,13 +108,23 @@ function OnboardingPage() {
     const tiktokParam = searchParams.get('tiktok_connected');
     const tiktokAdsParam = searchParams.get('tiktok_ads_connected');
     const errorParam = searchParams.get('error');
+    const stepParam = searchParams.get('step');
+    // A step dictated by the OAuth callback wins over the "already connected"
+    // auto-advance, which must not fire later either (e.g. on Back to step 1).
+    if (tiktokParam === 'true' || tiktokAdsParam === 'true' || errorParam || stepParam) {
+      hasAutoAdvancedRef.current = true;
+    }
     if (tiktokParam === 'true') {
       setTiktokConnected(true);
       fetchTiktokAccounts();
+      // Landing straight on step 4 skips every effect that loads Meta pages,
+      // so fetch them here or the summary would show none of them.
+      checkFacebookConnection();
       setCurrentStep(4);
       router.replace('/dashboard/onboarding');
     } else if (tiktokAdsParam === 'true') {
       fetchTiktokAdsAccounts();
+      checkFacebookConnection();
       setCurrentStep(4);
       router.replace('/dashboard/onboarding');
     } else if (errorParam) {
@@ -125,18 +137,31 @@ function OnboardingPage() {
         : errorParam === 'no_advertiser_ids'
         ? 'No TikTok Ads accounts found. Make sure you have a TikTok Ads Manager account.'
         : 'Connection failed. Please try again.';
+      // Flag it so the page fetch that runs right after this doesn't wipe the
+      // banner before the user has had a chance to read it.
+      oauthErrorRef.current = true;
       setError(errMsg);
       setCurrentStep(errorParam === 'facebook_account_in_use' ? 2 : 3);
       router.replace('/dashboard/onboarding');
+    } else if (stepParam) {
+      // Honour the ?step= that the Facebook OAuth callbackUrl returns to.
+      // Not stripped from the URL: the #_=_ hash handling below depends on it.
+      const step = Number(stepParam);
+      if (Number.isInteger(step) && step >= 1 && step <= totalSteps) {
+        setCurrentStep(step);
+      }
     }
   }, [mounted, searchParams]);
 
   // Auto-advance to step 3 (TikTok) if Facebook pages already connected
   useEffect(() => {
-    if (connectedPages.length > 0 && currentStep === 1) {
+    // Only auto-advance once, on the initial load: otherwise pressing "Back"
+    // from step 2 would immediately bounce the user forward to step 3.
+    if (connectedPages.length > 0 && currentStep === 1 && !hasAutoAdvancedRef.current) {
+      hasAutoAdvancedRef.current = true;
       setCurrentStep(3);
       setCheckingPages(false);
-    } else if (connectedPages.length === 0 && checkingPages && hasLoadedPages) {
+    } else if (checkingPages && hasLoadedPages) {
       setCheckingPages(false);
     }
   }, [connectedPages.length, currentStep, checkingPages, hasLoadedPages]);
@@ -209,10 +234,18 @@ function OnboardingPage() {
     }
   };
 
+  // Clears errors this fetch is responsible for, but never an OAuth callback
+  // error (e.g. facebook_account_in_use) — only a user action clears those.
+  const clearFetchError = () => {
+    if (!oauthErrorRef.current) {
+      setError(null);
+    }
+  };
+
   const checkFacebookConnection = async () => {
     // Don't show loading animation
     // setLoading(true);
-    setError(null);
+    clearFetchError();
     try {
       const response = await fetch('/api/facebook/pages');
       const data = await response.json();
@@ -236,7 +269,11 @@ function OnboardingPage() {
       });
       
       setConnectedPages(connectedWithImages);
-      
+      // Pre-select whatever is actually connected, regardless of whether Meta
+      // returned any selectable pages (an expired token returns none), so
+      // "Continue" isn't stuck disabled for users who do have connected pages.
+      setSelectedFbPages(connected.map((cp: ConnectedPage) => cp.pageId));
+
       // ALWAYS set pages if they exist, even if response is not ok
       if (data.pages && Array.isArray(data.pages)) {
         setFbPages(data.pages);
@@ -246,16 +283,13 @@ function OnboardingPage() {
         // Success - pages fetched
         if (data.pages && data.pages.length > 0) {
           setFacebookConnected(true);
-          // Pre-select already connected pages
-          const connectedPageIds = data.connectedPages.map((cp: ConnectedPage) => cp.pageId);
-          setSelectedFbPages(connectedPageIds);
-          setError(null);
+          clearFetchError();
         } else if (data.error) {
           // Error but check what kind
           if (data.error.includes('No Facebook account connected')) {
             // Treat as no Meta account connected
             setFacebookConnected(false);
-            setError(null);
+            clearFetchError();
           } else {
             setFacebookConnected(true);
             setError(data.error);
@@ -264,18 +298,18 @@ function OnboardingPage() {
           // Meta account is connected but has 0 pages/accounts.
           // Show the "No Pages Connected" empty state with explanation.
           setFacebookConnected(true);
-          setError(null);
+          clearFetchError();
         }
       } else {
         // Response not ok
         if (data.pages && data.pages.length > 0) {
           // We have pages even though response wasn't ok
           setFacebookConnected(true);
-          setError(null);
+          clearFetchError();
         } else if (data.connectedPages && data.connectedPages.length > 0) {
           // We have connected pages
           setFacebookConnected(true);
-          setError(null);
+          clearFetchError();
         } else {
           setFacebookConnected(data.error?.includes('No Facebook account connected') ? false : true);
           setError(data.error || 'Failed to fetch pages');
@@ -285,7 +319,7 @@ function OnboardingPage() {
       // If we have connected pages, don't show error
       if (connectedPages.length > 0) {
         setFacebookConnected(true);
-        setError(null);
+        clearFetchError();
       } else {
         setError('Error loading Facebook pages');
       }
@@ -324,6 +358,7 @@ function OnboardingPage() {
 
   const connectPage = async (page: FacebookPage) => {
     setConnecting(page.id);
+    oauthErrorRef.current = false;
     setError(null);
     try {
       const response = await fetch('/api/facebook/pages', {
@@ -375,6 +410,7 @@ function OnboardingPage() {
   };
 
   const handleDisconnectFacebook = async () => {
+    oauthErrorRef.current = false;
     setError(null);
     setDisconnectingAccount(true);
     try {
@@ -958,7 +994,7 @@ function OnboardingPage() {
               </p>
 
               {/* Connected Pages List */}
-              {(connectedPages.length > 0 || tiktokAccounts.length > 0) && (
+              {(connectedPages.length > 0 || tiktokAccounts.length > 0 || tiktokAdsAccounts.length > 0) && (
                 <div className="rounded-card border border-line bg-surface p-5 mb-6 max-w-xl mx-auto shadow-card">
                   <h3 className="text-[14px] font-medium text-ink mb-4">{t('onboarding.success.connectedAccounts') || 'Connected Pages'}</h3>
                   <div className="space-y-3 text-left">
@@ -1040,6 +1076,29 @@ function OnboardingPage() {
                         <div className="flex-1 text-left min-w-0">
                           <p className="text-[14px] font-medium text-ink truncate">{account.pageName}</p>
                           <p className="text-[12px] text-ink-muted mt-0.5">TikTok Organic</p>
+                        </div>
+                        <div className="inline-flex items-center rounded-[6px] px-2 py-0.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] bg-accent-wash text-accent shrink-0">
+                          Connected
+                        </div>
+                      </div>
+                    ))}
+                    {tiktokAdsAccounts.map((account) => (
+                      <div key={account.id} className="rounded-card bg-surface-2 border border-line p-3.5 flex items-center gap-3">
+                        <div className="relative shrink-0">
+                          <div className="size-12 bg-[#0F0F0F] rounded-btn flex items-center justify-center">
+                            <svg className="size-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/>
+                            </svg>
+                          </div>
+                          <div className="absolute -bottom-0.5 -right-0.5 bg-surface rounded-full p-1 shadow-card border border-line">
+                            <svg className="w-3.5 h-3.5 text-ink-muted" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z"/>
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="flex-1 text-left min-w-0">
+                          <p className="text-[14px] font-medium text-ink truncate">{account.pageName}</p>
+                          <p className="text-[12px] text-ink-muted mt-0.5">TikTok Ads</p>
                         </div>
                         <div className="inline-flex items-center rounded-[6px] px-2 py-0.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] bg-accent-wash text-accent shrink-0">
                           Connected

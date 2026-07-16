@@ -18,12 +18,19 @@ export default function LoginPage() {
   const { t } = useTranslation();
   const { status } = useSession();
 
+  // The OAuth-error effect below rewrites the URL to a bare /login on mount, which
+  // happens before useSession settles to 'authenticated'. Capture the original query
+  // once on first render so every reader below still sees ?error=/?callbackUrl=.
+  const [initialSearch] = useState(() =>
+    typeof window === 'undefined' ? '' : window.location.search
+  );
+
   // Resolve a safe redirect target after login. Honours ?callbackUrl=... when
   // present (set by protected routes), defaults to /dashboard otherwise.
   // Only allows same-origin paths to prevent open-redirect abuse.
   function getPostLoginUrl(): string {
     if (typeof window === 'undefined') return '/dashboard';
-    const cb = new URLSearchParams(window.location.search).get('callbackUrl');
+    const cb = new URLSearchParams(initialSearch).get('callbackUrl');
     if (cb) {
       // Resolve against our own origin instead of string-matching the prefix:
       // browsers normalise backslashes to slashes, so '/\evil.com' would pass a
@@ -49,17 +56,14 @@ export default function LoginPage() {
   // forward to onboarding with the error so it can show the right message.
   useEffect(() => {
     if (status === 'authenticated') {
-      if (typeof window !== 'undefined') {
-        const params = new URLSearchParams(window.location.search);
-        const err = params.get('error');
-        if (err === 'FacebookAccountInUse') {
-          router.replace('/dashboard/onboarding?error=facebook_account_in_use');
-          return;
-        }
+      const err = new URLSearchParams(initialSearch).get('error');
+      if (err === 'FacebookAccountInUse') {
+        router.replace('/dashboard/onboarding?error=facebook_account_in_use');
+        return;
       }
       router.replace(getPostLoginUrl());
     }
-  }, [status, router]);
+  }, [status, router, initialSearch]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -84,7 +88,7 @@ export default function LoginPage() {
   // Check for OAuth errors in URL
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
+      const params = new URLSearchParams(initialSearch);
       const error = params.get('error');
 
       if (error === 'Configuration') {
@@ -107,7 +111,7 @@ export default function LoginPage() {
         window.history.replaceState({}, '', '/login');
       }
     }
-  }, []);
+  }, [initialSearch]);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

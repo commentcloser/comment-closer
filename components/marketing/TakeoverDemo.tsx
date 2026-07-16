@@ -831,7 +831,16 @@ function LiveDemo({ running }: { running: boolean }) {
 export function TakeoverDemo() {
   const rootRef = useRef<HTMLDivElement>(null);
   const inView = useInView(rootRef, { amount: 0.3 });
-  const reduce = useReducedMotion();
+  const prefersReduced = useReducedMotion();
+  const [mounted, setMounted] = useState(false);
+
+  /* useReducedMotion reads matchMedia during render — null on the server, true
+     on the client's first pass — so branching on it directly hydrates a
+     different tree. Stay on LiveDemo (paused, inView is false pre-observer)
+     until after mount, then swap. */
+  useEffect(() => setMounted(true), []);
+
+  const reduce = mounted && prefersReduced;
 
   return (
     <div
@@ -839,7 +848,7 @@ export function TakeoverDemo() {
       aria-hidden="true"
       className="relative min-h-[620px] lg:min-h-[640px]"
     >
-      {reduce ? <StaticDemo /> : <LiveDemo running={inView} />}
+      {reduce ? <StaticDemo /> : <LiveDemo running={inView && !prefersReduced} />}
     </div>
   );
 }

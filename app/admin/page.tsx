@@ -104,9 +104,11 @@ export default function AdminOverviewPage() {
     fetchData();
   }, []);
 
+  // Buckets arrive as UTC 'YYYY-MM-DD' strings; parse them directly so the axis
+  // label doesn't shift a day for admins west of UTC (new Date() reads local time).
   const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return `${d.getDate()}/${d.getMonth() + 1}`;
+    const [, month, day] = dateStr.split('-');
+    return `${Number(day)}/${Number(month)}`;
   };
 
   // Theme-aware recharts colors (spec §6.6) — recharts SVG attributes can't

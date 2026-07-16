@@ -490,12 +490,11 @@ function PagesPageContent() {
         
         // Optimistically update the state immediately with the newly connected page
         if (responseData.page) {
-          const newConnectedPage = {
-            id: responseData.page.id,
-            pageId: responseData.page.pageId,
-            pageName: responseData.page.pageName,
-            provider: responseData.page.provider,
-            createdAt: responseData.page.createdAt,
+          // Spread the whole response: it carries every settings field (see
+          // CONNECTED_PAGE_SELECT). Picking only a few stripped the settings a
+          // reconnected page kept, and saving the modal then wrote those blanks back.
+          const newConnectedPage: ConnectedPage = {
+            ...responseData.page,
             adAccountId: responseData.page.adAccountId || null,
           };
           
@@ -523,9 +522,15 @@ function PagesPageContent() {
           });
         }
         
-        // Force fetch after connection to get fresh data (cache is cleared server-side)
+        // Force fetch after connection to get fresh data (cache is cleared server-side).
+        // performFetch ignores `force` while a fetch is already running, so queue the
+        // refresh through the existing mechanism instead of dropping it silently.
         console.log(`🔗 [Connect Page] Refreshing page data...`);
-        await fetchData(true, false); // Force fetch after connection, no loading spinner
+        if (isFetching.current) {
+          pendingFullFetch.current = true;
+        } else {
+          await fetchData(true, false); // Force fetch after connection, no loading spinner
+        }
         console.log(`✅ [Connect Page] Connection complete!`);
       } else {
         console.error(`❌ [Connect Page] Connection failed:`, responseData.error || responseData.details || 'Unknown error');
@@ -552,8 +557,10 @@ function PagesPageContent() {
       if (host === 'localhost' || host.endsWith('.localhost')) return { valid: false };
       if (/^127\.|^10\.|^172\.(1[6-9]|2\d|3[01])\.|^192\.168\./i.test(host)) return { valid: false };
       if (/^\[?::1\]?$/i.test(host) || host === '::1') return { valid: false };
-      const hasTld = /\.(com|org|net|io|gr|eu|co|gov|edu|de|fr|uk|it|es|nl|be|at|ch|app|dev|test)(\s|$|\/)/i.test(host) || host.includes('.');
-      if (!hasTld && host.length < 10) return { valid: false };
+      // A single-label host can never resolve publicly. The old length check let
+      // typos like 'mycompanycom' through and they were saved as a web source that
+      // silently fails DNS on every reply, so require a dot regardless of length.
+      if (!host.includes('.')) return { valid: false };
       return { valid: true, normalized: u.href };
     } catch {
       return { valid: false };
@@ -587,9 +594,26 @@ function PagesPageContent() {
     );
   }, [initialSettingsSnapshot, settingsAutoReply, settingsManualReview, settingsReplyDelay, settingsCustomPrompt, settingsWebSourceUrl, settingsWebSourceEnabled, settingsNegativeMode, settingsNegativeEnabled, settingsModerateReplies, settingsCooldownMinutes, settingsOnlyFirstComment, settingsMinCommentLength, settingsMaxReplyLength, settingsBlocklistKeywords, settingsAllowlistKeywords, settingsAllowlistEnabled]);
 
+  // An empty custom-delay box has no number to save — block the save rather than
+  // write a value the user can no longer see.
+  const customDelayValid = !customDelayOpen || customDelayInput.trim() !== '';
   const canSaveSettings =
-    hasSettingsChanges && webSectionValid && !savingSettings;
+    hasSettingsChanges && webSectionValid && customDelayValid && !savingSettings;
   const isTikTokSettingsPage = pageToSettings?.provider === 'tiktok' || pageToSettings?.provider === 'tiktok_ads';
+
+  /** Keyword lists predate the JSON validator, so a legacy/non-array stored value must
+   *  not throw here — that would make the settings modal impossible to open at all.
+   *  '' mirrors what the engine does with an unparseable list: treat it as empty. */
+  function parseKeywordList(raw: string | null | undefined): string {
+    if (!raw) return '';
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return '';
+      return parsed.filter((k): k is string => typeof k === 'string').join(', ');
+    } catch {
+      return '';
+    }
+  }
 
   const openSettings = (cp: ConnectedPage) => {
     const autoReply = cp.autoReplyEnabled ?? false;
@@ -621,10 +645,8 @@ function PagesPageContent() {
     const onlyFirstComment = cp.replyOnlyFirstComment ?? false;
     const minCommentLength = cp.replyMinCommentLength ?? 2;
     const maxReplyLength = cp.maxReplyLength ?? 500;
-    const blocklistRaw = cp.replyBlocklistKeywords;
-    const blocklistKeywords = blocklistRaw ? (JSON.parse(blocklistRaw) as string[]).join(', ') : '';
-    const allowlistRaw = cp.replyAllowlistKeywords;
-    const allowlistKeywords = allowlistRaw ? (JSON.parse(allowlistRaw) as string[]).join(', ') : '';
+    const blocklistKeywords = parseKeywordList(cp.replyBlocklistKeywords);
+    const allowlistKeywords = parseKeywordList(cp.replyAllowlistKeywords);
     const allowlistEnabled = cp.replyAllowlistEnabled ?? false;
     setSettingsCooldownMinutes(cooldownMinutes);
     setSettingsOnlyFirstComment(onlyFirstComment);
@@ -665,7 +687,10 @@ function PagesPageContent() {
     const delayToSave = settingsReplyDelay;
     const negativeModeToSave: 'hide' | 'delete' =
       pageToSettings.provider === 'tiktok' || pageToSettings.provider === 'tiktok_ads' ? 'hide' : settingsNegativeMode;
-    const urlToSave = settingsWebSourceEnabled && settingsWebSourceUrl.trim()
+    // Keep the stored URL when the toggle is merely switched off — the reply engine
+    // gates the web path on webSourceEnabled, so retaining it is safe and spares a
+    // retype. Never send an invalid one: the API rejects it and the whole save fails.
+    const urlToSave = urlValidation.valid && settingsWebSourceUrl.trim()
       ? (urlValidation.normalized ?? settingsWebSourceUrl.trim())
       : null;
     setSavingSettings(true);
@@ -2511,16 +2536,22 @@ function PagesPageContent() {
                           max={30}
                           value={customDelayInput}
                           onChange={(e) => {
-                            const val = parseInt(e.target.value);
-                            if (val && val > 0) {
+                            const raw = e.target.value;
+                            const val = parseInt(raw);
+                            if (Number.isNaN(val)) {
+                              // Empty/partial text: drop the saved delay too, or the box shows
+                              // nothing while the previous number is still what gets saved.
+                              // canSaveSettings blocks the save until a number is typed back.
+                              setCustomDelayInput(raw);
+                              setSettingsReplyDelay(0);
+                            } else {
                               // The API clamps replyDelaySeconds to 1800s, so cap the input at
                               // 30 min too — otherwise the UI shows a longer review window than
-                              // is actually applied before the reply gets posted.
-                              const capped = Math.min(30, val);
+                              // is actually applied before the reply gets posted. 0 must go
+                              // through as 0 (instant), not leave a stale delay behind the box.
+                              const capped = Math.min(30, Math.max(0, val));
                               setCustomDelayInput(String(capped));
                               setSettingsReplyDelay(capped * 60);
-                            } else {
-                              setCustomDelayInput(e.target.value);
                             }
                           }}
                           className="w-16 px-2 py-2 font-mono text-[14px] text-center rounded-btn border border-line bg-surface text-ink transition-colors focus:outline-none focus:border-accent focus:ring-2 focus:ring-ring"
