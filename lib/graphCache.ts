@@ -13,7 +13,7 @@
  * and reply context, never moderation or idempotency, so a short TTL is safe.
  */
 
-type Entry = { value: unknown; expires: number };
+type Entry = { value: Promise<unknown>; expires: number };
 
 const store = new Map<string, Entry>();
 const MAX_ENTRIES = 500;
@@ -31,11 +31,21 @@ export async function cachedGraph<T>(
   const now = Date.now();
   const hit = store.get(key);
   if (hit && hit.expires > now) {
-    return hit.value as T;
+    return hit.value as Promise<T>;
   }
 
-  const value = await fetcher();
-  store.set(key, { value, expires: now + ttlMs });
+  // Cache the in-flight promise, not the resolved value: a webhook burst all
+  // lands before the first fetch resolves, so storing only after the await
+  // would let every caller fire its own Graph call — the exact thing this
+  // cache exists to prevent.
+  const value = fetcher();
+  const entry: Entry = { value, expires: now + ttlMs };
+  store.set(key, entry);
+
+  // Don't cache failures — drop the entry so the next caller retries.
+  value.catch(() => {
+    if (store.get(key) === entry) store.delete(key);
+  });
 
   if (store.size > MAX_ENTRIES) {
     // Drop expired entries first, then trim oldest insertions to the cap.

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireCommentOwner } from '@/lib/commentAuth';
-import { logManualAction } from '@/lib/actionLogger';
 
 export async function POST(
   request: NextRequest,
@@ -30,41 +29,33 @@ export async function POST(
 
     const unhideUrl = `https://graph.facebook.com/v24.0/${comment.commentId}`;
 
+    // Facebook uses `is_hidden`, Instagram uses `hide` (same as lib/commentModerator.ts)
+    const unhideParam =
+      comment.connectedPage.provider === 'instagram' ? { hide: false } : { is_hidden: false };
+
     const response = await fetch(unhideUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        is_hidden: false,
+        ...unhideParam,
         access_token: comment.connectedPage.pageAccessToken,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      await logManualAction(
-        id,
-        comment.connectedPage.id,
-        comment.connectedPage.provider as 'facebook' | 'instagram',
-        'MANUAL_HIDE',
-        `Unhide failed: ${errorText.substring(0, 200)}`,
-      );
+      // Deliberately no logManualAction: the only hide-ish ActionType is
+      // MANUAL_HIDE, whose side effect re-stamps hiddenAt and clears
+      // needsReview/lastError — rewriting state for an unhide that never happened.
       return NextResponse.json({ error: 'Failed to unhide comment', details: errorText }, { status: 500 });
     }
 
-    const data = await response.json();
-
-    await logManualAction(
-      id,
-      comment.connectedPage.id,
-      comment.connectedPage.provider as 'facebook' | 'instagram',
-      'MANUAL_HIDE',
-      'Comment unhidden successfully',
-      data,
-    );
-
+    // Only clear hiddenAt: hiding never touched status, so unhiding must not
+    // either — hardcoding 'pending' resurrects replied/ai_generated comments as
+    // unprocessed ones that nothing ever moves out of 'pending' again.
     await prisma.comment.update({
       where: { id },
-      data: { hiddenAt: null, status: 'pending' },
+      data: { hiddenAt: null },
     });
 
     return NextResponse.json({ success: true });

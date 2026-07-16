@@ -34,10 +34,20 @@ function ResetPasswordContent() {
   const validateForm = () => {
     const newErrors: { password?: string; confirmPassword?: string } = {};
 
+    // Mirrors validatePassword in lib/validators.ts (what the API enforces), so the
+    // user isn't told 8 characters is enough and then rejected server-side.
     if (!password) {
       newErrors.password = 'Password is required';
     } else if (password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters';
+    } else if (!/[A-Z]/.test(password)) {
+      newErrors.password = 'Password must contain at least one uppercase letter';
+    } else if (!/[a-z]/.test(password)) {
+      newErrors.password = 'Password must contain at least one lowercase letter';
+    } else if (!/[0-9]/.test(password)) {
+      newErrors.password = 'Password must contain at least one number';
+    } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      newErrors.password = 'Password must contain at least one special character';
     }
 
     if (!confirmPassword) {
@@ -124,7 +134,7 @@ function ResetPasswordContent() {
                   if (errors.password) setErrors({ ...errors, password: undefined });
                 }}
                 error={errors.password}
-                helperText="Must be at least 8 characters"
+                helperText="At least 8 characters, with an uppercase, a lowercase, a number and a special character"
                 disabled={isLoading}
               />
             </FormField>

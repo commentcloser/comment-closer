@@ -5,8 +5,10 @@
  * counts). Attribution is by connectedPageId (and optionally userId); per-user
  * cost is derived by joining AiUsageEvent.connectedPageId -> ConnectedPage.userId.
  *
- * Recording is strictly fire-and-forget: it never blocks or throws in the
- * caller, so a metering failure can never break comment processing.
+ * Recording never throws in the caller, so a metering failure can never break
+ * comment processing. It returns the insert promise (already .catch-ed, so it
+ * never rejects): callers running inside Vercel `after()` must await it, or the
+ * lambda freezes on handler resolve and the INSERT is silently dropped.
  */
 
 import { prisma } from './prisma';
@@ -47,10 +49,10 @@ export function normalizeUsage(usage: unknown): NormalizedUsage {
 export function recordAiUsage(
   ctx: AiUsageContext | undefined,
   data: { kind: AiUsageKind; model: string; usage?: unknown; webSearch?: boolean }
-): void {
+): Promise<void> {
   const usage = normalizeUsage(data.usage);
-  // Fire-and-forget — do not await in callers, never surface errors.
-  void prisma.aiUsageEvent
+  // Never surfaces errors — the returned promise always resolves.
+  return prisma.aiUsageEvent
     .create({
       data: {
         userId: ctx?.userId ?? null,
@@ -66,5 +68,6 @@ export function recordAiUsage(
     })
     .catch((e) => {
       console.error('[AiUsage] failed to record usage:', e instanceof Error ? e.message : String(e));
-    });
+    })
+    .then(() => undefined);
 }

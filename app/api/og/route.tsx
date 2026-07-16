@@ -3,14 +3,26 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
-// Bold v2-branded social share card (1200×630). Defaults to the marketing
-// message; accepts ?title=&description= so legal/other pages can reuse it.
+// Bold v2-branded social share card (1200×630). The copy is picked from this
+// allowlist via ?card=<key> — the route is public and unauthenticated, so echoing
+// caller-supplied ?title=/?description= text let anyone mint an official-looking
+// Comment Closer card on the production domain to lend credibility to a phishing
+// link. Pages that need their own card add a key here rather than passing free text.
+const CARDS = {
+  default: {
+    title: 'Stop losing sales in your ad comments.',
+    description:
+      'AI that automatically hides negative comments and replies to every one on your Facebook, Instagram & TikTok ads.',
+  },
+} as const;
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const title = searchParams.get('title') || 'Stop losing sales in your ad comments.';
-  const description =
-    searchParams.get('description') ||
-    'AI that automatically hides negative comments and replies to every one on your Facebook, Instagram & TikTok ads.';
+  const cardKey = searchParams.get('card') || 'default';
+  // hasOwnProperty, not `in`: `?card=constructor` would otherwise resolve off the prototype
+  const { title, description } = Object.prototype.hasOwnProperty.call(CARDS, cardKey)
+    ? CARDS[cardKey as keyof typeof CARDS]
+    : CARDS.default;
 
   return new ImageResponse(
     (

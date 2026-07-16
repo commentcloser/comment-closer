@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { normalizeEmail } from '@/lib/validators';
 import crypto from 'crypto';
 
 /**
@@ -77,7 +78,9 @@ function verifyDeletionCode(code: string | null): string | null {
 }
 
 // Helper function to delete all user data
-async function deleteUserData(facebookUserId: string): Promise<{ success: boolean; message: string }> {
+async function deleteUserData(
+  facebookUserId: string
+): Promise<{ success: boolean; notFound?: boolean; message: string }> {
   try {
     // Find the user by their Facebook account providerAccountId
     const account = await prisma.account.findFirst({
@@ -93,52 +96,91 @@ async function deleteUserData(facebookUserId: string): Promise<{ success: boolea
     if (!account) {
       return {
         success: false,
+        notFound: true,
         message: `No user found with Facebook ID: ${facebookUserId}`,
       };
     }
 
     const userId = account.userId;
 
-    // Delete all comments
-    const deletedComments = await prisma.comment.deleteMany({
-      where: {
-        connectedPage: {
+    // Collect the page ids up front: AiUsageEvent references them without an FK,
+    // so nothing cascades once the pages themselves are gone.
+    const pages = await prisma.connectedPage.findMany({
+      where: { userId: userId },
+      select: { id: true },
+    });
+    const pageIds = pages.map((p) => p.id);
+
+    // RateLimit and VerificationToken are keyed by email rather than userId, so
+    // they don't cascade either. Keys are built from the normalized email; match
+    // the stored one too in case an OAuth provider supplied it unnormalized.
+    const emails = Array.from(
+      new Set([account.user.email, normalizeEmail(account.user.email)])
+    );
+
+    // Every delete has to land or none of them may: the Account row is the key
+    // Meta's retry looks this user up by, so if a later delete failed after the
+    // Account rows were already committed, the retry would find nothing and
+    // confirm a deletion that never happened. Rolling back keeps the Account row
+    // so the retry re-runs the whole deletion, and "not found" can then only mean
+    // there was genuinely nothing to delete.
+    const [
+      deletedComments,
+      deletedPages,
+      deletedAccounts,
+      deletedSessions,
+      deletedUsageEvents,
+    ] = await prisma.$transaction([
+      // Delete all comments
+      prisma.comment.deleteMany({
+        where: {
+          connectedPage: {
+            userId: userId,
+          },
+        },
+      }),
+      // Delete all connected pages (this will cascade delete comments)
+      prisma.connectedPage.deleteMany({
+        where: {
           userId: userId,
         },
-      },
-    });
-
-    // Delete all connected pages (this will cascade delete comments)
-    const deletedPages = await prisma.connectedPage.deleteMany({
-      where: {
-        userId: userId,
-      },
-    });
-
-    // Delete all accounts (OAuth accounts)
-    const deletedAccounts = await prisma.account.deleteMany({
-      where: {
-        userId: userId,
-      },
-    });
-
-    // Delete all sessions
-    const deletedSessions = await prisma.session.deleteMany({
-      where: {
-        userId: userId,
-      },
-    });
-
-    // Finally, delete the user (this will cascade delete any remaining related data)
-    await prisma.user.delete({
-      where: {
-        id: userId,
-      },
-    });
+      }),
+      // Delete all accounts (OAuth accounts)
+      prisma.account.deleteMany({
+        where: {
+          userId: userId,
+        },
+      }),
+      // Delete all sessions
+      prisma.session.deleteMany({
+        where: {
+          userId: userId,
+        },
+      }),
+      // AiUsageEvent is a plain log with no FK/cascade, so its userId/connectedPageId
+      // rows outlive the User delete below unless they are removed explicitly.
+      prisma.aiUsageEvent.deleteMany({
+        where: {
+          OR: [{ userId: userId }, { connectedPageId: { in: pageIds } }],
+        },
+      }),
+      prisma.rateLimit.deleteMany({
+        where: { key: { in: emails.flatMap((e) => [`login:${e}`, `forgot:${e}`]) } },
+      }),
+      prisma.verificationToken.deleteMany({
+        where: { identifier: { in: emails } },
+      }),
+      // Finally, delete the user (this will cascade delete any remaining related data)
+      prisma.user.delete({
+        where: {
+          id: userId,
+        },
+      }),
+    ]);
 
     return {
       success: true,
-      message: `Successfully deleted all data for user ${userId} (Facebook ID: ${facebookUserId}). Deleted: ${deletedComments.count} comments, ${deletedPages.count} pages, ${deletedAccounts.count} accounts, ${deletedSessions.count} sessions.`,
+      message: `Successfully deleted all data for user ${userId} (Facebook ID: ${facebookUserId}). Deleted: ${deletedComments.count} comments, ${deletedPages.count} pages, ${deletedAccounts.count} accounts, ${deletedSessions.count} sessions, ${deletedUsageEvents.count} AI usage events.`,
     };
   } catch (error: any) {
     return {
@@ -200,7 +242,11 @@ export async function POST(request: NextRequest) {
     // Delete user data
     const result = await deleteUserData(facebookUserId);
 
-    if (!result.success) {
+    // Nothing to delete is a fulfilled request, not a server error: Meta's callback
+    // contract expects a {url, confirmation_code} response, and a persistent 5xx
+    // gets retried and counts against the app's data-deletion compliance. Reserve
+    // the 500 for real failures so Meta retries only those.
+    if (!result.success && !result.notFound) {
       console.error(`[Data Deletion] ${result.message}`);
       return NextResponse.json(
         { error: result.message },

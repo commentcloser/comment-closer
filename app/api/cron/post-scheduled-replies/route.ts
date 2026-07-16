@@ -16,6 +16,34 @@ async function processOneReply(comment: any): Promise<'posted' | 'failed' | 'ski
   const { connectedPage } = comment;
   const provider: string = connectedPage.provider;
 
+  // Claim the reply before anything external. The comment row was only mutated
+  // after a successful post, so a serverless timeout between the API call and
+  // that write left the row still due and the next tick posted the same reply
+  // again. Clearing scheduledPostAt is the claim (the due-query requires it), so
+  // exactly one tick can ever post it — losing the claim fails closed (no post)
+  // rather than duplicating a public reply.
+  const claim = await prisma.comment.updateMany({
+    where: { id: comment.id, replied: false, scheduledPostAt: { not: null } },
+    data: { scheduledPostAt: null },
+  });
+  if (claim.count === 0) {
+    console.log(`[Cron] SKIP ${comment.id} - already claimed by another tick`);
+    return 'skipped';
+  }
+
+  // The page can change state during the reply delay (up to 30 min): never post
+  // under a page the user has since disconnected or whose auto-reply master
+  // switch is now off. Only Facebook was accidentally covered here (disconnect
+  // blanks pageAccessToken); TikTok/TikTok-Ads keep a working token.
+  if (connectedPage.disconnectedAt || !connectedPage.autoReplyEnabled) {
+    console.log(`[Cron] SKIP ${comment.id} - page disconnected or auto-reply disabled`);
+    await prisma.comment.update({
+      where: { id: comment.id },
+      data: { status: 'ai_failed', aiError: 'Page disconnected or auto-reply disabled at post time' },
+    });
+    return 'skipped';
+  }
+
   if (!comment.aiGeneratedReply) {
     console.log(`[Cron] SKIP ${comment.id} - missing reply`);
     await prisma.comment.update({
@@ -239,6 +267,8 @@ export async function GET(request: Request) {
           pageAccessToken: true,
           provider: true,
           customReplyPrompt: true,
+          disconnectedAt: true,
+          autoReplyEnabled: true,
         },
       },
     },

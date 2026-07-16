@@ -46,6 +46,7 @@ export default function AdminUserDetailPage() {
   const [user, setUser] = useState<UserDetail | null>(null);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const userId = params.userId as string;
 
@@ -59,8 +60,13 @@ export default function AdminUserDetailPage() {
           setActivity(data.activity);
         } else if (res.status === 404) {
           router.push('/admin/users');
+        } else {
+          // Only a 404 means the user is gone; anything else is a load failure
+          // and must not render as "User not found".
+          setError(true);
         }
       } catch {
+        setError(true);
       } finally {
         setLoading(false);
       }
@@ -73,6 +79,22 @@ export default function AdminUserDetailPage() {
       <AdminLayout title={t('admin.userDetail.title', 'User Details')}>
         <div className="flex items-center justify-center py-20">
           <div className="size-8 animate-spin rounded-full border-2 border-line border-t-accent"></div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <AdminLayout title={t('admin.userDetail.title', 'User Details')}>
+        <div className="text-center py-20 space-y-3">
+          <p className="text-ink-muted">{t('admin.userDetail.loadError', 'Could not load this user.')}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center gap-2 rounded-btn border border-line px-3 py-1.5 text-[14px] text-ink hover:bg-surface-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+          >
+            {t('admin.userDetail.retry', 'Retry')}
+          </button>
         </div>
       </AdminLayout>
     );

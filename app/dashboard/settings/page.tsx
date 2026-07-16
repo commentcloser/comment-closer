@@ -176,6 +176,8 @@ function SettingsPageContent() {
 
   const disconnectTiktokAdsAccount = async (id: string) => {
     setDisconnectingTiktokAds(id);
+    setError(null);
+    setSuccess(null);
     try {
       const res = await fetch('/api/tiktok-ads/disconnect', {
         method: 'POST',
@@ -183,7 +185,9 @@ function SettingsPageContent() {
         body: JSON.stringify({ pageId: id }),
       });
       if (res.ok) {
-        setTiktokAdsAccounts((prev) => prev.filter((a) => a.id !== id));
+        // Disconnect is a SOFT pause (sets disconnectedAt) and this list is fetched with
+        // includeDisconnected=true — re-fetch so the row shows as Paused instead of vanishing.
+        await fetchTiktokAdsAccounts();
         setSuccess(t('dashboard.settingsPage.successTiktokAdsDisconnected', 'TikTok Ads account disconnected.'));
       } else {
         setError('Failed to disconnect TikTok Ads account. Please try again.');
@@ -197,6 +201,8 @@ function SettingsPageContent() {
 
   const disconnectTiktokAccount = async (id: string) => {
     setDisconnectingTiktok(id);
+    setError(null);
+    setSuccess(null);
     try {
       const res = await fetch('/api/tiktok/disconnect', {
         method: 'POST',
@@ -204,7 +210,9 @@ function SettingsPageContent() {
         body: JSON.stringify({ pageId: id }),
       });
       if (res.ok) {
-        setTiktokAccounts((prev) => prev.filter((a) => a.id !== id));
+        // Disconnect is a SOFT pause (sets disconnectedAt) and this list is fetched with
+        // includeDisconnected=true — re-fetch so the row shows as Paused instead of vanishing.
+        await fetchTiktokAccounts();
         setSuccess(t('dashboard.settingsPage.successTiktokDisconnected', 'TikTok account disconnected.'));
       } else {
         setError('Failed to disconnect TikTok account. Please try again.');
@@ -221,17 +229,14 @@ function SettingsPageContent() {
     // Only fetch if:
     // 1. We have a user ID
     // 2. We haven't fetched for this user yet (ref will be null on full page refresh)
-    // 3. We don't already have account data (prevents refetch on client-side navigation)
     if (currentUserId && lastFetchedUserIdRef.current !== currentUserId) {
-      // Only fetch if we don't have data yet (on full page refresh, metaAccount will be null)
-      // This prevents refetching when navigating back via client-side navigation
-      if (metaAccount === null) {
-        lastFetchedUserIdRef.current = currentUserId;
-        fetchMetaAccount();
-      } else {
-        // User changed but we have data - just update the ref
-        lastFetchedUserIdRef.current = currentUserId;
-      }
+      // Always fetch on a user-id change. The ref is per-instance, so client-side
+      // navigation already remounts with a null ref and null metaAccount; the only way
+      // to get here holding data is a genuine user switch, and keeping the previous
+      // user's card on screen would let Disconnect act on state never displayed.
+      lastFetchedUserIdRef.current = currentUserId;
+      setMetaAccount(null);
+      fetchMetaAccount();
     }
   }, [session?.user?.id]);
 
@@ -241,7 +246,15 @@ function SettingsPageContent() {
     try {
       const response = await fetch('/api/facebook/pages');
       const data = await response.json();
-      
+
+      // A 401/500 tells us nothing about the account: rendering it as "Connected with
+      // 0 pages" hid dead tokens and transient failures behind a healthy-looking card.
+      if (!response.ok) {
+        setError(data.error || 'Failed to load account information');
+        setMetaAccount(null);
+        return;
+      }
+
       // Check if user has a Facebook/Meta account connected
       if (data.pages && data.pages.length > 0) {
         setMetaAccount({
@@ -259,7 +272,7 @@ function SettingsPageContent() {
           pagesCount: data.connectedPages.filter((p: any) => p.provider === 'facebook').length,
           instagramCount: data.connectedPages.filter((p: any) => p.provider === 'instagram').length,
         });
-      } else if (!data.error || !data.error.includes('No Facebook account connected')) {
+      } else if (!data.error) {
         // We have a Meta account but it has 0 pages/accounts
         setMetaAccount({
           provider: 'facebook',

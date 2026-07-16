@@ -53,6 +53,11 @@ export async function GET(request: NextRequest) {
       maxAge: 60 * 10,
       path: '/',
     });
+  } else {
+    // Clear any leftover value from an earlier aborted flow (the callback only
+    // deletes it on some paths), otherwise this connect redirects back to that
+    // flow's page instead of the one the user actually started from.
+    cookieStore.delete('tiktok_return_to');
   }
 
   const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';

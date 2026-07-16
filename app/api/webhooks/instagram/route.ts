@@ -81,11 +81,16 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
+          // Only ACTIVE pages: a disconnected row keeps its comments for re-add
+          // but must never ingest/moderate/reply again — and after the same IG
+          // account is connected by another user, an unfiltered match could
+          // route the new owner's comments to the old tenant. Matches the FB
+          // (route.ts:79) and TikTok (route.ts:170) webhooks. (SEC-x)
           connectedPage = await prisma.connectedPage.findFirst({
-            where: { instagramUserId: String(instagramBusinessAccountId), provider: 'instagram' },
+            where: { instagramUserId: String(instagramBusinessAccountId), provider: 'instagram', disconnectedAt: null },
             include: { user: true },
           }) ?? await prisma.connectedPage.findFirst({
-            where: { pageId: String(instagramBusinessAccountId), provider: 'instagram' },
+            where: { pageId: String(instagramBusinessAccountId), provider: 'instagram', disconnectedAt: null },
             include: { user: true },
           });
 
@@ -110,28 +115,54 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * Meta reports webhook times as unix SECONDS (the FB handler multiplies
+ * created_time by 1000). Feeding seconds straight to `new Date()` dates the
+ * comment to 1970, which silently defeats the decision engine's cooldown and
+ * first-comment rules, so normalize seconds/ms/ISO and fall back to now for
+ * anything unparseable.
+ */
+function parseWebhookTimestamp(value: unknown): Date {
+  const isNumeric = typeof value === 'number' || (typeof value === 'string' && /^\d+$/.test(value.trim()));
+  if (isNumeric) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return new Date();
+    // Below 1e12 the value can only be seconds — as ms it would be back in 2001.
+    return new Date(n < 1e12 ? n * 1000 : n);
+  }
+  if (typeof value === 'string') {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return new Date();
+}
+
 async function handleCommentChange(commentData: any, connectedPage: any) {
   try {
     const commentId = commentData.id;
     const mediaId = commentData.media?.id;
     const text = commentData.text || '';
+    const hasAuthor = !!(commentData.from?.username || commentData.from?.id);
     const username = commentData.from?.username || commentData.from?.id || 'Unknown';
-    const timestamp = commentData.timestamp ? new Date(commentData.timestamp) : new Date();
+    const timestamp = parseWebhookTimestamp(commentData.timestamp);
     const mediaProductType = commentData.media?.media_product_type;
 
     if (!commentId || !mediaId) return;
 
     const authorId = commentData.from?.id ? String(commentData.from.id) : null;
 
-    // Check if comment is from the page itself. Match by ID first: the page's
-    // own comments echo back with from.id equal to the IG Business Account ID
-    // this webhook is keyed on. The username comparison alone is unreliable —
-    // pageName often stores the display name, not the handle — and this check
-    // is load-bearing loop protection now that nested replies get auto-replies.
+    // Check if comment is from the page itself. When Meta identifies the author,
+    // from.id is authoritative — the page's own comments echo back with from.id
+    // equal to the IG Business Account ID this webhook is keyed on, so trust it
+    // ALONE. The pageName comparison is only a last-resort fallback for
+    // unidentified authors: pageName stores the display name, not the handle, so
+    // any third party can hold it as their username and would otherwise be
+    // misread as us and silently dropped from the whole pipeline.
     const igAccountId = String(connectedPage.instagramUserId ?? connectedPage.pageId);
     const isPageComment =
-      (authorId !== null && authorId === igAccountId) ||
-      username.toLowerCase() === connectedPage.pageName.toLowerCase();
+      authorId !== null
+        ? authorId === igAccountId
+        : username.toLowerCase() === connectedPage.pageName.toLowerCase();
 
     // Detect if this is a reply to another comment (has parent_id in webhook payload)
     const parentCommentId = commentData.parent_id || null;
@@ -192,8 +223,25 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
       }
     }
     
+    // A nested reply first delivered without `from` is created 'ignored' (loop
+    // protection — an unidentified author could be us). If a later delivery names
+    // a real author the exclusion no longer applies, so put the row back in the
+    // pipeline. Deliberately narrow: rows ignored for ANY other reason (negative
+    // sentiment, moderation, manual ignore, already replied) must stay ignored.
+    const exclusionLifted =
+      !!existingComment &&
+      existingComment.authorId === null &&
+      authorId !== null &&
+      !isAutomationExcluded &&
+      existingComment.status === 'ignored' &&
+      !existingComment.replied &&
+      existingComment.sentiment !== 'negative' &&
+      existingComment.automationStatus === null &&
+      existingComment.hiddenAt === null &&
+      existingComment.deletedAt === null;
+
     // Upsert the comment
-    const savedComment = await prisma.comment.upsert({
+    let savedComment = await prisma.comment.upsert({
       where: {
         pageId_commentId: {
           pageId: connectedPage.id,
@@ -202,7 +250,11 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
       },
       update: {
         message: text,
-        authorName: username,
+        // Only touch the author when Meta actually identified them — a redelivery
+        // without `from` must not downgrade a known author back to 'Unknown', and
+        // an author-less row must be able to gain its authorId (cooldown/
+        // first-comment rules key off it).
+        ...(hasAuthor ? { authorName: username, ...(authorId ? { authorId } : {}) } : {}),
         isFromAd: isFromAd,
         postId: mediaId,
         source: source,
@@ -229,6 +281,20 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
         status: isAutomationExcluded ? 'ignored' : 'pending',
       },
     });
+
+    // Lift the exclusion atomically, never as part of the upsert: `where` pins
+    // the source status so exactly one racing delivery can win, and a row a
+    // concurrent delivery already claimed ('ai_generating') or replied to can
+    // never be re-armed back into 'pending' behind the claim-lock below.
+    if (exclusionLifted) {
+      const lifted = await prisma.comment.updateMany({
+        where: { id: savedComment.id, status: 'ignored', replied: false },
+        data: { status: 'pending' },
+      });
+      if (lifted.count === 1) {
+        savedComment = { ...savedComment, status: 'pending' };
+      }
+    }
 
     // AI sentiment analysis (neutral, positive, negative) - skip for page comments and replies
     // Media-only comments (GIF, sticker, photo, video) have empty text — mark as ignored
@@ -329,7 +395,7 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
           autoReplyEnabled: connectedPage.autoReplyEnabled,
           autoReplyPositive: connectedPage.autoReplyPositive,
           autoReplyNeutral: connectedPage.autoReplyNeutral,
-        });
+        }, text);
 
         if (shouldReply) {
           await generateAndPostAutoReply(savedComment.id, sentiment, text, username, connectedPage, mediaId);
@@ -376,7 +442,7 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
         autoReplyEnabled: connectedPage.autoReplyEnabled,
         autoReplyPositive: connectedPage.autoReplyPositive,
         autoReplyNeutral: connectedPage.autoReplyNeutral,
-      });
+      }, text);
 
       if (shouldReply) {
         await generateAndPostAutoReply(savedComment.id, savedComment.sentiment, text, username, connectedPage, mediaId);

@@ -75,6 +75,13 @@ export default function Home() {
   const [currentLanguage, setCurrentLanguage] = useState<string>('en');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [flipOn, setFlipOn] = useState(false);
+  const [year, setYear] = useState<number | null>(null);
+
+  // The page is statically prerendered, so the footer year is frozen at build
+  // time. Recompute it on the client so it stays correct across a New Year
+  // boundary; the null -> number transition guarantees the re-render (a
+  // same-value setState would bail out and leave the stale server text).
+  useEffect(() => setYear(new Date().getFullYear()), []);
 
   // Track the active i18n language for the EN/EL toggle's active state.
   useEffect(() => {
@@ -1375,7 +1382,7 @@ export default function Home() {
           </div>
           <div className="mt-4 pt-6 border-t border-line flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="font-mono text-[12px] text-ink-muted">
-              © {new Date().getFullYear()} {t('landing.logo')}. All rights reserved.
+              © <span suppressHydrationWarning>{year ?? new Date().getFullYear()}</span> {t('landing.logo')}. All rights reserved.
             </div>
           </div>
         </div>

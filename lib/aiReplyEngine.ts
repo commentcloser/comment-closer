@@ -96,10 +96,26 @@ export interface AIReplyResult {
 export function isPricingQuestion(commentText: string): boolean {
   if (!commentText?.trim()) return false;
   const lower = commentText.trim().toLowerCase();
-  const greek = /τιμή|τιμές|κόστος|χρέωση|πόσο/i;
+  const greek = /τιμή|τιμές|κόστος|χρέωση/i;
   const english = /\b(price|pricing|cost|how much)\b/i;
-  const symbol = /€/;
-  return greek.test(commentText) || english.test(lower) || symbol.test(commentText);
+  // 'πόσο' also means 'how [adjective]' ("Πόσο όμορφο!") and '€' shows up in
+  // praise ("το πήρα 30€ και είναι τέλειο"), so neither triggers on its own —
+  // both used to drag such comments into the price path and answer with a price.
+  const greekHowMuch = /(πόσο|ποσο)\s+(κάνει|κανει|κοστίζει|κοστιζει|πάει|παει|έχει|εχει)/i;
+  // A question mark somewhere in the comment is not enough — it re-armed the bare
+  // triggers against the whole text ("Πόσο όμορφο! Πού το πήρες;" is praise plus
+  // an unrelated question). The mark has to follow the trigger itself.
+  const bareHowMuch = /(πόσο|ποσο)\s*[?;;]/i;
+  // ';' (U+003B) and ';' (U+037E) are question marks in Greek text only; in
+  // Latin script ';' is an ordinary semicolon ("Bought it for 30€; love it!").
+  const amountQuestion = /[Ͱ-Ͽ]/.test(commentText) ? /€\s*[?;;]/ : /€\s*\?/;
+  return (
+    greek.test(commentText) ||
+    greekHowMuch.test(commentText) ||
+    english.test(lower) ||
+    bareHowMuch.test(commentText) ||
+    amountQuestion.test(commentText)
+  );
 }
 
 const WEB_RESPONSE_TIMEOUT_MS = 28000;
@@ -107,13 +123,20 @@ const WEB_RESPONSE_TIMEOUT_MS = 28000;
 // Language-aware fallback, posted when the web-search / price path fails.
 // Never post Greek to a non-Greek commenter (AI-7): resolve the language
 // (detecting from the comment when 'auto') and pick the matching copy.
-function webFallbackMessage(language: string, url: string, commentText: string): string {
+function webFallbackMessage(language: string, url: string, commentText: string, maxLength: number): string {
   const lang = (language || 'auto').toLowerCase();
   const resolved = lang === 'auto' || lang === '' ? detectCommentLanguage(commentText) : lang;
-  if (resolved.startsWith('el')) {
-    return `Μπορείτε να δείτε τις ενημερωμένες τιμές και πληροφορίες στο ${url} ή να μας στείλετε μήνυμα.`;
-  }
-  return `You can find up-to-date prices and information at ${url}, or send us a message.`;
+  const isGreek = resolved.startsWith('el');
+  const withUrl = isGreek
+    ? `Μπορείτε να δείτε τις ενημερωμένες τιμές και πληροφορίες στο ${url} ή να μας στείλετε μήνυμα.`
+    : `You can find up-to-date prices and information at ${url}, or send us a message.`;
+  // Drop the URL rather than let cleanReplyText truncate it: a cut mid-URL
+  // posts a dead link publicly (TikTok clamps maxLength to 150, and copy+URL
+  // clears that easily).
+  if (withUrl.length <= Math.min(maxLength, HARD_MAX_LENGTH)) return withUrl;
+  return isGreek
+    ? 'Στείλτε μας μήνυμα και θα σας ενημερώσουμε για τις τιμές και τις πληροφορίες.'
+    : 'Send us a message and we will share up-to-date prices and information with you.';
 }
 
 /** System-level output rules (not editable by user). Enforced in all reply generation. */
@@ -151,8 +174,10 @@ function cleanReplyText(reply: string, maxLength: number): string {
     if (lastSentence > limit * 0.5) {
       cleaned = segment.substring(0, lastSentence + 1);
     } else {
-      // Cut at last word boundary
-      const lastSpace = segment.lastIndexOf(' ');
+      // Cut at last word boundary, leaving room for the '...' — appending it
+      // after a cut at `limit` returned limit+2 chars and blew TikTok's hard
+      // 150-char cap, so the reply post failed instead of being trimmed.
+      const lastSpace = segment.lastIndexOf(' ', limit - 3);
       cleaned = lastSpace > 0 ? segment.substring(0, lastSpace) + '...' : segment;
     }
   }
@@ -257,7 +282,7 @@ Do not write any natural language explanation. Never invent a price. If no price
       { signal: controller.signal, timeout: WEB_RESPONSE_TIMEOUT_MS }
     );
     clearTimeout(timeoutId);
-    recordAiUsage(ctx, { kind: 'reply', model: AI_REPLY_MODEL, usage: (response as { usage?: unknown }).usage, webSearch: true });
+    await recordAiUsage(ctx, { kind: 'reply', model: AI_REPLY_MODEL, usage: (response as { usage?: unknown }).usage, webSearch: true });
     const rawOutput = (response as { output_text?: string }).output_text ?? '';
     const generationTimeMs = Date.now() - startTime;
     const result = parsePriceExtractionResponse(rawOutput);
@@ -327,10 +352,12 @@ async function generateReplyWithExtractedPrice(
       reasoning_effort: AI_REPLY_EFFORT,
       max_completion_tokens: AI_REPLY_MAX_TOKENS,
     } as any), { label: 'reply' });
-    recordAiUsage(ctx, { kind: 'reply', model: AI_REPLY_MODEL, usage: completion.usage, webSearch: true });
+    // webSearch: false — this is a plain chat completion with no tools; only the
+    // preceding runStructuredPriceSearch call incurs the web-search surcharge.
+    await recordAiUsage(ctx, { kind: 'reply', model: AI_REPLY_MODEL, usage: completion.usage, webSearch: false });
     const generationTimeMs = Date.now() - startTime;
     const rawReply = completion.choices[0]?.message?.content?.trim();
-    const reply = cleanReplyText(rawReply || webFallbackMessage(language, webSourceUrl, commentText), maxLength);
+    const reply = cleanReplyText(rawReply || webFallbackMessage(language, webSourceUrl, commentText, maxLength), maxLength);
     console.info(`${LOG_PREFIX}${rid}     Reply-with-price done in ${generationTimeMs}ms`);
     return {
       success: true,
@@ -345,7 +372,7 @@ async function generateReplyWithExtractedPrice(
     };
   } catch (err) {
     const generationTimeMs = Date.now() - startTime;
-    const fallbackReply = cleanReplyText(webFallbackMessage(language, webSourceUrl, commentText), maxLength);
+    const fallbackReply = cleanReplyText(webFallbackMessage(language, webSourceUrl, commentText, maxLength), maxLength);
     console.info(`${LOG_PREFIX}${rid}     Reply-with-price failed, using fallback: ${err instanceof Error ? err.message : String(err)}`);
     return {
       success: true,
@@ -405,7 +432,7 @@ async function generateWebSearchReply(
     'Return ONLY the reply text, no quotes or extra explanation.',
   ].filter(Boolean).join('\n');
 
-  const fallbackReply = webFallbackMessage(language, webSourceUrl, commentText);
+  const fallbackReply = webFallbackMessage(language, webSourceUrl, commentText, maxLength);
 
   console.info(`${LOG_PREFIX}${rid} 4/5 Calling OpenAI Responses API (web_search, domain: ${domain})...`);
   try {
@@ -425,7 +452,7 @@ async function generateWebSearchReply(
       { signal: controller.signal, timeout: WEB_RESPONSE_TIMEOUT_MS }
     );
     clearTimeout(timeoutId);
-    recordAiUsage(ctx, { kind: 'reply', model: AI_REPLY_MODEL, usage: (response as { usage?: unknown }).usage, webSearch: true });
+    await recordAiUsage(ctx, { kind: 'reply', model: AI_REPLY_MODEL, usage: (response as { usage?: unknown }).usage, webSearch: true });
 
     const generationTime = Date.now() - startTime;
     const rawText = (response as { output_text?: string }).output_text ?? '';
@@ -437,7 +464,7 @@ async function generateWebSearchReply(
       console.info(`${LOG_PREFIX}${rid}     Web search OK: got ${rawText.length} chars, ${generationTime}ms`);
     }
 
-    const reply = cleanReplyText(rawText.trim() || fallbackReply, maxLength);
+    const reply = cleanReplyText(hasRealContent ? rawText.trim() : fallbackReply, maxLength);
     return {
       success: true,
       reply,
@@ -574,7 +601,7 @@ export async function generateAIReply(
         }
 
         // No price found or parse failed → safe fallback, never invent
-        const fallbackReply = cleanReplyText(webFallbackMessage(config.language, fallbackUrl!, config.commentText), config.maxLength);
+        const fallbackReply = cleanReplyText(webFallbackMessage(config.language, fallbackUrl!, config.commentText, config.maxLength), config.maxLength);
         const totalMs = Date.now() - startTime;
         console.info(`${LOG_PREFIX}${rid} 5/5 Done (structured price fallback). web_used=true, price_found=false, no invention`);
         return {
@@ -684,7 +711,7 @@ export async function generateAIReply(
       max_completion_tokens: AI_REPLY_MAX_TOKENS,
     } as any), { label: 'reply' });
 
-    recordAiUsage(ctx, { kind: 'reply', model: AI_REPLY_MODEL, usage: completion.usage });
+    await recordAiUsage(ctx, { kind: 'reply', model: AI_REPLY_MODEL, usage: completion.usage });
 
     const generationTime = Date.now() - startTime;
     const reply = completion.choices[0]?.message?.content?.trim();
@@ -735,11 +762,15 @@ export async function generateAIReply(
   }
 }
 
+// Kept in sync with the bare negations in lib/openai.ts's shortNeutral list.
+const BARE_NEGATIONS = ['no', 'nope', 'όχι', 'oxi', 'οχι'];
+
 /**
  * Check if auto-reply should be generated for a comment
  * 
  * @param sentiment - Comment sentiment
  * @param pageSettings - ConnectedPage auto-reply settings
+ * @param commentText - Raw comment text; when given, bare negations are skipped
  * @returns true if should auto-reply, false otherwise
  */
 export function shouldAutoReply(
@@ -748,13 +779,26 @@ export function shouldAutoReply(
     autoReplyEnabled: boolean;
     autoReplyPositive: boolean;
     autoReplyNeutral: boolean;
-  }
+  },
+  // Required, not optional: the bare-negation guard below is the only thing
+  // stopping a neutral-classified "No" from earning a public reply, so a new
+  // call site that forgets it must fail the build, not fail silently.
+  commentText: string
 ): boolean {
   if (!pageSettings.autoReplyEnabled) {
     return false;
   }
   
   if (!sentiment) {
+    return false;
+  }
+  
+  // A bare "No"/"Όχι" is classified neutral rather than negative (lib/openai.ts)
+  // so delete-mode pages stop permanently deleting what is usually just an answer
+  // to another commenter. Neutral is auto-reply-eligible though, so without this
+  // guard the same comment now earns a warm public reply under a customer's "No".
+  // It carries no sentiment either way: classify it, never answer it.
+  if (commentText && BARE_NEGATIONS.includes(commentText.trim().toLowerCase().replace(/[!.]+$/, ''))) {
     return false;
   }
   

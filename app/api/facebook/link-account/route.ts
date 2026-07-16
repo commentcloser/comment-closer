@@ -47,70 +47,18 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Find the most recently created Facebook account that's not linked to the current user
-    // This should be the account that was just created by the OAuth flow
-    // We'll find accounts where the user was created recently (within last 10 minutes)
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-    
-    const facebookAccount = await prisma.account.findFirst({
-      where: {
-        provider: 'facebook',
-        userId: {
-          not: currentUserId, // Not already linked to current user
-        },
-        user: {
-          createdAt: {
-            gte: tenMinutesAgo, // Created recently (likely from OAuth)
-          },
-        },
-      },
-      include: {
-        user: {
-          include: {
-            accounts: true,
-            sessions: true,
-          },
-        },
-      },
-    });
-
-    if (!facebookAccount) {
-      return NextResponse.json({ 
-        error: 'No recent Facebook account found to link. Please try connecting Facebook again.' 
-      }, { status: 404 });
-    }
-
-    // Store the old user ID before updating
-    const oldUserId = facebookAccount.userId;
-    const oldUser = facebookAccount.user;
-
-    // Link the Facebook account to the current user
-    await prisma.account.update({
-      where: {
-        id: facebookAccount.id,
-      },
-      data: {
-        userId: currentUserId,
-      },
-    });
-
-    // If the Facebook account was linked to a different user (the one created by OAuth),
-    // and that user has no other accounts, we can delete that user
-    // Only delete the old user if they have no other accounts (besides the one we just moved)
-    // and no active sessions
-    if (oldUser && oldUser.accounts.length === 1 && oldUser.sessions.length === 0) {
-      try {
-        // The account will be deleted automatically due to cascade, so we can delete the user
-        await prisma.user.delete({
-          where: { id: oldUserId },
-        });      } catch (error) {
-      }
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Facebook account linked successfully' 
-    });
+    // SECURITY: this route no longer re-assigns Account rows. It used to claim
+    // any Facebook account whose owner was created in the last 10 minutes - the
+    // caller proves no ownership of it, so any logged-in user could poll this
+    // endpoint and steal the account (and its access token) of whoever had just
+    // signed up with Facebook, and have that victim's user row deleted too.
+    // The real linking is done by the Facebook signIn callback (lib/auth.ts):
+    // it knows the exact providerAccountId that was just authenticated and the
+    // linking_user_id cookie set from the session before the OAuth redirect.
+    // No proof of ownership is available here, so fail closed.
+    return NextResponse.json({
+      error: 'No recent Facebook account found to link. Please try connecting Facebook again.'
+    }, { status: 404 });
   } catch (error) {    return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

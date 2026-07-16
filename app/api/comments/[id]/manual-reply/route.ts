@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireCommentOwner } from '@/lib/commentAuth';
 import {
+  createActionLog,
   logManualAction,
   isActionSafe,
   updateCommentManualAction
@@ -79,49 +80,12 @@ export async function POST(
     const replyUrl = isInstagram
       ? `https://graph.facebook.com/v24.0/${comment.commentId}/replies`
       : `https://graph.facebook.com/v24.0/${comment.commentId}/comments`;
-    
-    const response = await fetch(replyUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: message.trim(),
-        access_token: comment.connectedPage.pageAccessToken,
-      }),
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      
-      // Log failure
-      await logManualAction(
-        commentDbId,
-        comment.connectedPage.id,
-        comment.connectedPage.provider as 'facebook' | 'instagram',
-        'MANUAL_REPLY',
-        `Manual reply failed: ${errorText.substring(0, 200)}`
-      );
-      
-      return NextResponse.json(
-        { error: 'Failed to post reply', details: errorText },
-        { status: 500 }
-      );
-    }
-    
-    const replyData = await response.json();
-    
-    // Log success
-    await logManualAction(
-      commentDbId,
-      comment.connectedPage.id,
-      comment.connectedPage.provider as 'facebook' | 'instagram',
-      'MANUAL_REPLY',
-      'Manual reply posted successfully',
-      replyData
-    );
-    
-    // Update comment
-    await prisma.comment.update({
-      where: { id: commentDbId },
+
+    // The safety check above is read-then-act, so a double-click would let both
+    // requests post. Claim the row BEFORE posting; it is rolled back below if
+    // Meta rejects the reply.
+    const claim = await prisma.comment.updateMany({
+      where: { id: commentDbId, replied: false },
       data: {
         replied: true,
         repliedAt: new Date(),
@@ -131,13 +95,109 @@ export async function POST(
         needsReview: false,
       },
     });
-    
-    return NextResponse.json({
-      success: true,
-      replyId: replyData.id,
-      message: 'Reply posted successfully',
-    });
-    
+
+    if (claim.count === 0) {
+      return NextResponse.json(
+        { error: 'Already replied' },
+        { status: 409 }
+      );
+    }
+
+    // Nothing was posted — put the row back the way it was. logManualAction()
+    // must not be used for the failure paths: it marks the comment replied.
+    const releaseClaim = async (): Promise<void> => {
+      await prisma.comment.update({
+        where: { id: commentDbId },
+        data: {
+          replied: false,
+          repliedAt: comment.repliedAt,
+          replyMessage: comment.replyMessage,
+          automationStatus: comment.automationStatus,
+          status: comment.status,
+          needsReview: comment.needsReview,
+        },
+      });
+    };
+
+    // The claim is held from here on, so every exit below has to hand it back —
+    // a throwing fetch (DNS, socket hang-up, timeout) would otherwise strand the
+    // row as 'replied' with a reply that was never posted, and isActionSafe()
+    // would then refuse every retry with 'Already replied'.
+    let posted = false;
+
+    try {
+      const response = await fetch(replyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: message.trim(),
+          access_token: comment.connectedPage.pageAccessToken,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+
+        await releaseClaim();
+
+        // Log failure
+        await createActionLog({
+          commentId: commentDbId,
+          connectedPageId: comment.connectedPage.id,
+          provider: comment.connectedPage.provider as 'facebook' | 'instagram',
+          actionType: 'MANUAL_REPLY',
+          status: 'FAILED',
+          reason: `Manual reply failed: ${errorText.substring(0, 200)}`,
+          errorMessage: errorText.substring(0, 200),
+        });
+
+        return NextResponse.json(
+          { error: 'Failed to post reply', details: errorText },
+          { status: 500 }
+        );
+      }
+
+      // Meta accepted the reply: the claim is now real and must stand even if the
+      // bookkeeping below throws.
+      posted = true;
+
+      const replyData = await response.json();
+
+      // Log success
+      await logManualAction(
+        commentDbId,
+        comment.connectedPage.id,
+        comment.connectedPage.provider as 'facebook' | 'instagram',
+        'MANUAL_REPLY',
+        'Manual reply posted successfully',
+        replyData
+      );
+
+      return NextResponse.json({
+        success: true,
+        replyId: replyData.id,
+        message: 'Reply posted successfully',
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to post reply';
+      if (!posted) {
+        await releaseClaim();
+      }
+      await createActionLog({
+        commentId: commentDbId,
+        connectedPageId: comment.connectedPage.id,
+        provider: comment.connectedPage.provider as 'facebook' | 'instagram',
+        actionType: 'MANUAL_REPLY',
+        status: 'FAILED',
+        reason: `Manual reply failed: ${msg}`,
+        errorMessage: msg,
+      });
+      return NextResponse.json(
+        { error: 'Failed to post reply', details: msg },
+        { status: 502 }
+      );
+    }
+
   } catch (error: any) {
     console.error('[Manual Reply] Error:', error);
     return NextResponse.json(

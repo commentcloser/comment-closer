@@ -65,29 +65,38 @@ export async function GET(
       });
     }
 
-    if (provider === 'instagram' && pageAccessToken) {
-      // Get permalink from Instagram API
-      const res = await fetch(
-        `https://graph.facebook.com/v24.0/${comment.postId}?fields=permalink`,
-        { headers: { Authorization: `Bearer ${pageAccessToken}` } }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        if (data.permalink) {
-          return NextResponse.json({ url: data.permalink });
+    if (provider === 'instagram') {
+      if (pageAccessToken) {
+        // Get permalink from Instagram API
+        const res = await fetch(
+          `https://graph.facebook.com/v24.0/${comment.postId}?fields=permalink`,
+          { headers: { Authorization: `Bearer ${pageAccessToken}` } }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data.permalink) {
+            return NextResponse.json({ url: data.permalink });
+          }
+        }
+        // Fallback: use comment permalink
+        const commentRes = await fetch(
+          `https://graph.facebook.com/v24.0/${comment.commentId}?fields=permalink_url`,
+          { headers: { Authorization: `Bearer ${pageAccessToken}` } }
+        );
+        if (commentRes.ok) {
+          const data = await commentRes.json();
+          if (data.permalink_url) {
+            return NextResponse.json({ url: data.permalink_url });
+          }
         }
       }
-      // Fallback: use comment permalink
-      const commentRes = await fetch(
-        `https://graph.facebook.com/v24.0/${comment.commentId}?fields=permalink_url`,
-        { headers: { Authorization: `Bearer ${pageAccessToken}` } }
+
+      // Never fall through to the facebook.com builder for Instagram: postId is an
+      // IG media id, so it would send the user to a dead Facebook page.
+      return NextResponse.json(
+        { error: 'Could not resolve the Instagram post link. Try reconnecting the page.' },
+        { status: 502 }
       );
-      if (commentRes.ok) {
-        const data = await commentRes.json();
-        if (data.permalink_url) {
-          return NextResponse.json({ url: data.permalink_url });
-        }
-      }
     }
 
     // Facebook fallback

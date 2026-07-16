@@ -8,6 +8,18 @@ import {
   getValidTikTokAccessToken,
 } from '@/lib/tiktokApi';
 
+// Graph answers a DELETE for an object that is already gone with code 100 /
+// subcode 33. The reply we set out to remove does not exist, which is the state
+// we were trying to reach — not a failure.
+function isAlreadyGoneError(errText: string): boolean {
+  try {
+    const parsed = JSON.parse(errText);
+    return parsed?.error?.code === 100 && parsed?.error?.error_subcode === 33;
+  } catch {
+    return false;
+  }
+}
+
 async function getTikTokAccessTokenForOpenId(openId: string) {
   const account = await prisma.account.findFirst({
     where: { provider: 'tiktok', providerAccountId: openId },
@@ -48,6 +60,7 @@ export async function POST(
             pageId: true,
             pageAccessToken: true,
             pageName: true,
+            instagramUserId: true,
           },
         },
       },
@@ -86,11 +99,16 @@ export async function POST(
           comment.commentId,
         );
 
+        // Only our own replies are ours to delete. A third party can copy our
+        // reply text word for word, and replies come back newest first — matching
+        // on the text before the owner flag would delete THEIR comment.
         for (const reply of replies) {
-          if (reply.owner || (comment.replyMessage && reply.text === comment.replyMessage)) {
+          if (!reply.owner) continue;
+          if (comment.replyMessage && reply.text === comment.replyMessage) {
             ownedReplyId = reply.comment_id;
             break;
           }
+          if (!ownedReplyId) ownedReplyId = reply.comment_id;
         }
       } catch (error: any) {
         return NextResponse.json(
@@ -161,28 +179,83 @@ export async function POST(
 
     // Fetch existing replies to find the page's own reply
     const repliesUrl = isInstagram
-      ? `https://graph.facebook.com/v24.0/${threadTargetId}/replies?fields=id,text,from,username,timestamp`
-      : `https://graph.facebook.com/v24.0/${threadTargetId}/comments?fields=id,message,from`;
+      ? `https://graph.facebook.com/v24.0/${threadTargetId}/replies?fields=id,text,from,username,timestamp&limit=100`
+      : `https://graph.facebook.com/v24.0/${threadTargetId}/comments?fields=id,message,from&limit=100`;
 
     const repliesResponse = await fetch(repliesUrl, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    let oldReplyId: string | null = null;
 
-    if (repliesResponse.ok) {
-      const repliesData = await repliesResponse.json();
-      const replies = repliesData.data || [];
+    if (!repliesResponse.ok) {
+      const errText = await repliesResponse.text();
+      console.error(`[Delete Reply] Failed to load replies for comment ${id}:`, errText);
+      // Fail closed: clearing the row here would tell the user the reply is gone
+      // while it stays live on the platform.
+      return NextResponse.json(
+        { error: 'Failed to load the existing reply', details: errText },
+        { status: 502 }
+      );
+    }
 
-      for (const reply of replies) {
-        const replyAuthor = reply.from?.name || reply.username || '';
-        const replyText = reply.message || reply.text || '';
-        if (
-          replyAuthor === comment.connectedPage.pageName ||
-          (comment.replyMessage && replyText === comment.replyMessage)
-        ) {
-          oldReplyId = reply.id;
-        }
+    const repliesData = await repliesResponse.json();
+    const replies = repliesData.data || [];
+
+    // The fetch above asks for a single page of 100. Only a short, unpaged result
+    // proves we saw the whole thread — on a longer one an unmatched reply may
+    // simply be further down, so absence is not evidence of absence.
+    const threadFullyRead = replies.length < 100 && !repliesData.paging?.next;
+
+    // Find the page's own reply. Meta flattens nested replies onto the top-level
+    // parent, so this thread also holds the page's replies to OTHER commenters —
+    // matching on the page name alone picks the most recent of those and would
+    // destroy someone else's answer. Authorship comes from `from.id`, which the
+    // page's own comments echo back as the Page / IG Business Account ID (the
+    // webhooks trust the same signal); the display name is only a last resort for
+    // authors Meta did not identify, since any third party can hold it as their
+    // username. A bare text match is never enough — a third party can quote our
+    // reply word for word.
+    const pageIdentityId = isInstagram
+      ? String(comment.connectedPage.instagramUserId ?? comment.connectedPage.pageId)
+      : String(comment.connectedPage.pageId);
+
+    let authoredTextMatchId: string | null = null;
+    const pageReplyIds: string[] = [];
+    let unattributableReplies = 0;
+
+    for (const reply of replies) {
+      const replyAuthorId = reply.from?.id ? String(reply.from.id) : null;
+      const replyAuthor = reply.from?.name || reply.username || '';
+      const replyText = reply.message || reply.text || '';
+      const byPage =
+        replyAuthorId !== null
+          ? replyAuthorId === pageIdentityId
+          : !!comment.connectedPage.pageName && replyAuthor === comment.connectedPage.pageName;
+
+      // Nothing at all to go on: we cannot rule this reply out as ours.
+      if (replyAuthorId === null && !replyAuthor) unattributableReplies++;
+      if (byPage) pageReplyIds.push(reply.id);
+
+      if (byPage && comment.replyMessage && replyText === comment.replyMessage) {
+        authoredTextMatchId = reply.id;
       }
+    }
+
+    const oldReplyId: string | null =
+      authoredTextMatchId ?? (pageReplyIds.length === 1 ? pageReplyIds[0] : null);
+
+    // We read the whole thread, every author in it was identified, and none of
+    // them is us: the reply is provably gone from the platform (the owner removed
+    // it there). Reconcile the row instead of 409-ing forever — clearing it makes
+    // the DB match the platform rather than hiding a live reply.
+    const replyProvablyGone =
+      !oldReplyId && pageReplyIds.length === 0 && unattributableReplies === 0 && threadFullyRead;
+
+    if (!oldReplyId && !replyProvablyGone) {
+      console.warn(`[Delete Reply] Could not identify the reply to delete for comment ${id}`);
+      return NextResponse.json(
+        { error: 'Could not find the current reply to delete. Please wait a bit and try again.' },
+        { status: 409 }
+      );
     }
 
     // Delete the reply
@@ -194,15 +267,19 @@ export async function POST(
       });
       if (!deleteResponse.ok) {
         const errText = await deleteResponse.text();
-        console.error(`[Delete Reply] Failed to delete reply ${oldReplyId}:`, errText);
-        return NextResponse.json(
-          { error: 'Failed to delete reply from platform', details: errText },
-          { status: 500 }
-        );
+        if (!isAlreadyGoneError(errText)) {
+          console.error(`[Delete Reply] Failed to delete reply ${oldReplyId}:`, errText);
+          return NextResponse.json(
+            { error: 'Failed to delete reply from platform', details: errText },
+            { status: 500 }
+          );
+        }
+        console.log(`[Delete Reply] Reply ${oldReplyId} was already gone from the platform`);
+      } else {
+        console.log(`[Delete Reply] Deleted reply ${oldReplyId}`);
       }
-      console.log(`[Delete Reply] Deleted reply ${oldReplyId}`);
     } else {
-      console.warn(`[Delete Reply] Could not find reply to delete for comment ${id}`);
+      console.warn(`[Delete Reply] No page reply left on the platform for comment ${id} — reconciling`);
     }
 
     await logManualAction(
@@ -210,7 +287,7 @@ export async function POST(
       comment.connectedPage.id,
       provider,
       'DELETE',
-      `Reply deleted${oldReplyId ? ` (${oldReplyId})` : ' (not found on platform)'}`
+      oldReplyId ? `Reply deleted (${oldReplyId})` : 'Reply already removed on the platform — comment reconciled'
     );
 
     // Update comment status back to ai_generated or pending

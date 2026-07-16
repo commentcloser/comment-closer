@@ -82,6 +82,47 @@ async function autoHideTikTokCommentWithRetry(
   throw lastError instanceof Error ? lastError : new Error(String(lastError ?? 'Unknown auto-hide failure'));
 }
 
+async function fetchTikTokCommentWithRetry(
+  accessToken: string,
+  openId: string,
+  videoId: string,
+  commentId: string,
+): Promise<TikTokComment | undefined> {
+  const retryDelaysMs = [0, 1500, 4000];
+
+  for (let attempt = 0; attempt < retryDelaysMs.length; attempt += 1) {
+    if (retryDelaysMs[attempt] > 0) {
+      await sleep(retryDelaysMs[attempt]);
+    }
+
+    try {
+      const comments = await fetchTikTokComments(accessToken, openId, videoId, [commentId]);
+      // Only an identity match is safe: the comment_ids filter is advisory, so taking
+      // comments[0] would attribute another comment's text to this commentId and drive
+      // moderation/replies from it. Nested replies come back inside reply_list rather
+      // than at top level, so search there too.
+      const match =
+        comments.find((c) => c.comment_id === commentId) ??
+        comments.flatMap((c) => c.reply_list ?? []).find((r) => r.comment_id === commentId);
+      if (match) {
+        if (attempt > 0) {
+          console.log(`[TikTok Webhook] Comment fetch succeeded on retry ${attempt + 1} for comment ${commentId}`);
+        }
+        return match;
+      }
+      // TikTok answered but does not know this comment — retrying will not conjure it up.
+      return undefined;
+    } catch (error: unknown) {
+      console.warn(
+        `[TikTok Webhook] Comment fetch attempt ${attempt + 1} failed for comment ${commentId}:`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+
+  return undefined;
+}
+
 // ---------------------------------------------------------------------------
 // GET — TikTok webhook challenge verification
 // TikTok sends GET /?challenge=<value>  →  we return {"challenge":"<value>"}
@@ -238,22 +279,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true }, { status: 200 });
   }
 
-  // Fetch the specific comment from TikTok
-  let tiktokComment: TikTokComment | undefined;
-  try {
-    const comments = await fetchTikTokComments(accessToken, userOpenId, videoId, [commentId]);
-    tiktokComment = comments.find((c) => c.comment_id === commentId) ?? comments[0];
-  } catch (err: unknown) {
-    console.error('[TikTok Webhook] Failed to fetch comment:', err instanceof Error ? err.message : err);
-    // Fall through with minimal data from webhook payload
+  // Fetch the specific comment from TikTok. Transient failures (rate limit code 40100, 5xx)
+  // are retried in-process: the bail-out below costs the AI reply permanently, because the
+  // hourly backfill re-inserts the row as 'pending' and backfill-sentiment never auto-replies.
+  const tiktokComment = await fetchTikTokCommentWithRetry(accessToken, userOpenId, videoId, commentId);
+
+  // The webhook payload carries no comment text, so without the fetched comment there is
+  // nothing worth storing. Writing a blank row here would poison the comment permanently:
+  // it gets marked 'ignored' below, backfill-sentiment skips it (message: { not: '' }),
+  // and backfill-tiktok-comments only INSERTS missing rows (createMany skipDuplicates) so
+  // it can never repair one that already exists. Bail out and let that hourly backfill
+  // insert the real comment instead. A genuinely text-less comment still reaches the
+  // 'ignored' path below, because TikTok returned it and we know its text is empty.
+  if (!tiktokComment) {
+    console.error(`[TikTok Webhook] No detail fetched for comment ${commentId} — leaving it for the backfill cron`);
+    return NextResponse.json({ received: true }, { status: 200 });
   }
 
-  const message = tiktokComment?.text ?? '';
-  const authorName = tiktokComment?.display_name || tiktokComment?.username || content.unique_identifier || 'TikTok User';
-  const authorId = tiktokComment?.unique_identifier || content.unique_identifier || null;
-  const createdAt = tiktokComment?.create_time
+  const message = tiktokComment.text || '';
+  const authorName = tiktokComment.display_name || tiktokComment.username || content.unique_identifier || 'TikTok User';
+  const authorId = tiktokComment.unique_identifier || content.unique_identifier || null;
+  // content.timestamp is unix SECONDS (see the signature check in lib/tiktokApi.ts) — must
+  // be scaled to ms, otherwise createdAt lands in 1970 and the reply cooldown window (which
+  // filters on createdAt) sees no prior replies and waves the comment through.
+  const createdAt = tiktokComment.create_time
     ? new Date(Number(tiktokComment.create_time) * 1000)
-    : new Date(content.timestamp);
+    : new Date(content.timestamp * 1000);
 
   // Skip if this comment already exists from a TikTok Ads page (same comment_id, different provider)
   const adsDuplicate = await prisma.comment.findFirst({
@@ -361,12 +412,17 @@ export async function POST(request: NextRequest) {
         );
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : String(err);
-        await prisma.comment.update({
-          where: { id: savedComment.id },
+        // needsReview: no cron retries a failed hide (backfill-sentiment only picks up
+        // sentiment:null rows), so the negative comment stays public until a human acts.
+        // Same marker the Meta moderation path sets, and guarded the same way: never
+        // downgrade a comment something else (a concurrent set_to_hidden delivery, a
+        // manual hide from the dashboard) already hid.
+        await prisma.comment.updateMany({
+          where: { id: savedComment.id, hiddenAt: null },
           data: {
             status: 'pending',
-            hiddenAt: null,
             automationStatus: 'failed',
+            needsReview: true,
             lastError: `TikTok auto-hide failed: ${errorMessage}`,
           },
         });
@@ -415,7 +471,7 @@ export async function POST(request: NextRequest) {
     autoReplyEnabled: connectedPage.autoReplyEnabled,
     autoReplyPositive: connectedPage.autoReplyPositive,
     autoReplyNeutral: connectedPage.autoReplyNeutral,
-  });
+  }, message);
 
   if (shouldReply) {
     await generateAndPostTikTokReply({

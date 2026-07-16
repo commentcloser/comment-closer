@@ -249,14 +249,28 @@ export async function shouldGenerateReply(
     // replies (replied:true) but also in-flight ones — generated/generating or
     // scheduled-but-not-yet-posted — otherwise a burst from one author within a
     // reply delay / manual-review window all pass the cooldown (AI-5).
+    // A scheduled reply always carries status 'ai_generated', so the status
+    // clause already covers it; matching on scheduledPostAt directly would also
+    // count rejected/ignored replies, which never get scheduledPostAt cleared.
+    // A reply whose post attempt failed (automationStatus 'failed') was never
+    // sent, so it must not hold the author in cooldown forever — it keeps
+    // status 'ai_generated' so it stays approvable/re-postable from the inbox.
     const recentReplies = await prisma.comment.findMany({
       where: {
         pageId: config.pageId,
         authorId: config.authorId,
         OR: [
           { replied: true },
-          { status: { in: ['ai_generating', 'ai_generated'] } },
-          { scheduledPostAt: { not: null } },
+          {
+            status: { in: ['ai_generating', 'ai_generated'] },
+            // automationStatus is nullable and is null for a freshly generated
+            // reply, so spell the null case out rather than relying on `not`
+            // matching NULL rows.
+            OR: [
+              { automationStatus: null },
+              { automationStatus: { not: 'failed' } },
+            ],
+          },
         ],
         createdAt: {
           gte: cooldownStart,
@@ -274,19 +288,24 @@ export async function shouldGenerateReply(
     });
     
     if (recentReplies.length > 0) {
-      const lastReply = recentReplies[0];
-      const minutesSinceLastReply = Math.floor(
-        (config.createdAt.getTime() - lastReply.createdAt.getTime()) / 1000 / 60
+      // NOTE: the window is measured between the author's COMMENT times, not the
+      // times their replies were actually sent — a reply awaiting approval has no
+      // send time yet. Delayed/manual-review posting can therefore still land two
+      // replies on one user inside the cooldown; enforcing that needs a re-check
+      // at post time (approve-reply / post-scheduled-replies).
+      const lastAnsweredComment = recentReplies[0];
+      const minutesSinceLastAnsweredComment = Math.floor(
+        (config.createdAt.getTime() - lastAnsweredComment.createdAt.getTime()) / 1000 / 60
       );
-      
+
       return {
         allowed: false,
-        reason: `User is in cooldown period. Last reply was ${minutesSinceLastReply} minutes ago (minimum: ${rules.replyUserCooldownMinutes} minutes)`,
+        reason: `User is in cooldown period. Their last answered comment was ${minutesSinceLastAnsweredComment} minutes ago (minimum: ${rules.replyUserCooldownMinutes} minutes)`,
         ruleTriggered: 'cooldown_active',
         debugInfo: {
           authorId: config.authorId,
-          lastReplyAt: lastReply.createdAt.toISOString(),
-          minutesSinceLastReply,
+          lastAnsweredCommentAt: lastAnsweredComment.createdAt.toISOString(),
+          minutesSinceLastAnsweredComment,
           cooldownMinutes: rules.replyUserCooldownMinutes,
         },
       };
@@ -307,8 +326,13 @@ export async function shouldGenerateReply(
         parentCommentId: config.parentCommentId,
         OR: [
           { replied: true },
-          { status: { in: ['ai_generating', 'ai_generated'] } },
-          { scheduledPostAt: { not: null } },
+          {
+            status: { in: ['ai_generating', 'ai_generated'] },
+            OR: [
+              { automationStatus: null },
+              { automationStatus: { not: 'failed' } },
+            ],
+          },
         ],
       },
     });
@@ -338,9 +362,14 @@ export async function shouldGenerateReply(
       where: {
         pageId: config.pageId,
         authorId: config.authorId,
-        createdAt: {
-          lt: config.createdAt, // Only comments BEFORE this one
-        },
+        OR: [
+          { createdAt: { lt: config.createdAt } }, // Only comments BEFORE this one
+          // Meta's created_time has second granularity, so an author double-post
+          // lands on an identical createdAt and a strict `lt` made BOTH comments
+          // look like the author's first. Tie-break on id so exactly one does,
+          // regardless of the order they are processed in.
+          { createdAt: config.createdAt, id: { lt: config.commentDbId } },
+        ],
       },
     });
     

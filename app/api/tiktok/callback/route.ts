@@ -169,13 +169,16 @@ export async function GET(request: NextRequest) {
 
   // Block if this TikTok account is already active on a different user.
   // Run this BEFORE any migration logic so we never silently steal another user's data.
-  const existingAccountOtherUser = await prisma.account.findFirst({
-    where: { provider: 'tiktok', providerAccountId: openId, NOT: { userId } },
-  });
+  // Only an ACTIVE page counts. A bare Account row is not ownership: neither
+  // /api/tiktok/disconnect nor /api/tiktok/permanent-delete removes it, so keying on
+  // it wedged the account forever — the previous owner could follow the UI's "disconnect
+  // it from there first" advice and the new user was still blocked. The Step 2 upsert
+  // below re-points that stale row at the new owner, which also strands the old owner's
+  // paused page (reactivate 409s on the missing Account row), so nothing is shared.
   const existingPageOtherUser = await prisma.connectedPage.findFirst({
     where: { pageId: openId, provider: 'tiktok', disconnectedAt: null, NOT: { userId } },
   });
-  if (existingAccountOtherUser || existingPageOtherUser) {
+  if (existingPageOtherUser) {
     cookieStore.delete('tiktok_return_to');
     return NextResponse.redirect(errorRedirect('tiktok_account_in_use'));
   }
@@ -187,27 +190,66 @@ export async function GET(request: NextRequest) {
   });
 
   // Fallback: TikTok may issue a different open_id after re-auth.
-  // Find the most recently disconnected TikTok page for this user and
-  // migrate it to the new open_id so old comments are preserved.
+  // Find the most recently disconnected TikTok page for this user that the
+  // freshly fetched profile identifies as the same account, and migrate it to
+  // the new open_id so old comments are preserved.
   if (!existingConnectedPage) {
-    const orphaned = await prisma.connectedPage.findFirst({
-      where: { userId, provider: 'tiktok', disconnectedAt: { not: null } },
-      orderBy: { disconnectedAt: 'desc' },
-      select: { id: true, pageName: true, profileImageUrl: true, pageId: true },
-    });
+    // Only migrate when the profile we just fetched proves this is the SAME account
+    // re-authed under a new open_id. "Most recently disconnected" is not evidence: a
+    // user who pauses account A and then connects a different account B would have had
+    // A's row rewritten to B's identity and all of A's comments re-attributed to B.
+    // Match on username only — it is TikTok's unique handle, whereas display names
+    // collide. The match is part of the query, not a post-filter, so a user with several
+    // paused pages still finds the right one instead of only the newest. No profile
+    // (missing Business User permission) means no proof, so fail closed and fall through
+    // to creating a fresh page; a leftover paused row is recoverable, a merged one is not.
+    const orphaned = username
+      ? await prisma.connectedPage.findFirst({
+          where: {
+            userId,
+            provider: 'tiktok',
+            disconnectedAt: { not: null },
+            tiktokStats: { username },
+          },
+          orderBy: { disconnectedAt: 'desc' },
+          select: { id: true, pageName: true, profileImageUrl: true, pageId: true },
+        })
+      : null;
+    if (!username) {
+      // Fail-closed skips must be visible: on the comment-only scope /business/get/ never
+      // returns a username, so support needs a log line rather than guessing why a paused
+      // page's history did not follow the reconnect.
+      const pausedPage = await prisma.connectedPage.findFirst({
+        where: { userId, provider: 'tiktok', disconnectedAt: { not: null } },
+        orderBy: { disconnectedAt: 'desc' },
+        select: { pageId: true },
+      });
+      if (pausedPage) {
+        console.warn(`[TikTok OAuth] Paused page ${pausedPage.pageId} not migrated to ${openId} for user ${userId} — no username from /business/get/ to prove same account`);
+      }
+    }
     if (orphaned) {
       await prisma.connectedPage.update({
         where: { id: orphaned.id },
-        data: { pageId: openId, disconnectedAt: null, needsReconnect: false, pageAccessToken: accessToken, pageName: displayName || username || orphaned.pageName },
+        data: { pageId: openId },
       });
-      // Also fix the Account providerAccountId to match the new open_id
-      await prisma.account.updateMany({
+      // Drop the dead Account row for the old open_id; the Step 2 upsert recreates it
+      // under the new one with fresh tokens AND expiry. The old hand-rolled updateMany
+      // wrote neither expires_at nor refresh_token_expires_at (leaving /api/tiktok/accounts
+      // reporting tokenStatus 'expired' straight after a successful reconnect) and created
+      // nothing when the row was already gone (every later reply 404ing on a page the UI
+      // showed as connected).
+      await prisma.account.deleteMany({
         where: { userId, provider: 'tiktok', providerAccountId: orphaned.pageId },
-        data: { providerAccountId: openId, access_token: accessToken, refresh_token: refreshToken },
       });
       console.log(`[TikTok OAuth] Migrated orphaned page ${orphaned.pageId} → ${openId} for user ${userId}`);
-      cookieStore.delete('tiktok_return_to');
-      return NextResponse.redirect(successRedirect);
+      // Fall through: Step 2 now resolves this row via connectedPageKey and reconnects it
+      // (token, expiry, stats open_id, webhook) exactly like any other connect.
+      existingConnectedPage = {
+        id: orphaned.id,
+        pageName: orphaned.pageName,
+        profileImageUrl: orphaned.profileImageUrl,
+      };
     }
   }
 

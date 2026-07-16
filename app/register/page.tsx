@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
@@ -38,6 +38,14 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [alertMessage, setAlertMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Don't yank a user who navigated away in the meantime.
+  useEffect(() => {
+    return () => {
+      if (redirectTimer.current) clearTimeout(redirectTimer.current);
+    };
+  }, []);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -156,13 +164,15 @@ export default function RegisterPage() {
       // always fail for a fresh account. Tell the user to check their email.
       setIsLoading(false);
       if (response.emailSent === false) {
+        // Leave the user on the page: the "no verification email" alert is
+        // actionable and auto-redirecting would wipe it before they read it.
         setAlertMessage({ type: 'error', message: t('auth.register.verificationEmailFailed') });
       } else {
         setAlertMessage({ type: 'success', message: t('auth.register.registerSuccessCheckEmail') });
+        redirectTimer.current = setTimeout(() => {
+          router.push('/login');
+        }, 3500);
       }
-      setTimeout(() => {
-        router.push('/login');
-      }, 3500);
     } catch (error) {
       setIsLoading(false);
       setAlertMessage({

@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
       instagramAccounts: [],
       subscriptionStatus: [],
       tokenPermissions: [],
+      userTokenPermissions: [],
       recommendations: [],
     };
 
@@ -149,20 +150,27 @@ export async function GET(request: NextRequest) {
             const userData = await userResponse.json();
 
             const userScopes = userData.data?.scopes || [];
-            results.userTokenPermissions = {
+            // One entry per account: this used to assign, so a multi-user system
+            // only ever reported the last user's scopes
+            results.userTokenPermissions.push({
               userId: user.id,
               email: user.email,
               scopes: userScopes,
               hasInstagramManageComments: userScopes.includes('instagram_manage_comments'),
-            };
+            });
 
             if (!userScopes.includes('instagram_manage_comments')) {
               results.recommendations.push(
-                `❌ User token missing 'instagram_manage_comments' - This is required for webhook delivery. Reconnect Facebook account.`
+                `❌ ${user.email || user.id}: User token missing 'instagram_manage_comments' - This is required for webhook delivery. Reconnect Facebook account.`
               );
             }
           } catch (error: any) {
             console.error('[Webhook Diagnostics] User token check failed:', user.id, error.message);
+            results.userTokenPermissions.push({
+              userId: user.id,
+              email: user.email,
+              error: error.message,
+            });
           }
         }
       }

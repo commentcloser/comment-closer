@@ -172,6 +172,76 @@ async function setTikTokPageReconnect(openId: string | null, needsReconnect: boo
 }
 
 /**
+ * Refresh-endpoint codes that genuinely mean the grant is dead and only a user
+ * re-auth can fix it. Mirrors isTikTokAdsAuthError in lib/tiktokAdsApi.ts — the
+ * refresh endpoint is on the same business-api host and shares its code space:
+ *   40002 authorization canceled · 40102 token expired · 40104 token empty
+ *   40105 invalid/revoked token  · 40106 core user invalid
+ *
+ * Everything else is transient — notably the rate limits 40100/40016/40133
+ * ("requests made too frequently"), which a webhook burst on one video makes
+ * likely on exactly this path. Flagging reconnect on a throttle is a false
+ * positive, not fail-closed safety: it logs out an account whose credentials
+ * are perfectly valid.
+ */
+const TIKTOK_AUTH_ERROR_CODES = [40002, 40102, 40104, 40105, 40106];
+
+function isTikTokAuthErrorCode(code: unknown): boolean {
+  return typeof code === 'number' && TIKTOK_AUTH_ERROR_CODES.includes(code);
+}
+
+/** The throttle codes named above. Transient — never an auth failure. */
+const TIKTOK_RATE_LIMIT_ERROR_CODES = [40100, 40016, 40133];
+
+export function isTikTokRateLimitCode(code: unknown): boolean {
+  return typeof code === 'number' && TIKTOK_RATE_LIMIT_ERROR_CODES.includes(code);
+}
+
+/**
+ * Carries TikTok's numeric response code alongside the message, so a paging
+ * caller can tell a throttle from a real failure without re-parsing the text.
+ */
+export class TikTokApiError extends Error {
+  readonly code: number;
+
+  constructor(endpoint: string, code: number, message: string) {
+    super(`TikTok ${endpoint} failed (code ${code}): ${message}`);
+    this.name = 'TikTokApiError';
+    this.code = code;
+  }
+}
+
+/**
+ * Detects a refresh that a concurrent invocation won while ours was in flight,
+ * and returns its access token. Two independent signals, because TikTok does
+ * not always rotate the refresh token:
+ *   - identity: a stored refresh_token other than the one we consumed proves a
+ *     concurrent refresh committed, whatever expires_at says;
+ *   - expiry: a changed, still-valid expires_at means the same.
+ * Returns null when the row still shows the state we read going in.
+ */
+async function readConcurrentTikTokRefresh(
+  accountId: string,
+  consumed: { refresh_token: string | null; expires_at: number | null },
+): Promise<string | null> {
+  const fresh = await prisma.account.findUnique({
+    where: { id: accountId },
+    select: { access_token: true, refresh_token: true, expires_at: true },
+  });
+
+  if (!fresh?.access_token) return null;
+  if (fresh.refresh_token !== consumed.refresh_token) return fresh.access_token;
+  if (
+    fresh.expires_at !== null &&
+    fresh.expires_at !== consumed.expires_at &&
+    fresh.expires_at - Math.floor(Date.now() / 1000) >= 60
+  ) {
+    return fresh.access_token;
+  }
+  return null;
+}
+
+/**
  * Returns a valid access token for the given Account row, refreshing it first
  * if it has expired (or will expire in the next 60 seconds).
  *
@@ -223,6 +293,42 @@ export async function getValidTikTokAccessToken(accountId: string): Promise<stri
     const data = await res.json();
 
     if (data.code !== 0 || !data.data?.access_token) {
+      // A concurrent invocation may have just refreshed and rotated the refresh
+      // token out from under us, which makes our call fail spuriously. Re-read
+      // before flagging: if it already committed, use its token — flagging
+      // reconnect here would undo the winner's needsReconnect=false.
+      const won = await readConcurrentTikTokRefresh(accountId, account);
+      if (won) return won;
+
+      if (!isTikTokAuthErrorCode(data.code)) {
+        // Rate-limited or a malformed body — the stored grant is not proven
+        // dead, so keep the account connected and let the next call retry.
+        console.warn('[TikTok] Token refresh failed transiently — not flagging reconnect:', data);
+        return account.access_token ?? null;
+      }
+
+      // A genuine auth failure, but a concurrent winner's rejection typically
+      // comes back faster than its own DB write lands: wait, bounded, before
+      // taking the destructive action.
+      for (const delayMs of [300, 700]) {
+        await new Promise((r) => setTimeout(r, delayMs));
+        const late = await readConcurrentTikTokRefresh(accountId, account);
+        if (late) return late;
+      }
+
+      // Last-millisecond guard. The row lock this takes serialises us behind an
+      // in-flight winner: if it commits, expires_at no longer matches and the
+      // count is 0, so we never clobber its needsReconnect=false. The write is
+      // a no-op — the where clause guarantees the value is already there.
+      const stillStale = await prisma.account.updateMany({
+        where: { id: accountId, expires_at: account.expires_at },
+        data: { expires_at: account.expires_at },
+      });
+      if (stillStale.count === 0) {
+        const winner = await readConcurrentTikTokRefresh(accountId, account);
+        if (winner) return winner;
+      }
+
       console.error('[TikTok] Token refresh failed:', data);
       await setTikTokPageReconnect(account.providerAccountId, true);
       return account.access_token ?? null;
@@ -256,18 +362,31 @@ export async function getValidTikTokAccessToken(accountId: string): Promise<stri
 // Comment list
 // ---------------------------------------------------------------------------
 
+export interface TikTokCommentPage {
+  comments: TikTokComment[];
+  cursor: string | null;
+  hasMore: boolean;
+}
+
 /**
- * Fetches specific comment(s) from a TikTok video.
+ * Fetches ONE page of comments from a TikTok video.
  *
  * Uses the v1.3 GET /business/comment/list/ endpoint.
- * Pass `commentIds` to fetch one or more specific comments (max 30).
+ * Pass `commentIds` to fetch one or more specific comments (max 30),
+ * `cursor` to continue from a previous page, `maxCount` to size the page.
+ *
+ * `cursor`/`maxCount` are only sent when asked for, so a caller that wants a
+ * single lookup issues exactly the request it always did. `hasMore` is true
+ * only when the response says so explicitly: if this endpoint does not page the
+ * way the reply endpoint does, an absent has_more reads as false and callers
+ * stop after one page rather than re-reading page 1 forever.
  */
-export async function fetchTikTokComments(
+export async function fetchTikTokCommentsPage(
   accessToken: string,
   openId: string,
   videoId: string,
-  commentIds?: string[],
-): Promise<TikTokComment[]> {
+  options?: { commentIds?: string[]; cursor?: string | null; maxCount?: number },
+): Promise<TikTokCommentPage> {
   const params = new URLSearchParams({
     business_id: openId,
     video_id: videoId,
@@ -275,8 +394,14 @@ export async function fetchTikTokComments(
     include_replies: 'true',
   });
 
-  if (commentIds && commentIds.length > 0) {
-    params.set('comment_ids', JSON.stringify(commentIds));
+  if (options?.commentIds && options.commentIds.length > 0) {
+    params.set('comment_ids', JSON.stringify(options.commentIds));
+  }
+  if (options?.maxCount !== undefined) {
+    params.set('max_count', String(options.maxCount));
+  }
+  if (options?.cursor) {
+    params.set('cursor', options.cursor);
   }
 
   const url = `${BASE}/business/comment/list/?${params.toString()}`;
@@ -287,10 +412,38 @@ export async function fetchTikTokComments(
   const data = await res.json();
 
   if (data.code !== 0) {
-    throw new Error(`TikTok comment/list failed (code ${data.code}): ${data.message}`);
+    throw new TikTokApiError('comment/list', data.code, data.message);
   }
 
-  return (data.data?.comments ?? []) as TikTokComment[];
+  // Cursors are opaque, so carry them as strings. Note this does NOT protect a
+  // huge numeric cursor the way the comment_id/video_id string-wrapping does:
+  // res.json() has already parsed it by the time we get here. A mangled cursor
+  // fails safe — it trips the repeat-cursor guard in the caller and the video is
+  // reported not fully read rather than looping.
+  const cursor: unknown = data.data?.cursor;
+
+  return {
+    comments: (data.data?.comments ?? []) as TikTokComment[],
+    cursor: cursor === null || cursor === undefined || cursor === '' ? null : String(cursor),
+    hasMore: data.data?.has_more === true,
+  };
+}
+
+/**
+ * Fetches specific comment(s) from a TikTok video (first page only).
+ *
+ * Pass `commentIds` to fetch one or more specific comments (max 30).
+ * Callers that need every comment on a video should page with
+ * fetchTikTokCommentsPage instead.
+ */
+export async function fetchTikTokComments(
+  accessToken: string,
+  openId: string,
+  videoId: string,
+  commentIds?: string[],
+): Promise<TikTokComment[]> {
+  const page = await fetchTikTokCommentsPage(accessToken, openId, videoId, { commentIds });
+  return page.comments;
 }
 
 /**

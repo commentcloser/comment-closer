@@ -2,7 +2,8 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import FacebookProvider from 'next-auth/providers/facebook';
-import type { JWT } from 'next-auth/jwt';
+import { encode as defaultJwtEncode } from 'next-auth/jwt';
+import type { JWT, JWTEncodeParams } from 'next-auth/jwt';
 import type { Session, User, Account, Profile } from 'next-auth';
 import { prisma } from './prisma';
 import bcrypt from 'bcryptjs';
@@ -212,6 +213,13 @@ export const authOptions = {
           } else {
           }
         } catch (error) {
+          // The account-in-use block is deliberate control flow, not a failure —
+          // returning a redirect URL here aborts the link (NextAuth skips session
+          // creation) and surfaces the error the login page already handles.
+          // Throwing instead would be swallowed into a generic AccessDenied.
+          if (error instanceof Error && error.message === 'FacebookAccountInUse') {
+            return '/login?error=FacebookAccountInUse';
+          }
           console.error('[Auth] Facebook account linking failed:', error);
         }
       }
@@ -241,7 +249,8 @@ export const authOptions = {
           token.loginAt = Math.floor(Date.now() / 1000);
         }
 
-        // Re-apply expiry on every JWT refresh so NextAuth can't override it
+        // Re-apply expiry on every JWT refresh. The jwt.encode override below is
+        // what actually makes this stick — encode() would otherwise rewrite exp.
         if (token.rememberMe === false && token.loginAt) {
           // No remember me: expire 8 hours from login, never extend
           token.exp = (token.loginAt as number) + 8 * 60 * 60;
@@ -349,6 +358,21 @@ export const authOptions = {
   session: {
     strategy: 'jwt' as const,
     maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  jwt: {
+    // NextAuth's own encode() ends with .setExpirationTime(now + jwt.maxAge),
+    // and jwt.maxAge defaults to session.maxAge (30 days) — so it overwrites
+    // whatever `exp` the jwt callback computed. Without this, the 8-hour
+    // "remember me = false" expiry below is silently discarded and every
+    // session lives the full 30 days. Derive maxAge from the token's own exp
+    // so the shorter expiry actually reaches the cookie.
+    encode(params: JWTEncodeParams) {
+      const exp = params.token?.exp;
+      if (typeof exp === 'number') {
+        return defaultJwtEncode({ ...params, maxAge: exp - Math.floor(Date.now() / 1000) });
+      }
+      return defaultJwtEncode(params);
+    },
   },
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === 'development',

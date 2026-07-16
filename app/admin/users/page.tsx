@@ -44,8 +44,13 @@ export default function AdminUsersPage() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const pageSize = 20;
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const requestIdRef = useRef(0);
+  const searchDirtyRef = useRef(false);
 
   const fetchUsers = useCallback(async (page?: number) => {
+    // The endpoint is heavy and latencies vary, so responses can land out of
+    // order; only the newest request is allowed to write state.
+    const requestId = ++requestIdRef.current;
     try {
       setLoading(true);
       const p = page ?? currentPage;
@@ -61,6 +66,7 @@ export default function AdminUsersPage() {
       const res = await fetch(`/api/admin/users?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
+        if (requestId !== requestIdRef.current) return;
         setUsers(data.users || []);
         setTotal(data.total || 0);
         setTotalPages(data.totalPages || 0);
@@ -68,7 +74,7 @@ export default function AdminUsersPage() {
       }
     } catch {
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   }, [search, filter, platform, sort, order, currentPage]);
 
@@ -78,10 +84,21 @@ export default function AdminUsersPage() {
 
   // Debounced search
   useEffect(() => {
+    // The effect above already fetches on mount; skip the first run so the
+    // expensive endpoint isn't hit twice on every admin visit.
+    if (!searchDirtyRef.current) {
+      searchDirtyRef.current = true;
+      return;
+    }
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     searchTimeoutRef.current = setTimeout(() => {
-      setCurrentPage(1);
-      fetchUsers(1);
+      // When not already on page 1, resetting the page lets the effect above
+      // issue the single fetch — calling fetchUsers here too would duplicate it.
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+      } else {
+        fetchUsers(1);
+      }
     }, 400);
     return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
   }, [search]);

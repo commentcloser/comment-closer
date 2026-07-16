@@ -161,14 +161,36 @@ export async function updateCommentSkipped(
   commentId: string,
   ruleTriggered: string
 ): Promise<void> {
-  await prisma.comment.update({
-    where: { id: commentId },
+  // Only downgrade automationStatus from a non-terminal state. Idempotency skips
+  // (already_replied / sentiment_negative) re-fire on routine Meta webhook
+  // redeliveries and edits, and overwriting 'replied'/'moderated'/'failed' with
+  // 'skipped' loses the outcome — the dashboard keys "Auto Hidden"/"Auto Deleted"
+  // off automationStatus === 'moderated' and would show "Manual Hidden" instead.
+  const { count } = await prisma.comment.updateMany({
+    where: {
+      id: commentId,
+      OR: [
+        { automationStatus: null },
+        { automationStatus: { in: ['pending', 'skipped'] } },
+      ],
+    },
     data: {
       automationStatus: 'skipped',
       aiSkipReason: ruleTriggered,
     },
   });
-  
+
+  if (count === 0) {
+    // Terminal state — preserve it, but still record why the reply was skipped.
+    await prisma.comment.update({
+      where: { id: commentId },
+      data: { aiSkipReason: ruleTriggered },
+    });
+
+    console.log(`🔄 [State] Comment ${commentId} → skip logged (${ruleTriggered}), automationStatus preserved`);
+    return;
+  }
+
   console.log(`🔄 [State] Comment ${commentId} → skipped (${ruleTriggered})`);
 }
 
@@ -223,12 +245,21 @@ export async function updateCommentFailed(
   await prisma.comment.update({
     where: { id: commentId },
     data: {
+      // NOTE: `status` is deliberately left as-is. Moving it to 'ai_failed' would
+      // be semantically tidier, but it strands the row: the AI-reply card, the
+      // needs_review inbox filter and approve-reply all gate on 'ai_generated',
+      // and the manual Reply composer is hidden for nested replies (isReply), so
+      // a post-failed reply would have no recovery path at all. Keeping
+      // 'ai_generated' preserves the Approve button, which re-posts the reply.
+      // The decision engine excludes automationStatus 'failed' from its in-flight
+      // counts instead, so a never-posted reply no longer blocks the author's
+      // cooldown / thread cap forever.
       automationStatus: 'failed',
       needsReview: true,
       lastError: errorMessage,
     },
   });
-  
+
   console.log(`❌ [State] Comment ${commentId} → failed (needs review)`);
 }
 

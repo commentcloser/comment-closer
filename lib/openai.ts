@@ -59,8 +59,10 @@ export async function analyzeCommentSentiment(
     return 'neutral';
   }
 
-  // Skip very short non-emoji text (1 char like "k", "a") — not worth an API call
-  if (text.trim().length < 2) return null;
+  // Very short non-emoji text (1 char like "k", "a") — not worth an API call.
+  // Must not return null: null means "AI failed", so the backfill cron would
+  // burn all its attempts on it and park the comment in ai_failed.
+  if (text.trim().length < 2) return 'neutral';
 
   // 2. Very short positive responses (English & Greek)
   const shortPositive = [
@@ -73,28 +75,33 @@ export async function analyzeCommentSentiment(
     return 'positive';
   }
 
-  // 3. Very short negative responses (English & Greek)
+  // 3. Very short negative responses (English & Greek).
+  // Only unambiguously brand-negative words belong here: a bare "no"/"όχι" is
+  // usually just an answer to another commenter's question, and on delete-mode
+  // pages this list gets the comment permanently deleted. Those live in the
+  // neutral list below instead.
   const shortNegative = [
-    'no', 'nope', 'bad', 'terrible', 'awful', 'hate', 'worst', 'disappointed', 'horrible',
-    'όχι', 'oxi', 'οχι', 'κακό', 'κακο', 'kako', 'άσχημο', 'ασχημο', 'asxhmo'
+    'bad', 'terrible', 'awful', 'hate', 'worst', 'disappointed', 'horrible',
+    'κακό', 'κακο', 'kako', 'άσχημο', 'ασχημο', 'asxhmo'
   ];
   if (cleanText.length <= 15 && shortNegative.some(word => cleanText === word || cleanText === word + '!' || cleanText === word + '!!')) {
     return 'negative';
   }
 
-  // 4. Very short neutral responses
+  // 4. Very short neutral responses ('no'/'όχι' included: as a bare answer to
+  // another commenter they carry no sentiment about the brand)
   const shortNeutral = [
-    'ok', 'k', 'hmm', 'hm', 'eh', 'meh', 'maybe', 'idk', 'dunno', 'what', 'where', 'when', 
-    'how', 'why', 'who', 'which'
+    'ok', 'k', 'hmm', 'hm', 'eh', 'meh', 'maybe', 'idk', 'dunno', 'what', 'where', 'when',
+    'how', 'why', 'who', 'which', 'no', 'nope', 'όχι', 'oxi', 'οχι'
   ];
   if (cleanText.length <= 8 && shortNeutral.includes(cleanText)) {
     return 'neutral';
   }
 
-  // 5. Question-only comments (usually neutral unless clearly positive/negative)
-  if (text.includes('?') && text.trim().split(/\s+/).length <= 8) {
-    return 'neutral';
-  }
+  // 5. Short questions used to be hard-classified 'neutral' here, which let
+  // "is this a scam?" skip moderation and collect a friendly auto-reply.
+  // Questions are exactly the ambiguous case the model is for, so they fall
+  // through to the AI classifier below.
 
   // If none of the simple rules match, use AI for analysis.
   // Sentiment is a one-word classification, so run it with no reasoning and
@@ -119,7 +126,7 @@ export async function analyzeCommentSentiment(
       max_completion_tokens: AI_SENTIMENT_MAX_TOKENS,
     } as any), { label: 'sentiment' });
 
-    recordAiUsage(ctx, { kind: 'sentiment', model, usage: completion.usage });
+    await recordAiUsage(ctx, { kind: 'sentiment', model, usage: completion.usage });
 
     const response = completion.choices[0]?.message?.content
       ?.trim()
