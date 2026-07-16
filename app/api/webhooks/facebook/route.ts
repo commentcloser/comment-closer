@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse, after } from 'next/server';
+import type { Comment } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { analyzeCommentSentiment } from '@/lib/openai';
 import { generateAIReply, shouldAutoReply, detectCommentLanguage } from '@/lib/aiReplyEngine';
@@ -73,6 +74,15 @@ export async function POST(request: NextRequest) {
     // against redeliveries. (AI-1)
     after(async () => {
       try {
+        // Two passes. after() shares this function's 60s maxDuration and Meta
+        // already has its 200, so a batched delivery that runs out of time is
+        // never redelivered — and there is no Facebook fetch cron to backfill.
+        // With a single pass, comments the loop had not reached yet were lost
+        // outright. Ingest EVERY comment first (DB-only, fast), then do the AI
+        // work: a timeout can now only cost the AI stage, and the rows are left
+        // 'pending' where backfill-sentiment recovers them. (AI-1)
+        const ingested: { ctx: FeedCommentContext; connectedPage: any }[] = [];
+
         for (const entry of body.entry || []) {
           const pageId = entry.id;
           const connectedPage = await prisma.connectedPage.findFirst({
@@ -91,9 +101,14 @@ export async function POST(request: NextRequest) {
             const item = value.item;
             const commentId = value.comment_id;
             if (commentId || item === 'comment') {
-              await handleFeedComment(value, connectedPage);
+              const ctx = await ingestFeedComment(value, connectedPage);
+              if (ctx) ingested.push({ ctx, connectedPage });
             }
           }
+        }
+
+        for (const { ctx, connectedPage } of ingested) {
+          await processFeedComment(ctx, connectedPage);
         }
       } catch (err) {
         console.error('[FB Webhook] after() processing error:', err);
@@ -108,7 +123,21 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handleFeedComment(value: any, connectedPage: any) {
+/** Everything the ingest pass resolves and the AI/reply pass needs. */
+type FeedCommentContext = {
+  savedComment: Comment;
+  commentId: string;
+  postId: string;
+  message: string;
+  authorName: string;
+  authorId: string | null;
+  timestamp: Date;
+  parentCommentId: string | null;
+  isPageComment: boolean;
+  isAutomationExcluded: boolean;
+};
+
+async function ingestFeedComment(value: any, connectedPage: any): Promise<FeedCommentContext | null> {
   try {
     const commentId = value.comment_id || value.id;
     const postId = value.post_id || value.parent_id;
@@ -119,7 +148,61 @@ async function handleFeedComment(value: any, connectedPage: any) {
 
     if (!commentId || !postId) {
       console.error('[FB Webhook] Missing comment_id or post_id');
-      return;
+      return null;
+    }
+
+    // Reactions on a comment arrive on the same 'feed' field with comment_id set
+    // (item:'reaction'/'like', verb:'add'|'remove'), so they reach the dispatch
+    // check and would otherwise hit the verb gate below — an unlike stamping
+    // deletedAt on the comment itself — or fall into the ingest pipeline where
+    // `value.message || ''` wipes the stored text. Only comment items describe
+    // the comment; anything else carrying comment_id is not ours to act on.
+    const item = typeof value.item === 'string' ? value.item : null;
+    if (item && item !== 'comment') {
+      console.log(`[FB Webhook] Ignoring '${item}' change carrying comment_id ${commentId}`);
+      return null;
+    }
+
+    // Meta reports a comment's whole lifecycle on the same 'feed' field via verb.
+    // Only 'add'/'edited' carry the text; 'remove'/'hide'/'unhide' arrive with no
+    // message, so running the ingest pipeline on them overwrote the stored text
+    // with '' and clobbered status — and re-running the reply pipeline on a
+    // 'hide' could auto-reply to a comment the owner had just hidden. Sync the
+    // moderation state only, and never create a row for a comment we never saw.
+    const verb = typeof value.verb === 'string' ? value.verb : null;
+    if (verb === 'remove' || verb === 'hide' || verb === 'unhide') {
+      const synced = await prisma.comment.updateMany({
+        where: { pageId: connectedPage.id, commentId: String(commentId) },
+        data:
+          verb === 'remove'
+            ? { deletedAt: new Date() }
+            : verb === 'hide'
+              ? { hiddenAt: new Date() }
+              : { hiddenAt: null },
+      });
+      console.log(`[FB Webhook] 🗂  Lifecycle event '${verb}' for ${commentId} — synced ${synced.count} row(s)`);
+
+      // Syncing hiddenAt/deletedAt is not enough: post-scheduled-replies filters
+      // on neither, so a reply still inside the replyDelaySeconds window would
+      // fire publicly at a comment the owner just hid, or POST to a deleted id
+      // and land a phantom 'ai_failed' in the queue. Cancel only the in-flight
+      // automation states — a terminal 'replied'/'ignored'/'ai_failed' row must
+      // never be rewritten. An unhide does not resurrect the reply, matching
+      // app/api/comments/[id]/unhide/route.ts and failing in the safe direction.
+      if (verb === 'remove' || verb === 'hide') {
+        const cancelled = await prisma.comment.updateMany({
+          where: {
+            pageId: connectedPage.id,
+            commentId: String(commentId),
+            status: { in: ['pending', 'ai_generating', 'ai_generated'] },
+          },
+          data: { status: 'ignored', scheduledPostAt: null },
+        });
+        if (cancelled.count > 0) {
+          console.log(`[FB Webhook] 🚫 Cancelled in-flight automation for ${commentId} (${cancelled.count} row(s))`);
+        }
+      }
+      return null;
     }
 
     // Check if comment is from the page itself (mark as reply to hide from dashboard)
@@ -253,6 +336,10 @@ async function handleFeedComment(value: any, connectedPage: any) {
         adName,
         isReply: isReplyComment,
         parentCommentId: parentCommentId,
+        // Backfill the author when a later delivery finally identifies them.
+        // Rows left with authorId=null are invisible to the cooldown /
+        // first-comment / thread-cap queries, which all filter on authorId.
+        ...(authorId ? { authorId } : {}),
       },
       create: {
         pageId: connectedPage.id,
@@ -272,9 +359,55 @@ async function handleFeedComment(value: any, connectedPage: any) {
       },
     });
 
-    // AI sentiment analysis (neutral, positive, negative) - skip for page comments
     console.log(`[FB Webhook] 🔍 Comment saved | DB ID: ${savedComment.id} | Has sentiment: ${!!savedComment.sentiment} | Is page comment: ${isPageComment}`);
-    
+
+    // Decided here, not in the AI pass: it needs no AI, and backfill-sentiment
+    // filters on `message: { not: '' }`, so a media-only row left 'pending' by an
+    // AI-pass timeout is recoverable by no cron at all.
+    if (!message.trim()) {
+      console.log(`[FB Webhook] ⏭️  Media-only comment (no text) - marking as ignored`);
+      await prisma.comment.update({
+        where: { id: savedComment.id },
+        data: { status: 'ignored' },
+      });
+      return null;
+    }
+
+    return {
+      savedComment,
+      commentId: String(commentId),
+      postId: String(postId),
+      message,
+      authorName,
+      authorId,
+      timestamp,
+      parentCommentId,
+      isPageComment,
+      isAutomationExcluded,
+    };
+  } catch (error: any) {
+    console.error('[FB Webhook] ingestFeedComment:', error?.message);
+    return null;
+  }
+}
+
+async function processFeedComment(ctx: FeedCommentContext, connectedPage: any) {
+  const {
+    savedComment,
+    commentId,
+    postId,
+    message,
+    authorName,
+    authorId,
+    timestamp,
+    parentCommentId,
+    isPageComment,
+    isAutomationExcluded,
+  } = ctx;
+
+  try {
+    // AI sentiment analysis (neutral, positive, negative) - skip for page comments
+
     // Media-only comments (GIF, sticker, photo, video) have empty message — mark as ignored
     if (!message.trim()) {
       console.log(`[FB Webhook] ⏭️  Media-only comment (no text) - marking as ignored`);
@@ -387,8 +520,8 @@ async function handleFeedComment(value: any, connectedPage: any) {
           autoReplyEnabled: connectedPage.autoReplyEnabled,
           autoReplyPositive: connectedPage.autoReplyPositive,
           autoReplyNeutral: connectedPage.autoReplyNeutral,
-        });
-        
+        }, message);
+
         console.log(`[FB Webhook] 🚦 Should auto-reply: ${shouldReply}`);
         
         if (shouldReply) {
@@ -447,7 +580,7 @@ async function handleFeedComment(value: any, connectedPage: any) {
         autoReplyEnabled: connectedPage.autoReplyEnabled,
         autoReplyPositive: connectedPage.autoReplyPositive,
         autoReplyNeutral: connectedPage.autoReplyNeutral,
-      });
+      }, message);
 
       if (shouldReply) {
         console.log(`[FB Webhook] ✨ Triggering auto-reply for existing comment ${savedComment.id}`);
@@ -501,7 +634,7 @@ async function handleFeedComment(value: any, connectedPage: any) {
       }
     }
   } catch (error: any) {
-    console.error('[FB Webhook] handleFeedComment:', error?.message);
+    console.error('[FB Webhook] processFeedComment:', error?.message);
   }
 }
 
@@ -517,6 +650,10 @@ async function generateAndPostAutoReply(
   postId: string,
   externalCommentId: string
 ) {
+  // Set the moment the Graph POST comes back ok — from then on the reply is
+  // public and the catch below must not roll the comment back. (see catch)
+  let postedReply: string | null = null;
+
   try {
     // Idempotency: only one process may reply per comment (handles duplicate webhooks)
     const claimed = await prisma.comment.updateMany({
@@ -697,6 +834,7 @@ async function generateAndPostAutoReply(
     console.log(`[FB Webhook] 📥 Facebook API response status: ${replyResponse.status}`);
     
     if (replyResponse.ok) {
+      postedReply = aiResult.reply;
       const replyData = await replyResponse.json();
       console.log(`[FB Webhook] 🎉 ✅ Auto-reply posted successfully!`);
       console.log(`[FB Webhook] 🆔 Reply comment ID: ${replyData.id}`);
@@ -723,14 +861,35 @@ async function generateAndPostAutoReply(
     console.error(`[FB Webhook] 📚 Stack: ${error?.stack?.substring(0, 200)}`);
     
     try {
-      await prisma.comment.update({
-        where: { id: commentDbId },
-        data: {
-          status: 'ai_failed',
-          aiError: error?.message || 'Unknown error',
-        },
-      });
-      console.log(`[FB Webhook] 💾 Updated comment status to ai_failed (exception)`);
+      if (postedReply) {
+        // The reply is already live on Facebook — only the bookkeeping after the
+        // POST threw (non-JSON 200 body, transient DB error inside
+        // logReplySuccess). Marking it ai_failed/replied=false would show the
+        // operator a failure and get the customer a hand-written duplicate, and
+        // the cooldown / thread-cap queries would not count the live reply.
+        await prisma.comment.update({
+          where: { id: commentDbId },
+          data: {
+            replied: true,
+            repliedAt: new Date(),
+            replyMessage: postedReply,
+            automationStatus: 'replied',
+            status: 'replied',
+            needsReview: false,
+            lastError: error?.message || 'Unknown error',
+          },
+        });
+        console.log(`[FB Webhook] 💾 Reply was already posted — recorded as replied despite exception`);
+      } else {
+        await prisma.comment.update({
+          where: { id: commentDbId },
+          data: {
+            status: 'ai_failed',
+            aiError: error?.message || 'Unknown error',
+          },
+        });
+        console.log(`[FB Webhook] 💾 Updated comment status to ai_failed (exception)`);
+      }
     } catch {
       console.error(`[FB Webhook] ❌ Failed to update comment after error`);
     }

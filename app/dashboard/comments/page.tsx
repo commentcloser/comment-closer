@@ -113,6 +113,7 @@ function CommentsPageContent() {
   const lastFetchedPageProvider = useRef<string | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollDelayRef = useRef<number | null>(null);
+  const replyingCommentIdRef = useRef<string | null>(null);
   const selectedAvailablePage = availablePages.find((p) => p.id === pageId) ?? null;
   const selectedPageProvider = selectedAvailablePage?.provider ?? null;
   const selectedPageIsTikTok = selectedPageProvider === 'tiktok' || currentPageProvider === 'tiktok'
@@ -181,13 +182,19 @@ function CommentsPageContent() {
       if (comment.status === 'ai_generating') {
         return true;
       }
-      return comment.status === 'ai_generated' && !comment.scheduledPostAt;
+      // needsReview waits on a human, not on the backend — polling it would never stop
+      return comment.status === 'ai_generated' && !comment.scheduledPostAt && !comment.needsReview;
     });
   };
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Keep the active reply target readable from in-flight async handlers (state closures go stale)
+  useEffect(() => {
+    replyingCommentIdRef.current = replyingCommentId;
+  }, [replyingCommentId]);
 
   useEffect(() => {
     setCurrentLanguage(i18n.language || 'en');
@@ -288,6 +295,9 @@ function CommentsPageContent() {
           setLastFetchedAt(null);
           setError(null);
           setWarning(null);
+          // Selection holds DB ids from the old page — bulk delete would hit comments the user can no longer see
+          setSelectedCommentIds([]);
+          setCurrentPage(1);
           setLoading(true); // Show skeleton during page change
         }
         
@@ -420,7 +430,8 @@ function CommentsPageContent() {
       const res = await fetch(`/api/comments/${commentId}/suggest-reply`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
-        if (data.reply) setReplyText(data.reply);
+        // Drop the suggestion if the user moved the reply box to another comment while it was in flight
+        if (data.reply && replyingCommentIdRef.current === commentId) setReplyText(data.reply);
       }
     } finally { setSuggestLoading(false); }
   };
@@ -440,7 +451,12 @@ function CommentsPageContent() {
       if (res.ok) {
         setReviewTexts(prev => { const next = { ...prev }; delete next[commentId]; return next; });
         await refreshComments();
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error || (action === 'approve' ? 'Failed to approve reply' : 'Failed to reject reply'));
       }
+    } catch (error: any) {
+      setError(error?.message || (action === 'approve' ? 'Failed to approve reply' : 'Failed to reject reply'));
     } finally {
       setReviewLoading(null);
     }
@@ -809,28 +825,32 @@ function CommentsPageContent() {
   };
 
   const handleToggleSelectAll = () => {
-    if (filteredComments.length === 0) return;
+    if (selectableComments.length === 0) return;
 
-    if (selectedCommentIds.length === filteredComments.length) {
+    if (selectedCommentIds.length === selectableComments.length) {
       setSelectedCommentIds([]);
     } else {
-      setSelectedCommentIds(filteredComments.map(c => c.id));
+      setSelectedCommentIds(selectableComments.map(c => c.id));
     }
   };
 
   const handleBulkDelete = async () => {
     if (selectedPageIsTikTok || selectedCommentIds.length === 0) return;
 
+    // The list may have changed under the selection (poll/refresh/filter) — only ever delete what is
+    // still selectable right now, otherwise we DELETE comments the user can no longer see
+    const idsToDelete = selectedCommentIds.filter(id => selectableComments.some(c => c.id === id));
+    if (idsToDelete.length === 0) return;
+
     const confirmed = confirm(
       t('dashboard.comments.confirmBulkDelete', {
-        count: selectedCommentIds.length,
+        count: idsToDelete.length,
       }) ||
-        `Are you sure you want to delete ${selectedCommentIds.length} selected comment(s)?`
+        `Are you sure you want to delete ${idsToDelete.length} selected comment(s)?`
     );
 
     if (!confirmed) return;
 
-    const idsToDelete = [...selectedCommentIds];
     setReplyingCommentId(null);
 
     for (const id of idsToDelete) {
@@ -946,6 +966,21 @@ function CommentsPageContent() {
     return result;
   }, [comments, searchQuery, filterSentiment, filterStatus, filterDate]);
 
+  // Deleted / TikTok comments are display-only (no checkbox) — they must never end up in a bulk action
+  const selectableComments = useMemo(
+    () => filteredComments.filter(c => !c.deletedAt && c.provider !== 'tiktok' && c.provider !== 'tiktok_ads'),
+    [filteredComments]
+  );
+
+  // Drop ids that are no longer selectable (deleted under us, or filtered out) so the bulk bar count
+  // never promises to delete comments the user cannot see
+  useEffect(() => {
+    setSelectedCommentIds(prev => {
+      const next = prev.filter(id => selectableComments.some(c => c.id === id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [selectableComments]);
+
   const totalFilteredPages = Math.ceil(filteredComments.length / commentsPageSize);
   const paginatedComments = filteredComments.slice((currentPage - 1) * commentsPageSize, currentPage * commentsPageSize);
 
@@ -1035,7 +1070,7 @@ function CommentsPageContent() {
     return null;
   }
 
-  const allSelected = filteredComments.length > 0 && selectedCommentIds.length === filteredComments.length;
+  const allSelected = selectableComments.length > 0 && selectedCommentIds.length === selectableComments.length;
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -1935,7 +1970,8 @@ function CommentsPageContent() {
                   {t('dashboard.comments.selectPageDescription') || 'Choose a Facebook or Instagram page from the dropdown above to view and manage its comments'}
                 </p>
               </div>
-            ) : comments.length === 0 ? (
+            ) : comments.length === 0 || (filteredComments.length === 0 && !searchQuery && activeFilterCount === 0) ? (
+              // Second case: every comment was dropped as media-only — otherwise the list renders blank with no explanation
               <div className="bg-surface rounded-card border border-line shadow-card p-8 sm:p-12 text-center">
                 {/* Icon */}
                 <div className="size-14 rounded-card border border-line bg-accent-wash text-accent flex items-center justify-center mx-auto mb-4">
@@ -1946,12 +1982,14 @@ function CommentsPageContent() {
 
                 {/* Title */}
                 <h3 className="font-display text-[25px] font-extrabold text-ink mb-2">
-                  No Comments Yet
+                  {comments.length > 0 ? 'Nothing to Review' : 'No Comments Yet'}
                 </h3>
 
                 {/* Description */}
                 <p className="text-[15px] text-ink-muted mb-6 max-w-md mx-auto">
-                  This page doesn't have any comments yet
+                  {comments.length > 0
+                    ? "This page's comments are all photos, GIFs or stickers — there's no text to review"
+                    : "This page doesn't have any comments yet"}
                 </p>
 
                 {/* Action Button */}

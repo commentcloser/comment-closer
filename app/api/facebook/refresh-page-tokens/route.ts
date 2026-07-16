@@ -69,6 +69,14 @@ export async function POST(request: NextRequest) {
     let verifiedCount = 0;
     const errors: string[] = [];
 
+    // debug_token only accepts an app access token (or a token belonging to a
+    // developer of the app), so build one from the app credentials. The user's
+    // own token gets rejected with (#100) for every ordinary customer.
+    const appAccessToken =
+      process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET
+        ? `${process.env.FACEBOOK_CLIENT_ID}|${process.env.FACEBOOK_CLIENT_SECRET}`
+        : null;
+
     // Refresh tokens for each connected page
     for (const connectedPage of connectedPages) {
       try {
@@ -79,31 +87,36 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
+        // Update the stored token. It just came from /me/accounts, so it is valid
+        // — the permission check below is advisory and must not gate the store.
+        await prisma.connectedPage.update({
+          where: { id: connectedPage.id },
+          data: {
+            pageAccessToken: facebookPage.access_token,
+            updatedAt: new Date(),
+          },
+        });
+
+        refreshedCount++;
+
+        if (!appAccessToken) {
+          continue;
+        }
+
         // Verify the fresh token has the required permissions
-        const debugTokenUrl = `https://graph.facebook.com/v18.0/debug_token?input_token=${facebookPage.access_token}&access_token=${account.access_token}`;
+        const debugTokenUrl = `https://graph.facebook.com/v18.0/debug_token?input_token=${facebookPage.access_token}&access_token=${appAccessToken}`;
         const debugResponse = await graphFetch(debugTokenUrl);
-        
+
         if (debugResponse.ok) {
           const debugData = await debugResponse.json();
           const scopes = debugData.data?.scopes || [];
-          
-          // Update the stored token
-          await prisma.connectedPage.update({
-            where: { id: connectedPage.id },
-            data: {
-              pageAccessToken: facebookPage.access_token,
-              updatedAt: new Date(),
-            },
-          });
-          
-          refreshedCount++;
-          
+
           if (scopes.includes('pages_read_engagement')) {
             verifiedCount++;          } else {            errors.push(`${connectedPage.pageName}: Token refreshed but missing pages_read_engagement permission`);
           }
         } else {
           const errorText = await debugResponse.text();
-          errors.push(`${connectedPage.pageName}: Failed to verify token - ${errorText.substring(0, 100)}`);
+          errors.push(`${connectedPage.pageName}: Token refreshed but could not verify permissions - ${errorText.substring(0, 100)}`);
         }
       } catch (error) {        errors.push(`${connectedPage.pageName}: ${String(error)}`);
       }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireCommentOwner } from '@/lib/commentAuth';
 import {
+  createActionLog,
   logManualAction,
   isActionSafe,
 } from '@/lib/actionLogger';
@@ -77,12 +78,52 @@ export async function POST(
     }
 
     // Approve: post reply to the appropriate platform
-    const replyText = (editedReply && editedReply.trim()) || comment.aiGeneratedReply;
+    if (editedReply !== undefined && editedReply !== null && typeof editedReply !== 'string') {
+      return NextResponse.json(
+        { error: 'editedReply must be a string' },
+        { status: 400 }
+      );
+    }
+
+    const replyText = (typeof editedReply === 'string' && editedReply.trim()) || comment.aiGeneratedReply;
 
     const safety = await isActionSafe(id, 'MANUAL_REPLY');
     if (!safety.safe) {
       return NextResponse.json({ error: safety.reason }, { status: 400 });
     }
+
+    // The status check above is read-then-act: a double-click (or two open review
+    // tabs) lets both requests through and the customer gets the same reply twice.
+    // Claim the row to 'replied' BEFORE posting — the loser gets 409, and
+    // releaseReplyClaim() puts the row back if the post fails.
+    const claimReply = async (): Promise<boolean> => {
+      const { count } = await prisma.comment.updateMany({
+        where: { id, status: 'ai_generated', replied: false },
+        data: {
+          replied: true,
+          repliedAt: new Date(),
+          replyMessage: replyText,
+          automationStatus: 'replied',
+          status: 'replied',
+          needsReview: false,
+        },
+      });
+      return count === 1;
+    };
+
+    const releaseReplyClaim = async (): Promise<void> => {
+      await prisma.comment.update({
+        where: { id },
+        data: {
+          replied: false,
+          repliedAt: comment.repliedAt,
+          replyMessage: comment.replyMessage,
+          status: 'ai_generated',
+          automationStatus: comment.automationStatus,
+          needsReview: comment.needsReview,
+        },
+      });
+    };
 
     const provider = comment.connectedPage.provider as 'facebook' | 'instagram' | 'tiktok' | 'tiktok_ads';
 
@@ -94,6 +135,10 @@ export async function POST(
       const accessToken = await getTikTokAdsAccessToken(comment.connectedPage.pageId);
       if (!accessToken) {
         return NextResponse.json({ error: 'Could not obtain TikTok Ads access token' }, { status: 503 });
+      }
+
+      if (!(await claimReply())) {
+        return NextResponse.json({ error: 'This reply is already being posted' }, { status: 409 });
       }
 
       try {
@@ -108,15 +153,13 @@ export async function POST(
 
         await logManualAction(id, comment.connectedPage.id, 'tiktok_ads', 'MANUAL_REPLY', 'Approved AI reply posted to TikTok Ads', { comment_id: replyCommentId });
 
-        await prisma.comment.update({
-          where: { id },
-          data: { replied: true, repliedAt: new Date(), replyMessage: replyText, automationStatus: 'replied', status: 'replied', needsReview: false },
-        });
-
         return NextResponse.json({ success: true, action: 'approved', replyId: replyCommentId });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to post TikTok Ads reply';
-        await logManualAction(id, comment.connectedPage.id, 'tiktok_ads', 'MANUAL_REPLY', `Approved reply failed: ${msg}`);
+        // Nothing was posted: hand the row back to the review queue and log the
+        // failure directly — logManualAction() would mark the comment replied.
+        await releaseReplyClaim();
+        await createActionLog({ commentId: id, connectedPageId: comment.connectedPage.id, provider: 'tiktok_ads', actionType: 'MANUAL_REPLY', status: 'FAILED', reason: `Approved reply failed: ${msg}`, errorMessage: msg });
         return NextResponse.json({ error: 'Failed to post reply', details: msg }, { status: 502 });
       }
     }
@@ -137,6 +180,10 @@ export async function POST(
         return NextResponse.json({ error: 'Could not obtain TikTok access token' }, { status: 503 });
       }
 
+      if (!(await claimReply())) {
+        return NextResponse.json({ error: 'This reply is already being posted' }, { status: 409 });
+      }
+
       try {
         const replyCommentId = await replyToTikTokComment(
           accessToken,
@@ -148,15 +195,11 @@ export async function POST(
 
         await logManualAction(id, comment.connectedPage.id, provider, 'MANUAL_REPLY', 'Approved AI reply posted to TikTok', { comment_id: replyCommentId });
 
-        await prisma.comment.update({
-          where: { id },
-          data: { replied: true, repliedAt: new Date(), replyMessage: replyText, automationStatus: 'replied', status: 'replied', needsReview: false },
-        });
-
         return NextResponse.json({ success: true, action: 'approved', replyId: replyCommentId });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to post TikTok reply';
-        await logManualAction(id, comment.connectedPage.id, provider, 'MANUAL_REPLY', `Approved reply failed: ${msg}`);
+        await releaseReplyClaim();
+        await createActionLog({ commentId: id, connectedPageId: comment.connectedPage.id, provider, actionType: 'MANUAL_REPLY', status: 'FAILED', reason: `Approved reply failed: ${msg}`, errorMessage: msg });
         return NextResponse.json({ error: 'Failed to post reply', details: msg }, { status: 502 });
       }
     }
@@ -174,42 +217,53 @@ export async function POST(
       ? `https://graph.facebook.com/v24.0/${threadTargetId}/replies`
       : `https://graph.facebook.com/v24.0/${threadTargetId}/comments`;
 
-    const response = await fetch(replyUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: replyText,
-        access_token: comment.connectedPage.pageAccessToken,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      await logManualAction(id, comment.connectedPage.id, provider, 'MANUAL_REPLY', `Approved reply failed: ${errorText.substring(0, 200)}`);
-      return NextResponse.json({ error: 'Failed to post reply', details: errorText }, { status: 500 });
+    if (!(await claimReply())) {
+      return NextResponse.json({ error: 'This reply is already being posted' }, { status: 409 });
     }
 
-    const replyData = await response.json();
+    // The claim is held from here on, so every exit below has to hand it back —
+    // a throwing fetch (DNS, socket hang-up, timeout) would otherwise strand the
+    // row as 'replied' with a reply that was never posted.
+    let posted = false;
 
-    await logManualAction(id, comment.connectedPage.id, provider, 'MANUAL_REPLY', 'Approved AI reply posted successfully', replyData);
+    try {
+      const response = await fetch(replyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: replyText,
+          access_token: comment.connectedPage.pageAccessToken,
+        }),
+      });
 
-    await prisma.comment.update({
-      where: { id },
-      data: {
-        replied: true,
-        repliedAt: new Date(),
-        replyMessage: replyText,
-        automationStatus: 'replied',
-        status: 'replied',
-        needsReview: false,
-      },
-    });
+      if (!response.ok) {
+        const errorText = await response.text();
+        await releaseReplyClaim();
+        await createActionLog({ commentId: id, connectedPageId: comment.connectedPage.id, provider, actionType: 'MANUAL_REPLY', status: 'FAILED', reason: `Approved reply failed: ${errorText.substring(0, 200)}`, errorMessage: errorText.substring(0, 200) });
+        return NextResponse.json({ error: 'Failed to post reply', details: errorText }, { status: 500 });
+      }
 
-    return NextResponse.json({
-      success: true,
-      action: 'approved',
-      replyId: replyData.id,
-    });
+      // Meta accepted the reply: the claim is now real and must stand even if the
+      // bookkeeping below throws.
+      posted = true;
+
+      const replyData = await response.json();
+
+      await logManualAction(id, comment.connectedPage.id, provider, 'MANUAL_REPLY', 'Approved AI reply posted successfully', replyData);
+
+      return NextResponse.json({
+        success: true,
+        action: 'approved',
+        replyId: replyData.id,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to post reply';
+      if (!posted) {
+        await releaseReplyClaim();
+      }
+      await createActionLog({ commentId: id, connectedPageId: comment.connectedPage.id, provider, actionType: 'MANUAL_REPLY', status: 'FAILED', reason: `Approved reply failed: ${msg}`, errorMessage: msg });
+      return NextResponse.json({ error: 'Failed to post reply', details: msg }, { status: 502 });
+    }
   } catch (error: any) {
     console.error('[Approve Reply] Error:', error);
     return NextResponse.json(

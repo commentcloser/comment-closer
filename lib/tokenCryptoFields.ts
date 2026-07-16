@@ -18,13 +18,56 @@ export const TOKEN_FIELDS: Record<string, string[]> = {
   ConnectedPage: ['pageAccessToken'],
 };
 
-export const WRITE_OPS = new Set(['create', 'createMany', 'update', 'updateMany', 'upsert']);
+/**
+ * Relation field → related model, for every relation that can reach a model in
+ * TOKEN_FIELDS. The query hook only ever fires for the TOP-LEVEL model, so a
+ * relation-nested read (the common one: comment.findFirst({ include: {
+ * connectedPage } })) has model='Comment' and would otherwise hand the caller a
+ * raw enc:v1: envelope as its page token. Results are finite trees, so walking
+ * these keys recursively terminates even though the graph has cycles.
+ */
+export const TOKEN_RELATIONS: Record<string, Record<string, string>> = {
+  User: { accounts: 'Account', connectedPages: 'ConnectedPage', sessions: 'Session' },
+  Account: { user: 'User' },
+  Session: { user: 'User' },
+  ConnectedPage: { user: 'User', comments: 'Comment', tiktokStats: 'TikTokAccountStats' },
+  Comment: { connectedPage: 'ConnectedPage', actionLogs: 'CommentActionLog' },
+  CommentActionLog: { comment: 'Comment' },
+  TikTokAccountStats: { connectedPage: 'ConnectedPage' },
+};
+
+export const WRITE_OPS = new Set([
+  'create',
+  'createMany',
+  'createManyAndReturn',
+  'update',
+  'updateMany',
+  'updateManyAndReturn',
+  'upsert',
+]);
 export const READ_OPS = new Set([
   'findUnique',
   'findUniqueOrThrow',
   'findFirst',
   'findFirstOrThrow',
   'findMany',
+]);
+
+/**
+ * Operations whose result is a stored row and therefore needs decrypting. A
+ * write's return value is a read of the row it just wrote, so it has to
+ * round-trip back to plaintext like any other read — otherwise a caller that
+ * uses the returned record's token gets an envelope. The *Many variants return
+ * a { count } and are left alone.
+ */
+export const DECRYPT_OPS = new Set([
+  ...READ_OPS,
+  'create',
+  'createManyAndReturn',
+  'update',
+  'updateManyAndReturn',
+  'upsert',
+  'delete',
 ]);
 
 function encryptFieldValue(value: unknown): unknown {
@@ -74,23 +117,54 @@ export function encryptWriteArgs(model: string | undefined, operation: string, a
   return a;
 }
 
-function decryptRecord(fields: string[], record: unknown): unknown {
+function decryptRecord(model: string, record: unknown): unknown {
   if (!record || typeof record !== 'object') return record;
   const src = record as Record<string, unknown>;
   let out: Record<string, unknown> = src;
-  for (const f of fields) {
-    if (typeof src[f] === 'string') {
-      if (out === src) out = { ...src };
-      out[f] = decryptToken(src[f] as string);
+
+  const fields = TOKEN_FIELDS[model];
+  if (fields) {
+    for (const f of fields) {
+      if (typeof src[f] === 'string') {
+        if (out === src) out = { ...src };
+        out[f] = decryptToken(src[f] as string);
+      }
     }
   }
+
+  const relations = TOKEN_RELATIONS[model];
+  if (relations) {
+    for (const key of Object.keys(relations)) {
+      // Only walk relations that were actually included/selected.
+      if (!(key in src) || src[key] == null || typeof src[key] !== 'object') continue;
+      const decrypted = decryptValue(relations[key], src[key]);
+      if (decrypted !== src[key]) {
+        if (out === src) out = { ...src };
+        out[key] = decrypted;
+      }
+    }
+  }
+
   return out;
 }
 
-/** Decrypt token fields in a read operation's result (single, array, or null). */
+/** Decrypt a record or list of records of `model`, preserving identity if unchanged. */
+function decryptValue(model: string, value: unknown): unknown {
+  if (Array.isArray(value)) {
+    let changed = false;
+    const mapped = value.map((r) => {
+      const d = decryptRecord(model, r);
+      if (d !== r) changed = true;
+      return d;
+    });
+    return changed ? mapped : value;
+  }
+  return decryptRecord(model, value);
+}
+
+/** Decrypt token fields in an operation's result (single, array, or null), including relations. */
 export function decryptResult(model: string | undefined, result: unknown): unknown {
-  const fields = model ? TOKEN_FIELDS[model] : undefined;
-  if (!fields || result == null) return result;
-  if (Array.isArray(result)) return result.map((r) => decryptRecord(fields, r));
-  return decryptRecord(fields, result);
+  if (!model || result == null) return result;
+  if (!TOKEN_FIELDS[model] && !TOKEN_RELATIONS[model]) return result;
+  return decryptValue(model, result);
 }

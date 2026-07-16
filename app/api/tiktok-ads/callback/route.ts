@@ -146,15 +146,14 @@ export async function GET(request: NextRequest) {
       },
       select: { id: true },
     });
-    const otherUserAccount = await prisma.account.findFirst({
-      where: {
-        provider: 'tiktok_ads',
-        providerAccountId: advertiserId,
-        NOT: { userId },
-      },
-      select: { id: true },
-    });
-    if (otherUserPage || otherUserAccount) {
+    // Only a still-active page blocks; the Account row alone deliberately must
+    // not. Disconnect is a soft disconnect that keeps the OAuth token alive, so
+    // the Account outlives it — also matching on the Account locked the
+    // advertiser to its first owner forever, even after a full disconnect. Step
+    // 4's upsert reassigns the stale Account to the new owner, which also revokes
+    // the old owner's /api/tiktok/reactivate path (it requires an Account under
+    // their own userId), so no second user can end up concurrently active.
+    if (otherUserPage) {
       blockedAdvertisers.push(advertiserId);
     }
   }
@@ -227,5 +226,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(errorRedirect('db_save_failed'));
   }
 
-  return NextResponse.redirect(successRedirect);
+  // Some of the authorized advertisers were skipped as in-use by another user:
+  // report it instead of a clean success, so the user is not left believing ad
+  // accounts that never connected are being auto-replied to. Reuses the in-use
+  // error both callback pages already render (same code as the all-blocked case
+  // above) — the advertisers that did connect are saved and still appear in the
+  // list those pages refetch on load.
+  return NextResponse.redirect(
+    blockedAdvertisers.length > 0 ? errorRedirect('tiktok_ads_account_in_use') : successRedirect,
+  );
 }
