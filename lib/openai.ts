@@ -39,6 +39,46 @@ export function normalizeShortToken(text: string): string {
 export const BARE_NEGATIONS = ['no', 'nope', 'όχι', 'oxi', 'οχι'];
 
 /**
+ * Fast-path sentiment for emoji-only comments. Returns a verdict ONLY when the
+ * emoji signal is unambiguous; returns null when the text is not emoji-only, or
+ * when the emoji are mixed or unrecognized — so the caller falls through to the
+ * AI classifier instead of guessing.
+ *
+ * Previously this hard-returned 'neutral' for any emoji the hardcoded lists
+ * missed. The negative list has 🤮 (vomiting) but not 🤢 (nauseated face), so a
+ * comment of five 🤢 — clearly disgust — was labelled neutral and escaped
+ * moderation (and could even collect a cheerful auto-reply). Deferring the
+ * uncertain cases to the model fixes the whole class, not just one emoji.
+ */
+export function classifyEmojiOnlySentiment(text: string): 'positive' | 'negative' | null {
+  // Allow the emoji variation selector (U+FE0F, e.g. in ❤️) and the zero-width
+  // joiner (U+200D, in compound emoji like 👨‍👩‍👧) — neither carries the \p{Emoji}
+  // property, so we strip them before the emoji-only test — else a heart or
+  // family emoji would fail it and skip the fast path.
+  const stripped = text.trim().replace(/[\uFE0F\u200D]/g, '');
+  const isEmojiOnly = stripped.length > 0 && /^[\p{Emoji}\s]+$/u.test(stripped) && !/[a-zA-Z0-9]/.test(text);
+  if (!isEmojiOnly) return null;
+
+  const positiveEmojis = [
+    '😊', '😄', '😃', '😁', '🥰', '😍', '❤️', '💕', '💖', '💗', '👍', '🙌', '🎉',
+    '✨', '⭐', '💯', '🔥', '😎', '🤗', '💪', '👏', '🥳', '🤩', '😻', '🫶', '😌',
+  ];
+  const negativeEmojis = [
+    '😢', '😭', '😞', '😔', '😩', '😠', '😡', '💔', '👎', '😤', '🤬', '😰', '😨',
+    '😱', '🤮', '🤢', '🥴', '💩', '😒', '🙄', '😖', '😣', '😫', '☹️', '🙁', '😕',
+    '😟', '🤦', '🖕',
+  ];
+
+  const hasPositive = positiveEmojis.some((emoji) => text.includes(emoji));
+  const hasNegative = negativeEmojis.some((emoji) => text.includes(emoji));
+
+  if (hasPositive && !hasNegative) return 'positive';
+  if (hasNegative && !hasPositive) return 'negative';
+  // Mixed or unrecognized emoji: let the AI decide rather than guess 'neutral'.
+  return null;
+}
+
+/**
  * Analyzes the sentiment of a comment using OpenAI's ChatGPT API
  * @param text - The comment text to analyze
  * @returns "positive", "neutral", "negative", or null if analysis fails
@@ -59,25 +99,10 @@ export async function analyzeCommentSentiment(
   // Smart pre-filtering: Handle common cases without AI
   // This saves API costs by using simple rules for obvious cases
 
-  // 1. Check if comment is emoji-only (no letters/numbers) — allow any length
-  const hasOnlyEmojis = /^[\p{Emoji}\s]+$/u.test(text.trim()) && !/[a-zA-Z0-9]/.test(text);
-  if (hasOnlyEmojis) {
-    // Classify emojis by sentiment
-    const positiveEmojis = ['😊', '😄', '😃', '😁', '🥰', '😍', '❤️', '💕', '👍', '🙌', '🎉', '✨', '⭐', '💯', '🔥', '😎', '🤗', '💪', '👏', '🥳'];
-    const negativeEmojis = ['😢', '😭', '😞', '😔', '😩', '😠', '😡', '💔', '👎', '😤', '🤬', '😰', '😨', '😱', '🤮', '💩'];
-    
-    const hasPositive = positiveEmojis.some(emoji => text.includes(emoji));
-    const hasNegative = negativeEmojis.some(emoji => text.includes(emoji));
-    
-    if (hasPositive && !hasNegative) {
-      return 'positive';
-    }
-    if (hasNegative && !hasPositive) {
-      return 'negative';
-    }
-    // Mixed or neutral emojis
-    return 'neutral';
-  }
+  // 1. Emoji-only fast path — confident cases only; anything mixed or not in
+  // the lists falls through to the AI (which reads emoji the lists miss).
+  const emojiVerdict = classifyEmojiOnlySentiment(text);
+  if (emojiVerdict) return emojiVerdict;
 
   // Very short non-emoji text (1 char like "k", "a") — not worth an API call.
   // Must not return null: null means "AI failed", so the backfill cron would
