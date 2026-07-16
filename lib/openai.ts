@@ -39,46 +39,6 @@ export function normalizeShortToken(text: string): string {
 export const BARE_NEGATIONS = ['no', 'nope', 'όχι', 'oxi', 'οχι'];
 
 /**
- * Fast-path sentiment for emoji-only comments. Returns a verdict ONLY when the
- * emoji signal is unambiguous; returns null when the text is not emoji-only, or
- * when the emoji are mixed or unrecognized — so the caller falls through to the
- * AI classifier instead of guessing.
- *
- * Previously this hard-returned 'neutral' for any emoji the hardcoded lists
- * missed. The negative list has 🤮 (vomiting) but not 🤢 (nauseated face), so a
- * comment of five 🤢 — clearly disgust — was labelled neutral and escaped
- * moderation (and could even collect a cheerful auto-reply). Deferring the
- * uncertain cases to the model fixes the whole class, not just one emoji.
- */
-export function classifyEmojiOnlySentiment(text: string): 'positive' | 'negative' | null {
-  // Allow the emoji variation selector (U+FE0F, e.g. in ❤️) and the zero-width
-  // joiner (U+200D, in compound emoji like 👨‍👩‍👧) — neither carries the \p{Emoji}
-  // property, so we strip them before the emoji-only test — else a heart or
-  // family emoji would fail it and skip the fast path.
-  const stripped = text.trim().replace(/[\uFE0F\u200D]/g, '');
-  const isEmojiOnly = stripped.length > 0 && /^[\p{Emoji}\s]+$/u.test(stripped) && !/[a-zA-Z0-9]/.test(text);
-  if (!isEmojiOnly) return null;
-
-  const positiveEmojis = [
-    '😊', '😄', '😃', '😁', '🥰', '😍', '❤️', '💕', '💖', '💗', '👍', '🙌', '🎉',
-    '✨', '⭐', '💯', '🔥', '😎', '🤗', '💪', '👏', '🥳', '🤩', '😻', '🫶', '😌',
-  ];
-  const negativeEmojis = [
-    '😢', '😭', '😞', '😔', '😩', '😠', '😡', '💔', '👎', '😤', '🤬', '😰', '😨',
-    '😱', '🤮', '🤢', '🥴', '💩', '😒', '🙄', '😖', '😣', '😫', '☹️', '🙁', '😕',
-    '😟', '🤦', '🖕',
-  ];
-
-  const hasPositive = positiveEmojis.some((emoji) => text.includes(emoji));
-  const hasNegative = negativeEmojis.some((emoji) => text.includes(emoji));
-
-  if (hasPositive && !hasNegative) return 'positive';
-  if (hasNegative && !hasPositive) return 'negative';
-  // Mixed or unrecognized emoji: let the AI decide rather than guess 'neutral'.
-  return null;
-}
-
-/**
  * Analyzes the sentiment of a comment using OpenAI's ChatGPT API
  * @param text - The comment text to analyze
  * @returns "positive", "neutral", "negative", or null if analysis fails
@@ -94,67 +54,29 @@ export async function analyzeCommentSentiment(
   // Skip empty messages
   if (!text || text.trim().length === 0) return null;
 
-  const cleanText = text.trim().toLowerCase();
+  // The old keyword/emoji pre-filter lists were removed in favour of the model
+  // (gpt-5.6-luna), which reads emoji, sarcasm and Greeklish far better than a
+  // hardcoded list — a list that will always miss cases (e.g. it had 🤮 but not
+  // 🤢, so five 🤢 read as neutral). Only ONE hardcoded rule remains, and it's a
+  // safety floor, not a shortcut:
 
-  // Smart pre-filtering: Handle common cases without AI
-  // This saves API costs by using simple rules for obvious cases
-
-  // 1. Emoji-only fast path — confident cases only; anything mixed or not in
-  // the lists falls through to the AI (which reads emoji the lists miss).
-  const emojiVerdict = classifyEmojiOnlySentiment(text);
-  if (emojiVerdict) return emojiVerdict;
-
-  // Very short non-emoji text (1 char like "k", "a") — not worth an API call.
-  // Must not return null: null means "AI failed", so the backfill cron would
-  // burn all its attempts on it and park the comment in ai_failed.
+  // Single stray character carries no sentiment and isn't worth an API call.
+  // (Return a value, never null: null means "AI failed", so the backfill cron
+  // would burn its retries on it and park it in ai_failed.)
   if (text.trim().length < 2) return 'neutral';
 
-  // 2. Very short positive responses (English & Greek)
-  const shortPositive = [
-    'ok', 'okay', 'thanks', 'thank you', 'good', 'great', 'nice', 'cool', 'yes', 'yep', 'yeah', 
-    'perfect', 'awesome', 'love', 'loved it', 'amazing', 'excellent', 'fantastic', 'wow',
-    'ευχαριστώ', 'ευχαριστω', 'efharisto', 'efxaristo', 'kala', 'καλα', 'καλά', 'ωραια', 'ωραία', 
-    'wraia', 'οκ', 'ναι', 'nai', 'τέλειο', 'τελειο', 'teleio', 'bravo', 'μπράβο', 'μπραβο'
-  ];
-  if (cleanText.length <= 15 && shortPositive.some(word => cleanText === word || cleanText === word + '!' || cleanText === word + '!!')) {
-    return 'positive';
-  }
-
-  // 3. Very short negative responses (English & Greek).
-  // Only unambiguously brand-negative words belong here: a bare "no"/"όχι" is
-  // usually just an answer to another commenter's question, and on delete-mode
-  // pages this list gets the comment permanently deleted. Those live in the
-  // neutral list below instead.
-  const shortNegative = [
-    'bad', 'terrible', 'awful', 'hate', 'worst', 'disappointed', 'horrible',
-    'κακό', 'κακο', 'kako', 'άσχημο', 'ασχημο', 'asxhmo'
-  ];
-  if (cleanText.length <= 15 && shortNegative.some(word => cleanText === word || cleanText === word + '!' || cleanText === word + '!!')) {
-    return 'negative';
-  }
-
-  // 4. Very short neutral responses ('no'/'όχι' included: as a bare answer to
-  // another commenter they carry no sentiment about the brand)
-  const shortNeutral = [
-    'ok', 'k', 'hmm', 'hm', 'eh', 'meh', 'maybe', 'idk', 'dunno', 'what', 'where', 'when',
-    'how', 'why', 'who', 'which', ...BARE_NEGATIONS
-  ];
-  // Matched on the normalized token, not cleanText: an exact match let "No!" and
-  // "no." fall through to the LLM, which classifies an emphatic bare negation
-  // negative — the very deletion this list exists to prevent.
+  // Anti-deletion floor: a bare "no"/"όχι"/"nope" is almost always an answer to
+  // another commenter, not a verdict on the brand. Left to the model it can be
+  // read as negative and, on delete-mode pages, trigger a permanent delete of
+  // an innocuous reply — so force it neutral. Normalized so "No!" / "no." match
+  // too (an exact-string check let those reach the LLM and get deleted). Kept in
+  // sync with the reply-side guard via the shared BARE_NEGATIONS list.
   const shortToken = normalizeShortToken(text);
-  if (shortToken.length <= 8 && shortNeutral.includes(shortToken)) {
+  if (shortToken.length <= 8 && BARE_NEGATIONS.includes(shortToken)) {
     return 'neutral';
   }
 
-  // 5. Short questions used to be hard-classified 'neutral' here, which let
-  // "is this a scam?" skip moderation and collect a friendly auto-reply.
-  // Questions are exactly the ambiguous case the model is for, so they fall
-  // through to the AI classifier below.
-
-  // If none of the simple rules match, use AI for analysis.
-  // Sentiment is a one-word classification, so run it with no reasoning and
-  // a tiny output cap (see lib/aiConfig.ts).
+  // Everything else → the model.
   const model = AI_SENTIMENT_MODEL;
 
   try {
