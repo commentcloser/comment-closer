@@ -127,7 +127,9 @@ export async function GET(request: NextRequest) {
           prisma.commentActionLog.count({
             where: {
               connectedPageId: { in: pageIds },
-              actionType: 'HIDE',
+              // Delete-mode pages log DELETE, not HIDE — counting only HIDE made
+              // auto-moderation look dead for every page on autoNegativeAction='delete'
+              actionType: { in: ['HIDE', 'DELETE'] },
               status: 'SUCCESS',
               createdAt: { gte: twentyFourHoursAgo },
             },

@@ -46,9 +46,18 @@ export async function DELETE(request: NextRequest) {
     });
 
     // Finally, delete the user (this will cascade delete any remaining related data)
-    await prisma.user.delete({
+    const deletedUser = await prisma.user.delete({
       where: {
         id: userId,
+      },
+    });
+
+    // VerificationToken is keyed by email with no FK to User, so the cascade
+    // above leaves pending reset/verification tokens behind — an unused reset
+    // link would still be honored if this email is ever re-registered.
+    await prisma.verificationToken.deleteMany({
+      where: {
+        identifier: deletedUser.email,
       },
     });
 

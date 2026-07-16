@@ -8,6 +8,7 @@ import {
   hideTikTokComment,
   replyToTikTokComment,
 } from '@/lib/tiktokApi';
+import { isTikTokAdsAuthError, isTikTokAdsRateLimitError } from '@/lib/tiktokAdsApi';
 
 const { auth } = NextAuth(authOptions);
 
@@ -200,7 +201,19 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const rawMessage = err instanceof Error ? err.message : 'Failed to delete TikTok comment';
-    const message = rawMessage.toLowerCase().includes('delete')
+    // Every deleteTikTokComment failure reads "TikTok comment delete failed (code N)",
+    // so matching on the word "delete" mislabelled rate limits and dead tokens as an
+    // ownership problem. Rule those out first — the return codes are shared across the
+    // TikTok Business API, so the classifiers in lib/tiktokAdsApi.ts apply here too.
+    // The ownership hint only applies to an unattributable TikTok API code, so scope it
+    // to deleteTikTokComment's own error: a network fault ("fetch failed"), a non-JSON
+    // body, or a failing prisma.comment.update after a SUCCESSFUL delete must report
+    // their real cause instead of claiming the comment is not the user's.
+    const message = isTikTokAdsAuthError(rawMessage)
+      ? 'Your TikTok connection has expired. Please reconnect the account from Settings.'
+      : isTikTokAdsRateLimitError(rawMessage)
+      ? 'TikTok rate limit reached. Please try again in a few minutes.'
+      : rawMessage.startsWith('TikTok comment delete failed')
       ? 'TikTok only allows deleting comments owned by the connected account. Use Hide for viewer comments.'
       : rawMessage;
     return NextResponse.json({ error: message }, { status: 400 });

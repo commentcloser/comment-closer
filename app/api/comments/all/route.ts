@@ -19,8 +19,12 @@ export async function GET(request: NextRequest) {
     const platformFilter = searchParams.get('platform');
     const statusFilter = searchParams.get('status');
     const search = searchParams.get('search');
-    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100);
-    const offset = parseInt(searchParams.get('offset') || '0', 10);
+    // Clamp paging params — a non-numeric/negative value would reach Prisma as take: NaN / skip: -1 and throw
+    const limitParam = parseInt(searchParams.get('limit') || '50', 10);
+    const limit = Math.min(Math.max(Number.isSafeInteger(limitParam) ? limitParam : 50, 1), 100);
+    const offsetParam = parseInt(searchParams.get('offset') || '0', 10);
+    // isSafeInteger (not isFinite) — a 20+ digit offset is finite but blows up the engine's i64 skip
+    const offset = Math.max(Number.isSafeInteger(offsetParam) ? offsetParam : 0, 0);
     const sentimentPeriod = searchParams.get('sentimentPeriod') || 'all';
     const sentimentOnly = searchParams.get('sentimentOnly') === 'true';
 
@@ -47,42 +51,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Fast path: only fetch sentiment counts for chart period toggle
-    if (sentimentOnly) {
-      const allPageIds = userPages.map(p => p.id);
-      const sentimentWhere: any = { pageId: { in: allPageIds }, isReply: false, sentiment: { not: null } };
-      if (sentimentPeriod !== 'all') {
-        const now = new Date();
-        const days = { '24h': 1, '7d': 7, '30d': 30 }[sentimentPeriod];
-        if (days) sentimentWhere.createdAt = { gte: new Date(now.getTime() - days * 24 * 60 * 60 * 1000) };
-      }
-      const sentimentCounts = await prisma.comment.groupBy({ by: ['sentiment'], where: sentimentWhere, _count: true });
-      const sm: Record<string, number> = {};
-      for (const row of sentimentCounts) { if (row.sentiment) sm[row.sentiment] = row._count; }
-      return NextResponse.json({
-        metrics: { positive: sm['positive'] || 0, neutral: sm['neutral'] || 0, negative: sm['negative'] || 0 },
-      });
-    }
-
-    // Build page ID filter
-    let filteredPageIds = userPages.map(p => p.id);
-
-    if (pageIdFilter) {
-      const matchingPage = userPages.find(p => p.pageId === pageIdFilter);
-      if (matchingPage) {
-        filteredPageIds = [matchingPage.id];
-      }
-    }
-
-    if (platformFilter && (platformFilter === 'facebook' || platformFilter === 'instagram' || platformFilter === 'tiktok')) {
-      const platformPageIds = userPages
-        .filter(p => p.provider === platformFilter)
-        .map(p => p.id);
-      filteredPageIds = filteredPageIds.filter(id => platformPageIds.includes(id));
-    }
-
     // Build where clause — exclude page's own replies (bot replies) and empty-message (GIF/media) comments
     // Page's "own author IDs" cover both FB page IDs and IG business account IDs
+    const allPageIds = userPages.map(p => p.id);
     const ownAuthorIds = userPages.flatMap(p => [p.pageId, p.instagramUserId].filter(Boolean) as string[]);
     const ownReplyFilter: any = {
       AND: [
@@ -95,6 +66,59 @@ export async function GET(request: NextRequest) {
         },
       ],
     };
+
+    // metricsWhere = same exclusions as main where but across ALL pages (no page/platform filter)
+    const metricsWhere: any = {
+      pageId: { in: allPageIds },
+      NOT: [
+        // Exclude our own bot/AI replies
+        ownReplyFilter,
+        // Exclude empty-message (GIF/media) comments
+        { message: '' },
+      ],
+    };
+
+    // One sentiment where-clause for both the fast path and the full query — they must count the
+    // same set, or the chart's numbers change between the initial load and the period toggle
+    const buildSentimentWhere = (period: string) => {
+      const sentimentWhere: any = { ...metricsWhere, sentiment: { not: null } };
+      const periodMap: Record<string, number> = { '24h': 1, '7d': 7, '30d': 30 };
+      const days = periodMap[period];
+      if (days) {
+        sentimentWhere.createdAt = { gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) };
+      }
+      return sentimentWhere;
+    };
+
+    // Fast path: only fetch sentiment counts for chart period toggle
+    if (sentimentOnly) {
+      const sentimentCounts = await prisma.comment.groupBy({ by: ['sentiment'], where: buildSentimentWhere(sentimentPeriod), _count: true });
+      const sm: Record<string, number> = {};
+      for (const row of sentimentCounts) { if (row.sentiment) sm[row.sentiment] = row._count; }
+      return NextResponse.json({
+        metrics: { positive: sm['positive'] || 0, neutral: sm['neutral'] || 0, negative: sm['negative'] || 0 },
+      });
+    }
+
+    // Build page ID filter
+    let filteredPageIds = userPages.map(p => p.id);
+
+    if (pageIdFilter) {
+      const matchingPage = userPages.find(p => p.pageId === pageIdFilter);
+      // Unknown/disconnected page id: show nothing rather than silently falling back to every page
+      filteredPageIds = matchingPage ? [matchingPage.id] : [];
+    }
+
+    if (platformFilter && (platformFilter === 'facebook' || platformFilter === 'instagram' || platformFilter === 'tiktok' || platformFilter === 'tiktok_ads')) {
+      // The inbox renders tiktok_ads comments under the TikTok identity, so the
+      // 'tiktok' option must include them; 'tiktok_ads' stays exact if passed directly.
+      const platformProviders: string[] = platformFilter === 'tiktok' ? ['tiktok', 'tiktok_ads'] : [platformFilter];
+      const platformPageIds = userPages
+        .filter(p => platformProviders.includes(p.provider))
+        .map(p => p.id);
+      filteredPageIds = filteredPageIds.filter(id => platformPageIds.includes(id));
+    }
+
     const where: any = {
       pageId: { in: filteredPageIds },
       NOT: [
@@ -108,7 +132,8 @@ export async function GET(request: NextRequest) {
     if (statusFilter) {
       switch (statusFilter) {
         case 'pending':
-          where.status = 'pending';
+          // Match the pending metric — in-flight (ai_generating) comments are pending too
+          where.status = { in: ['pending', 'ai_generating'] };
           where.hiddenAt = null;
           where.deletedAt = null;
           break;
@@ -118,7 +143,9 @@ export async function GET(request: NextRequest) {
           where.deletedAt = null;
           break;
         case 'needs_review':
-          where.status = 'ai_generated';
+          // Keyed purely on needsReview, with no status gate: a failed reply lands on
+          // 'ai_failed' and a failed auto-hide stays 'pending', and both belong in the
+          // queue. Must stay identical to the needsReview metric below.
           where.needsReview = true;
           where.hiddenAt = null;
           where.deletedAt = null;
@@ -154,20 +181,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch comments and metrics in parallel
-    const allPageIds = userPages.map(p => p.id);
-    // metricsWhere = same exclusions as main where but across ALL pages (no page/platform filter)
-    const metricsWhere: any = {
-      pageId: { in: allPageIds },
-      NOT: [
-        // Exclude our own bot/AI replies
-        ownReplyFilter,
-        // Exclude empty-message (GIF/media) comments
-        { message: '' },
-      ],
-    };
 
-    // Pending metric: also exclude hidden/deleted to match filter behaviour
-    const pendingMetricsWhere = { ...metricsWhere, hiddenAt: null, deletedAt: null };
+    // Pending / needs-review metrics: also exclude hidden/deleted to match filter behaviour
+    const visibleMetricsWhere = { ...metricsWhere, hiddenAt: null, deletedAt: null };
 
     const [comments, total, totalCount, statusCounts, pendingCount, needsReviewCount, hiddenCount, deletedCount, sentimentCounts] = await Promise.all([
       prisma.comment.findMany({
@@ -220,10 +236,11 @@ export async function GET(request: NextRequest) {
       }),
       // Pending: explicitly exclude hidden/deleted to match filter behaviour
       prisma.comment.count({
-        where: { ...pendingMetricsWhere, status: { in: ['pending', 'ai_generating'] } },
+        where: { ...visibleMetricsWhere, status: { in: ['pending', 'ai_generating'] } },
       }),
+      // Needs review: same predicate as the needs_review filter — no status gate
       prisma.comment.count({
-        where: { ...metricsWhere, needsReview: true, status: 'ai_generated' },
+        where: { ...visibleMetricsWhere, needsReview: true },
       }),
       prisma.comment.count({
         where: { ...metricsWhere, hiddenAt: { not: null } },
@@ -231,18 +248,7 @@ export async function GET(request: NextRequest) {
       prisma.comment.count({
         where: { ...metricsWhere, deletedAt: { not: null } },
       }),
-      (() => {
-        const sentimentWhere: any = { ...metricsWhere, sentiment: { not: null } };
-        if (sentimentPeriod !== 'all') {
-          const now = new Date();
-          const periodMap: Record<string, number> = { '24h': 1, '7d': 7, '30d': 30 };
-          const days = periodMap[sentimentPeriod];
-          if (days) {
-            sentimentWhere.createdAt = { gte: new Date(now.getTime() - days * 24 * 60 * 60 * 1000) };
-          }
-        }
-        return prisma.comment.groupBy({ by: ['sentiment'], where: sentimentWhere, _count: true });
-      })(),
+      prisma.comment.groupBy({ by: ['sentiment'], where: buildSentimentWhere(sentimentPeriod), _count: true }),
     ]);
 
     // Build metrics from status counts

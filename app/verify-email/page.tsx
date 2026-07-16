@@ -109,19 +109,21 @@ function VerifyEmailContent() {
                     <p className="text-[14px] text-ink-muted">
                       {t('auth.verifyEmail.failureMessage')}
                     </p>
+                    {/* Login leads: the commonest failure is a single-use token that a
+                        previous click already consumed, i.e. an ALREADY-verified user. */}
                     <div className="space-y-3">
-                      <Link
-                        href="/register"
-                        className="block text-[14px] font-medium text-accent hover:text-accent-hover underline underline-offset-2 decoration-accent/30 hover:decoration-accent transition-colors"
-                      >
-                        {t('auth.verifyEmail.createNewAccount')}
-                      </Link>
-                      <div className="text-[13px] text-ink-muted">{t('auth.verifyEmail.or')}</div>
                       <Link
                         href="/login"
                         className="block text-[14px] font-medium text-accent hover:text-accent-hover underline underline-offset-2 decoration-accent/30 hover:decoration-accent transition-colors"
                       >
                         {t('auth.verifyEmail.goToLogin')}
+                      </Link>
+                      <div className="text-[13px] text-ink-muted">{t('auth.verifyEmail.or')}</div>
+                      <Link
+                        href="/register"
+                        className="block text-[14px] font-medium text-accent hover:text-accent-hover underline underline-offset-2 decoration-accent/30 hover:decoration-accent transition-colors"
+                      >
+                        {t('auth.verifyEmail.createNewAccount')}
                       </Link>
                     </div>
                   </div>
