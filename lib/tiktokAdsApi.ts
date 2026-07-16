@@ -359,14 +359,27 @@ export interface TikTokAdsIdentity {
 }
 
 /**
- * Returns the first available identity for the advertiser.
+ * Why the identity lookup produced nothing — 'none' (the advertiser genuinely has
+ * no identity) and 'throttled'/'error' (we never got an answer) look identical to
+ * a caller that only sees null, so the throttle case was surfacing to the user as
+ * "please reconnect TikTok Ads account". A reconnect cannot fix a rate limit, and
+ * this product already had one false-reconnect incident (code 40100 is a THROTTLE,
+ * never an auth failure).
+ */
+export type TikTokAdsIdentityResult =
+  | { ok: true; identity: TikTokAdsIdentity }
+  | { ok: false; reason: 'none' | 'throttled' | 'error'; message?: string };
+
+/**
+ * Returns the first available identity for the advertiser, distinguishing
+ * "no identity exists" from "we could not ask".
  * Identities are TikTok Business Accounts linked to the ad account.
  * Required for /comment/post/ (reply) calls.
  */
-export async function fetchTikTokAdsIdentity(
+export async function fetchTikTokAdsIdentityResult(
   accessToken: string,
   advertiserId: string,
-): Promise<TikTokAdsIdentity | null> {
+): Promise<TikTokAdsIdentityResult> {
   const params = new URLSearchParams({
     advertiser_id: advertiserId,
     identity_type: 'AUTH_CODE',
@@ -378,19 +391,40 @@ export async function fetchTikTokAdsIdentity(
       headers: { 'Access-Token': accessToken },
     });
   } catch (err) {
-    console.warn(`[TikTok Ads] ${err instanceof Error ? err.message : String(err)}`);
-    return null;
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`[TikTok Ads] ${message}`);
+    return {
+      ok: false,
+      reason: isTikTokAdsRateLimitError(message) ? 'throttled' : 'error',
+      message,
+    };
   }
 
   const list = data.data?.identity_list ?? data.data?.list ?? [];
-  if (!list.length) return null;
+  if (!list.length) return { ok: false, reason: 'none' };
 
   const first = list[0];
   return {
-    identity_id: String(first.identity_id ?? first.tiktok_user_id ?? ''),
-    identity_type: String(first.identity_type ?? 'TT_USER'),
-    display_name: String(first.display_name ?? first.name ?? ''),
+    ok: true,
+    identity: {
+      identity_id: String(first.identity_id ?? first.tiktok_user_id ?? ''),
+      identity_type: String(first.identity_type ?? 'TT_USER'),
+      display_name: String(first.display_name ?? first.name ?? ''),
+    },
   };
+}
+
+/**
+ * Back-compat wrapper: collapses every failure back to null. Only use it where
+ * the caller genuinely cannot act on WHY the lookup failed — anything
+ * user-facing should use fetchTikTokAdsIdentityResult and tell the truth.
+ */
+export async function fetchTikTokAdsIdentity(
+  accessToken: string,
+  advertiserId: string,
+): Promise<TikTokAdsIdentity | null> {
+  const result = await fetchTikTokAdsIdentityResult(accessToken, advertiserId);
+  return result.ok ? result.identity : null;
 }
 
 // ---------------------------------------------------------------------------

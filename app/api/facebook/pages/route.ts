@@ -523,11 +523,14 @@ export async function GET(request: NextRequest) {
 
         if (autoConnectedFb.length > 0) {
           connectedPages = [...connectedPages, ...autoConnectedFb];
-          for (const fbPage of availablePages) {
-            if (fbPage.access_token) {
-              subscribePageToWebhooks(fbPage.id, fbPage.access_token).catch(() => {});
-            }
-          }
+          // Awaited: the lambda freezes the moment this handler resolves, so a
+          // fire-and-forget subscribe is dropped and the page — auto-connected only
+          // once, and never re-subscribed — silently never receives a webhook.
+          await Promise.all(
+            availablePages
+              .filter((fbPage: any) => fbPage.access_token)
+              .map((fbPage: any) => subscribePageToWebhooks(fbPage.id, fbPage.access_token).catch(() => {}))
+          );
         }
       } catch (e) {
       }
@@ -580,9 +583,13 @@ export async function GET(request: NextRequest) {
 
         if (autoConnectedIg.length > 0) {
           connectedPages = [...connectedPages, ...autoConnectedIg];
-          for (const igPage of availableIgPages) {
-            subscribeInstagramToWebhooks(igPage.id, igPage.access_token).catch(() => {});
-          }
+          // Awaited for the same reason as the Facebook path above — the IG path is
+          // worse still, since it needs a second round-trip to resolve the parent page.
+          await Promise.all(
+            availableIgPages.map((igPage: any) =>
+              subscribeInstagramToWebhooks(igPage.id, igPage.access_token).catch(() => {})
+            )
+          );
         }
       } catch (e) {
       }
@@ -1094,11 +1101,13 @@ export async function POST(request: NextRequest) {
       const cacheKey = `pages_${session.user.id}`;
       pagesCache.delete(cacheKey);
 
-      // Subscribe to webhooks for real-time comment delivery
+      // Subscribe to webhooks for real-time comment delivery. Awaited: the lambda
+      // freezes as soon as this handler resolves, so an un-awaited Graph POST is
+      // abandoned before it flushes and the page never receives a single webhook.
       if (provider === 'instagram') {
-        subscribeInstagramToWebhooks(pageId, finalPageAccessToken).catch(() => {});
+        await subscribeInstagramToWebhooks(pageId, finalPageAccessToken).catch(() => {});
       } else if (provider === 'facebook') {
-        subscribePageToWebhooks(pageId, finalPageAccessToken).catch(() => {});
+        await subscribePageToWebhooks(pageId, finalPageAccessToken).catch(() => {});
       }
 
       // Comments come from webhooks only - no API fetch on connect

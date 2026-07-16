@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import NextAuth from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { getTikTokAdsAccessToken, replyToTikTokAdsComment, hideTikTokAdsComment, fetchTikTokAdsIdentity, isTikTokAdsAuthError, isTikTokAdsRateLimitError } from '@/lib/tiktokAdsApi';
+import { getTikTokAdsAccessToken, replyToTikTokAdsComment, hideTikTokAdsComment, fetchTikTokAdsIdentityResult, isTikTokAdsAuthError, isTikTokAdsRateLimitError } from '@/lib/tiktokAdsApi';
 
 const { auth } = NextAuth(authOptions);
 
@@ -99,10 +99,24 @@ export async function POST(
   let identityId = comment.adAccountId ?? '';
   let identityType = comment.identityType || 'TT_USER';
   if (!identityId) {
-    const resolved = await fetchTikTokAdsIdentity(accessToken, advertiserId);
-    if (resolved) {
-      identityId = resolved.identity_id;
-      identityType = resolved.identity_type;
+    const resolved = await fetchTikTokAdsIdentityResult(accessToken, advertiserId);
+    if (resolved.ok) {
+      identityId = resolved.identity.identity_id;
+      identityType = resolved.identity.identity_type;
+    } else if (resolved.reason !== 'none') {
+      // We never got an answer, so we do not know whether an identity exists.
+      // Saying "reconnect" here would be a lie the user cannot act on — a
+      // reconnect does not clear a rate limit. Ask them to retry instead. (429
+      // for a throttle so a client can back off; 503 for a transient error.)
+      return NextResponse.json(
+        {
+          error:
+            resolved.reason === 'throttled'
+              ? 'TikTok is rate-limiting us right now — please try again in a minute.'
+              : 'Could not reach TikTok to resolve the reply identity — please try again.',
+        },
+        { status: resolved.reason === 'throttled' ? 429 : 503 },
+      );
     }
   }
 
