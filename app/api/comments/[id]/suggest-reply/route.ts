@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireCommentOwner } from '@/lib/commentAuth';
 import { generateAIReply, detectCommentLanguage } from '@/lib/aiReplyEngine';
 import { getTikTokAdsAccessToken, fetchTikTokAdsAdDetails, type TikTokAdDetails } from '@/lib/tiktokAdsApi';
+import { consumeRateLimit } from '@/lib/rateLimit';
 
 export async function POST(
   request: NextRequest,
@@ -17,6 +18,26 @@ export async function POST(
     const owner = await requireCommentOwner(id);
     if (!owner.ok) {
       return NextResponse.json({ error: owner.error }, { status: owner.status });
+    }
+
+    // SECURITY (denial-of-wallet): this endpoint makes at least one billed
+    // OpenAI call per request against the page owner's key, with no paid gate.
+    // Ownership alone does not bound spend — the caller owns the comment, so a
+    // signed-up user could loop this to drain the owner's OpenAI budget. Consume
+    // a per-user token atomically up front and fail CLOSED with 429 once the
+    // window cap is reached. Keyed per authenticated owner so one tenant's abuse
+    // cannot exhaust another's quota. Fails OPEN on a limiter DB error.
+    // A dedicated cap, NOT the default 5/15-min login cap: an operator legitimately
+    // clicks "suggest" across many comments in one sitting, so 5/15min would lock
+    // them out of their own dashboard. 40/hour still bounds a drain loop to a
+    // trivial cost while never impeding real use.
+    const limit = await consumeRateLimit(`suggest:${owner.userId}`, { max: 40, windowMs: 60 * 60 * 1000 });
+    if (limit.limited) {
+      const retryAfterSec = Math.ceil((limit.retryAfterMs ?? 0) / 1000);
+      return NextResponse.json(
+        { error: 'Too many reply suggestions requested. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': String(retryAfterSec) } }
+      );
     }
 
     const comment = await prisma.comment.findUnique({

@@ -64,6 +64,50 @@ export function normalizeEmail(value: string): string {
 }
 
 /**
+ * Canonical form used ONLY for rate-limit keying and abuse checks — never for
+ * storage or lookups (that stays normalizeEmail, so legitimately distinct
+ * accounts are never merged).
+ *
+ * Folds together the addresses that a single mailbox owner can mint for free to
+ * bypass a per-address limiter:
+ *  - lowercases + trims (case/whitespace are not distinct inboxes),
+ *  - strips a `+tag` sub-address from the local part (RFC 5233 detail delimiter),
+ *  - for Gmail (gmail.com / googlemail.com, which share one inbox) also strips
+ *    dots from the local part and folds googlemail.com onto gmail.com.
+ *
+ * So victim@gmail.com, victim+1@gmail.com, v.ictim@gmail.com and
+ * victim@googlemail.com all collapse to the same key. Fails safe: on any input
+ * without a parseable local@domain it returns the lowercased/trimmed string so
+ * callers still get a stable, non-empty key.
+ */
+export function canonicalizeEmailForAbuse(value: string): string {
+  const lowered = normalizeEmail(value);
+  const at = lowered.lastIndexOf('@');
+  if (at <= 0 || at === lowered.length - 1) {
+    // No usable local@domain split — return the normalized form as the key.
+    return lowered;
+  }
+  let local = lowered.slice(0, at);
+  let domain = lowered.slice(at + 1);
+
+  // Drop the +tag sub-address for every provider that supports it.
+  const plus = local.indexOf('+');
+  if (plus !== -1) {
+    local = local.slice(0, plus);
+  }
+
+  // Gmail treats googlemail.com as gmail.com and ignores dots in the local part.
+  if (domain === 'googlemail.com') {
+    domain = 'gmail.com';
+  }
+  if (domain === 'gmail.com') {
+    local = local.replace(/\./g, '');
+  }
+
+  return `${local}@${domain}`;
+}
+
+/**
  * Server-side password strength check. Mirrors the client rules in the register
  * form so the policy can't be bypassed by calling the API directly.
  * Requires: >= 8 chars, one uppercase, one lowercase, one number, one special.

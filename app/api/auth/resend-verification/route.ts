@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { randomBytes } from 'crypto';
 import { sendVerificationEmail } from '@/lib/email';
-import { isRateLimited, recordFailedAttempt, getClientIp } from '@/lib/rateLimit';
+import { consumeRateLimit, getClientIp } from '@/lib/rateLimit';
+import { canonicalizeEmailForAbuse } from '@/lib/validators';
 
 export const runtime = 'nodejs';
 
@@ -15,12 +16,17 @@ export async function POST(req: NextRequest) {
 
     // Throttle per email so this endpoint can't be used to email-bomb an
     // address or burn the Resend quota. Generic success either way (enumeration-safe).
+    // Consume a token atomically up front (single round-trip, burst-safe) so a
+    // parallel burst is serialized by the row lock instead of all reading the
+    // pre-attack state. Key the per-address limiter on the abuse-canonical form
+    // so plus-addressing/dots can't multiply the allowance for one inbox.
     const ip = getClientIp(req);
-    if ((await isRateLimited(`resend-ip:${ip}`)).limited || (await isRateLimited(`resend:${normalizedEmail}`)).limited) {
+    if (
+      (await consumeRateLimit(`resend-ip:${ip}`)).limited ||
+      (await consumeRateLimit(`resend:${canonicalizeEmailForAbuse(normalizedEmail)}`)).limited
+    ) {
       return NextResponse.json({ success: true });
     }
-    await recordFailedAttempt(`resend-ip:${ip}`);
-    await recordFailedAttempt(`resend:${normalizedEmail}`);
 
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail },

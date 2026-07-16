@@ -13,10 +13,11 @@ export async function GET() {
     await prisma.$queryRaw`SELECT 1`;
     return NextResponse.json({ status: 'ok', db: 'up', time: new Date().toISOString() });
   } catch (err) {
+    // Log the full detail server-side (Sentry/console) for operators, but never
+    // return it: this endpoint is unauthenticated and Prisma connection errors
+    // (P1001/P1000/DSN parse errors) embed the DB host, port and username. Uptime
+    // monitors key on the 503 status code, so a constant body loses nothing.
     console.error('[health] DB check failed:', err);
-    return NextResponse.json(
-      { status: 'error', db: 'down', error: err instanceof Error ? err.message : String(err) },
-      { status: 503 }
-    );
+    return NextResponse.json({ status: 'error', db: 'down' }, { status: 503 });
   }
 }
