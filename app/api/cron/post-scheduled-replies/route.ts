@@ -11,6 +11,42 @@ export const maxDuration = 60;
 const BATCH_SIZE = 100;
 /** How many replies to post in parallel (avoids overwhelming APIs) */
 const CONCURRENCY = 5;
+/** Stop starting new rounds this long into the run, leaving headroom under maxDuration */
+const DEADLINE_MS = 45_000;
+
+/**
+ * The reply is already live on the network — only the bookkeeping after the post
+ * threw (a non-JSON 200 body, or a transient DB error inside logReplySuccess,
+ * whose updateCommentReplied is a bare update). Record it as replied: the failure
+ * markers would re-arm the Approve card / manual composer and get the customer a
+ * second public reply. Mirrors the Facebook webhook's postedReply guard.
+ */
+async function markRepliedDespiteError(
+  commentId: string,
+  replyMessage: string,
+  errorMessage: string,
+): Promise<void> {
+  try {
+    await prisma.comment.update({
+      where: { id: commentId },
+      data: {
+        replied: true,
+        repliedAt: new Date(),
+        replyMessage,
+        automationStatus: 'replied',
+        status: 'replied',
+        needsReview: false,
+        scheduledPostAt: null,
+        lastError: errorMessage,
+      },
+    });
+    console.log(`[Cron] ${commentId} - reply was already posted, recorded as replied despite exception`);
+  } catch (err: any) {
+    // Nothing further we can do; never rethrow — the batch catch would stamp
+    // ai_failed on a reply that is live.
+    console.error(`[Cron] ${commentId} - could not record live reply as replied: ${err?.message}`);
+  }
+}
 
 async function processOneReply(comment: any): Promise<'posted' | 'failed' | 'skipped'> {
   const { connectedPage } = comment;
@@ -22,12 +58,36 @@ async function processOneReply(comment: any): Promise<'posted' | 'failed' | 'ski
   // again. Clearing scheduledPostAt is the claim (the due-query requires it), so
   // exactly one tick can ever post it — losing the claim fails closed (no post)
   // rather than duplicating a public reply.
+  // hiddenAt/deletedAt are part of the claim, not the due-query: a hidden row
+  // must still be selected so the cancel below can disarm it. Checking here (not
+  // at findMany) also closes the window where the owner hides the comment after
+  // the due-query read it but before we post.
   const claim = await prisma.comment.updateMany({
-    where: { id: comment.id, replied: false, scheduledPostAt: { not: null } },
+    where: {
+      id: comment.id,
+      replied: false,
+      scheduledPostAt: { not: null },
+      hiddenAt: null,
+      deletedAt: null,
+    },
     data: { scheduledPostAt: null },
   });
   if (claim.count === 0) {
-    console.log(`[Cron] SKIP ${comment.id} - already claimed by another tick`);
+    // Either another tick claimed it, or the owner hid/deleted the comment during
+    // the delay window. Both fail closed (no post). For the hide/delete case only,
+    // cancel it the way the Facebook webhook does, so the row is not left due
+    // forever and firing a stale reply if it is ever unhidden. Scoped to
+    // hidden/deleted rows: a row another tick is mid-POST on must be left alone.
+    console.log(`[Cron] SKIP ${comment.id} - claim lost (already claimed, or hidden/deleted)`);
+    await prisma.comment.updateMany({
+      where: {
+        id: comment.id,
+        replied: false,
+        status: { in: ['pending', 'ai_generating', 'ai_generated'] },
+        OR: [{ hiddenAt: { not: null } }, { deletedAt: { not: null } }],
+      },
+      data: { status: 'ignored', scheduledPostAt: null },
+    });
     return 'skipped';
   }
 
@@ -75,6 +135,9 @@ async function processOneReply(comment: any): Promise<'posted' | 'failed' | 'ski
       { promptSource: connectedPage.customReplyPrompt?.trim() ? 'override' : 'global' },
     );
 
+    // Set the moment the API call reports success: past that point the reply is
+    // live, so a throw is bookkeeping-only and must not be logged as a failure.
+    let posted = false;
     try {
       const replyCommentId = await replyToTikTokAdsComment(
         accessToken,
@@ -88,12 +151,18 @@ async function processOneReply(comment: any): Promise<'posted' | 'failed' | 'ski
           identityId: comment.adAccountId ?? '',
         },
       );
+      posted = true;
       console.log(`[Cron] SUCCESS ${comment.id} - TikTok Ads reply: ${replyCommentId}`);
       await logReplySuccess(actionLogId, comment.id, comment.aiGeneratedReply, { comment_id: replyCommentId });
       await prisma.comment.update({ where: { id: comment.id }, data: { scheduledPostAt: null } });
       return 'posted';
     } catch (err: any) {
       const msg = err?.message || 'TikTok Ads reply failed';
+      if (posted) {
+        console.error(`[Cron] POSTED BUT BOOKKEEPING FAILED ${comment.id} - ${msg}`);
+        await markRepliedDespiteError(comment.id, comment.aiGeneratedReply, msg);
+        return 'posted';
+      }
       console.error(`[Cron] FAILED ${comment.id} - ${msg}`);
       await logReplyFailure(actionLogId, comment.id, msg);
       await prisma.comment.update({ where: { id: comment.id }, data: { scheduledPostAt: null } });
@@ -140,6 +209,8 @@ async function processOneReply(comment: any): Promise<'posted' | 'failed' | 'ski
       { promptSource: connectedPage.customReplyPrompt?.trim() ? 'override' : 'global' },
     );
 
+    // See the TikTok Ads branch: live-reply guard for bookkeeping throws.
+    let posted = false;
     try {
       const replyCommentId = await replyToTikTokComment(
         accessToken,
@@ -148,12 +219,18 @@ async function processOneReply(comment: any): Promise<'posted' | 'failed' | 'ski
         comment.commentId,
         comment.aiGeneratedReply,
       );
+      posted = true;
       console.log(`[Cron] SUCCESS ${comment.id} - TikTok reply: ${replyCommentId}`);
       await logReplySuccess(actionLogId, comment.id, comment.aiGeneratedReply, { comment_id: replyCommentId });
       await prisma.comment.update({ where: { id: comment.id }, data: { scheduledPostAt: null } });
       return 'posted';
     } catch (err: any) {
       const msg = err?.message || 'TikTok reply failed';
+      if (posted) {
+        console.error(`[Cron] POSTED BUT BOOKKEEPING FAILED ${comment.id} - ${msg}`);
+        await markRepliedDespiteError(comment.id, comment.aiGeneratedReply, msg);
+        return 'posted';
+      }
       console.error(`[Cron] FAILED ${comment.id} - ${msg}`);
       await logReplyFailure(actionLogId, comment.id, msg);
       await prisma.comment.update({ where: { id: comment.id }, data: { scheduledPostAt: null } });
@@ -189,27 +266,42 @@ async function processOneReply(comment: any): Promise<'posted' | 'failed' | 'ski
     { promptSource: connectedPage.customReplyPrompt?.trim() ? 'override' : 'global' },
   );
 
-  const replyResponse = await fetch(replyUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      message: comment.aiGeneratedReply,
-      access_token: connectedPage.pageAccessToken,
-    }),
-  });
+  // See the TikTok Ads branch: live-reply guard for bookkeeping throws. Unlike
+  // the TikTok branches this section was unwrapped, so a throw after Meta
+  // accepted the reply (non-JSON 200 body, transient DB error in logReplySuccess)
+  // reached the batch catch and stamped ai_failed on a live reply — which is
+  // exactly the state the dashboard offers a manual Reply composer for.
+  let posted = false;
+  try {
+    const replyResponse = await fetch(replyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: comment.aiGeneratedReply,
+        access_token: connectedPage.pageAccessToken,
+      }),
+    });
 
-  if (replyResponse.ok) {
-    const replyData = await replyResponse.json();
-    console.log(`[Cron] SUCCESS ${comment.id} - Reply ID: ${replyData.id}`);
-    await logReplySuccess(actionLogId, comment.id, comment.aiGeneratedReply, replyData);
-    await prisma.comment.update({ where: { id: comment.id }, data: { scheduledPostAt: null } });
+    if (replyResponse.ok) {
+      posted = true;
+      const replyData = await replyResponse.json();
+      console.log(`[Cron] SUCCESS ${comment.id} - Reply ID: ${replyData.id}`);
+      await logReplySuccess(actionLogId, comment.id, comment.aiGeneratedReply, replyData);
+      await prisma.comment.update({ where: { id: comment.id }, data: { scheduledPostAt: null } });
+      return 'posted';
+    } else {
+      const errorText = await replyResponse.text();
+      console.error(`[Cron] FAILED ${comment.id} - ${errorText.substring(0, 300)}`);
+      await logReplyFailure(actionLogId, comment.id, errorText);
+      await prisma.comment.update({ where: { id: comment.id }, data: { scheduledPostAt: null } });
+      return 'failed';
+    }
+  } catch (error: any) {
+    // Not posted: rethrow so the batch catch handles it exactly as before.
+    if (!posted) throw error;
+    console.error(`[Cron] POSTED BUT BOOKKEEPING FAILED ${comment.id} - ${error?.message}`);
+    await markRepliedDespiteError(comment.id, comment.aiGeneratedReply, error?.message || 'Cron posting error');
     return 'posted';
-  } else {
-    const errorText = await replyResponse.text();
-    console.error(`[Cron] FAILED ${comment.id} - ${errorText.substring(0, 300)}`);
-    await logReplyFailure(actionLogId, comment.id, errorText);
-    await prisma.comment.update({ where: { id: comment.id }, data: { scheduledPostAt: null } });
-    return 'failed';
   }
 }
 
@@ -283,9 +375,21 @@ export async function GET(request: Request) {
 
   let posted = 0;
   let failed = 0;
+  let processed = 0;
+  const deadline = Date.now() + DEADLINE_MS;
 
   for (let i = 0; i < scheduledComments.length; i += CONCURRENCY) {
+    // Each round claims its rows (scheduledPostAt := null) before posting, so a
+    // kill at maxDuration strands whatever is in flight. Stop starting rounds
+    // near the limit: rows we never reach keep scheduledPostAt and are simply
+    // due again on the next tick (every 5 min).
+    if (Date.now() > deadline) {
+      console.log(`[Cron] Deadline reached - leaving ${scheduledComments.length - i} due reply(s) for the next tick`);
+      break;
+    }
+
     const batch = scheduledComments.slice(i, i + CONCURRENCY);
+    processed += batch.length;
 
     const results = await Promise.allSettled(
       batch.map(async (comment) => {
@@ -312,5 +416,5 @@ export async function GET(request: Request) {
   }
 
   console.log(`[Cron] === DONE: ${posted} posted, ${failed} failed ===`);
-  return NextResponse.json({ processed: scheduledComments.length, posted, failed });
+  return NextResponse.json({ processed, posted, failed });
 }

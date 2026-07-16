@@ -3,6 +3,9 @@ import { describe, it, expect } from 'vitest';
 // Pure helpers only — the OpenAI client is lazily constructed inside
 // generateAIReply, so importing the module needs no key and no network.
 import { shouldAutoReply, isPricingQuestion } from './aiReplyEngine';
+// The sentiment pre-filter short-circuits before the client is ever built, so
+// this needs no key either.
+import { analyzeCommentSentiment } from './openai';
 
 const allOn = {
   autoReplyEnabled: true,
@@ -30,6 +33,23 @@ describe('shouldAutoReply — bare negations', () => {
   it('still replies to a negation used inside a real sentence', () => {
     expect(shouldAutoReply('neutral', allOn, 'No, how much is the blue one?')).toBe(true);
   });
+});
+
+describe('bare negations: the two defenses must agree', () => {
+  // The sentiment pre-filter and the auto-reply guard used to normalize
+  // differently — openai.ts matched EXACTLY while aiReplyEngine.ts stripped
+  // trailing punctuation. So "No!" skipped the neutral list, reached the LLM,
+  // came back "negative", and a delete-mode page PERMANENTLY DELETED a customer's
+  // customer's comment. Both sides now share one list and one normalizer; these
+  // assertions fail if they ever drift apart again.
+  for (const text of ['No', 'No!', 'no.', 'NOPE', 'Όχι!', 'όχι', '  no!!  ']) {
+    it(`"${text}" is neutral to the classifier AND unanswered by the reply guard`, async () => {
+      // Never 'negative' — that is the branch that deletes on delete-mode pages.
+      await expect(analyzeCommentSentiment(text)).resolves.toBe('neutral');
+      // ...and neutral is auto-reply-eligible, so the guard has to catch it too.
+      expect(shouldAutoReply('neutral', allOn, text)).toBe(false);
+    });
+  }
 });
 
 describe('shouldAutoReply — sentiment gating is unchanged', () => {

@@ -1384,7 +1384,10 @@ export default function DashboardPage() {
                                 {!isDeleted ? (
                                   <div className="flex items-center gap-1">
                                     {/* Reply — not for replies */}
-                                    {!comment.isReply && (comment.status === 'pending' || comment.status === 'ai_failed' || comment.status === 'ignored' || (comment.status === 'ai_generated' && !comment.needsReview)) && !comment.hiddenAt && !comment.deletedAt && (
+                                    {/* An ai_generated comment with scheduledPostAt still set has a reply
+                                        queued in the cron — offering the manual composer here raced it
+                                        (the comments view already gates on this; only this one did not). */}
+                                    {!comment.isReply && (comment.status === 'pending' || comment.status === 'ai_failed' || comment.status === 'ignored' || (comment.status === 'ai_generated' && !comment.needsReview && !comment.scheduledPostAt)) && !comment.hiddenAt && !comment.deletedAt && (
                                       <button
                                         onClick={() => { setReplyingCommentId(comment.id); setReplyText(''); }}
                                         className="size-8 rounded-btn flex items-center justify-center text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
@@ -1396,8 +1399,9 @@ export default function DashboardPage() {
                                       </button>
                                     )}
 
-                                    {/* Edit Reply (replace) — not for replies */}
-                                    {!comment.isReply && comment.status === 'replied' && (
+                                    {/* Edit Reply (replace) — not for replies, and not for TikTok Ads,
+                                        whose comment API has no reply-edit primitive */}
+                                    {!comment.isReply && comment.status === 'replied' && comment.connectedPage.provider !== 'tiktok_ads' && (
                                       <button
                                         onClick={() => { setReplacingComment(comment); setReplaceReplyText(comment.replyMessage || ''); }}
                                         className="size-8 rounded-btn flex items-center justify-center text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:opacity-50 disabled:pointer-events-none"
