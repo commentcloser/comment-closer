@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 
 // Pure helpers only — the OpenAI client is lazily constructed inside
 // generateAIReply, so importing the module needs no key and no network.
@@ -36,6 +36,17 @@ describe('shouldAutoReply — bare negations', () => {
 });
 
 describe('bare negations: the two defenses must agree', () => {
+  // analyzeCommentSentiment returns null immediately when no API key is set, so
+  // without this stub these assertions would silently pass or fail on whether the
+  // machine happens to have a key rather than on the logic under test. (They did
+  // exactly that: locally the Prisma import pulls a real .env in through the
+  // node_modules junction, so they passed here and failed in CI.) A fake key is
+  // enough — every case below must be answered by the pre-filter BEFORE any
+  // network call, which is precisely the contract being asserted: if a case ever
+  // reaches the model, the bogus key makes the request fail and the test goes red.
+  beforeAll(() => vi.stubEnv('OPENAI_API_KEY', 'sk-test-key-never-used-the-prefilter-must-answer-first'));
+  afterAll(() => vi.unstubAllEnvs());
+
   // The sentiment pre-filter and the auto-reply guard used to normalize
   // differently — openai.ts matched EXACTLY while aiReplyEngine.ts stripped
   // trailing punctuation. So "No!" skipped the neutral list, reached the LLM,
