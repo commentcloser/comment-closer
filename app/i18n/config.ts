@@ -41,6 +41,28 @@ const initOptions: InitOptions = {
   }
 };
 
+/**
+ * The visitor's real language, captured BEFORE init().
+ *
+ * This must happen first: init() with `lng: 'en'` calls changeLanguage('en'),
+ * which — because of `caches: ['localStorage']` — WRITES 'en' over the stored
+ * preference. After that the detector answers 'en' forever and Greek would never
+ * activate, which is worse than the hydration mismatch this file exists to fix.
+ * So read the preference ourselves, up front, and hand it to
+ * applyDetectedLanguage() once hydration is done.
+ */
+const preferredLanguage: string | null = (() => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const stored = window.localStorage?.getItem('i18nextLng');
+    if (stored) return stored.split('-')[0];
+  } catch {
+    // localStorage can throw in private mode / blocked-cookie contexts.
+  }
+  const nav = window.navigator?.languages?.[0] || window.navigator?.language;
+  return nav ? nav.split('-')[0] : null;
+})();
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -68,17 +90,17 @@ if (typeof document !== 'undefined') {
  */
 export function applyDetectedLanguage(): void {
   if (typeof window === 'undefined') return;
+  if (!preferredLanguage) return;
 
-  const detector = i18n.services.languageDetector as
-    | { detect(): string | string[] | undefined }
-    | undefined;
-  const detected = detector?.detect();
-  const raw = Array.isArray(detected) ? detected[0] : detected;
-  if (!raw) return;
-
-  const code = raw.split('-')[0];
-  if (code !== i18n.language && Object.keys(initOptions.resources ?? {}).includes(code)) {
-    i18n.changeLanguage(code);
+  // Only switch to a locale we actually ship, so an unsupported browser language
+  // stays on the English that is already rendered rather than falling back to it.
+  if (
+    preferredLanguage !== i18n.language &&
+    Object.keys(initOptions.resources ?? {}).includes(preferredLanguage)
+  ) {
+    // changeLanguage re-caches the real preference to localStorage, undoing the
+    // 'en' that init() wrote there.
+    i18n.changeLanguage(preferredLanguage);
   }
 }
 
