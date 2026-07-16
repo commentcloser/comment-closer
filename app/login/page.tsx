@@ -24,7 +24,23 @@ export default function LoginPage() {
   function getPostLoginUrl(): string {
     if (typeof window === 'undefined') return '/dashboard';
     const cb = new URLSearchParams(window.location.search).get('callbackUrl');
-    if (cb && cb.startsWith('/') && !cb.startsWith('//')) return cb;
+    if (cb) {
+      // Resolve against our own origin instead of string-matching the prefix:
+      // browsers normalise backslashes to slashes, so '/\evil.com' would pass a
+      // startsWith('/') && !startsWith('//') check yet navigate to evil.com.
+      try {
+        const url = new URL(cb, window.location.origin);
+        if (url.origin === window.location.origin) {
+          const path = url.pathname + url.search + url.hash;
+          // The pathname itself can start with '//' ('https://app//evil.com'),
+          // which router.push would resolve protocol-relatively to another
+          // origin — so validate the value we return, not just the one we parsed.
+          if (new URL(path, window.location.origin).origin === window.location.origin) return path;
+        }
+      } catch {
+        // Unparseable callbackUrl — fall through to the default.
+      }
+    }
     return '/dashboard';
   }
 
@@ -179,13 +195,21 @@ export default function LoginPage() {
   const handleResendVerification = async () => {
     setResendLoading(true);
     try {
-      await fetch('/api/auth/resend-verification', {
+      const res = await fetch('/api/auth/resend-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
+      // The endpoint answers success even when the address is unknown (enumeration-safe),
+      // so a non-ok response really is a server error — don't claim the mail was sent.
+      if (!res.ok) {
+        setAlertMessage({ type: 'error', message: "Couldn't send the verification email. Please try again." });
+        return;
+      }
       setAlertMessage({ type: 'success', message: 'Verification email sent! Check your inbox.' });
       setShowResend(false);
+    } catch {
+      setAlertMessage({ type: 'error', message: "Couldn't send the verification email. Please try again." });
     } finally {
       setResendLoading(false);
     }

@@ -138,7 +138,7 @@ export async function PATCH(
 
       if (account?.access_token) {
         const pagesUrl = `https://graph.facebook.com/v24.0/me/accounts?access_token=${account.access_token}&fields=id,access_token&limit=100`;
-        const pagesResponse = await fetch(pagesUrl);
+        const pagesResponse = await graphFetch(pagesUrl);
 
         if (pagesResponse.ok) {
           const pagesData = await pagesResponse.json();
@@ -271,7 +271,7 @@ export async function DELETE(
 
       if (account?.access_token) {
         const pagesUrl = `https://graph.facebook.com/v24.0/me/accounts?access_token=${account.access_token}&fields=id,access_token&limit=100`;
-        const pagesResponse = await fetch(pagesUrl);
+        const pagesResponse = await graphFetch(pagesUrl);
 
         if (pagesResponse.ok) {
           const pagesData = await pagesResponse.json();
@@ -396,7 +396,7 @@ export async function POST(
 
       if (account?.access_token) {
         const pagesUrl = `https://graph.facebook.com/v24.0/me/accounts?access_token=${account.access_token}&fields=id,access_token&limit=100`;
-        const pagesResponse = await fetch(pagesUrl);
+        const pagesResponse = await graphFetch(pagesUrl);
 
         if (pagesResponse.ok) {
           const pagesData = await pagesResponse.json();
@@ -422,11 +422,16 @@ export async function POST(
 
     const isInstagram = comment.connectedPage.provider === 'instagram';
 
+    // Meta threads nest at most 2 levels, so a reply to a reply has to be posted
+    // against the top-level parent — posting to a second-level comment id is
+    // rejected.
+    const replyTargetId = comment.parentCommentId ?? comment.commentId;
+
     // Facebook: POST /{comment-id}/comments
     // Instagram: POST /{ig-comment-id}/replies
     const endpointPath = isInstagram
-      ? `${comment.commentId}/replies`
-      : `${comment.commentId}/comments`;
+      ? `${replyTargetId}/replies`
+      : `${replyTargetId}/comments`;
 
     const apiUrl = `https://graph.facebook.com/v24.0/${endpointPath}`;
     const form = new URLSearchParams();

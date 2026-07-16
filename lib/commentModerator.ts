@@ -5,18 +5,79 @@
  * Currently supports: auto-hide of negative comments.
  *
  * Design principles:
- * - Idempotent: checks for existing HIDE log before acting
+ * - Idempotent: atomically claims the action log before acting
  * - Audit-complete: every decision is logged via actionLogger
  * - Non-blocking: errors are caught and logged, never rethrown
  */
 
 import { prisma } from './prisma';
-import { createActionLog, updateActionLog } from './actionLogger';
+import { updateActionLog } from './actionLogger';
 import { graphFetch } from './graphFetch';
 
 const META_GRAPH_BASE = 'https://graph.facebook.com/v24.0';
 
 export type NegativeActionMode = 'hide' | 'delete';
+
+/**
+ * Claim an auto-moderation action for a comment.
+ *
+ * Two guards, because neither covers the other's case:
+ *  1. The existing-log check catches a redelivery that arrives after a previous
+ *     attempt finished. It is NOT atomic on its own.
+ *  2. The create is the atomic tiebreaker for deliveries racing inside that
+ *     window: the unique [commentId, actionType] constraint lets exactly one
+ *     caller win, and the loser (P2002) bails instead of firing a second Graph
+ *     call. Do not drop guard 1 in favour of this — the constraint is declared
+ *     in schema.prisma but no migration creates it, so it is absent on any DB
+ *     provisioned by `prisma migrate deploy` rather than `prisma db push`.
+ *
+ * Returns the new PENDING log ID, or null when the action is already claimed.
+ */
+async function claimModerationAction(params: {
+  commentDbId: string;
+  connectedPageId: string;
+  provider: 'facebook' | 'instagram';
+  actionType: 'HIDE' | 'DELETE';
+  reason: string;
+  ruleTriggered: string;
+}): Promise<string | null> {
+  const existingLog = await prisma.commentActionLog.findFirst({
+    where: { commentId: params.commentDbId, actionType: params.actionType },
+    select: { id: true },
+  });
+
+  if (existingLog) {
+    console.log(`[Moderation] ${params.actionType} log already exists for comment ${params.commentDbId} — skipping duplicate`);
+    return null;
+  }
+
+  try {
+    const log = await prisma.commentActionLog.create({
+      data: {
+        commentId: params.commentDbId,
+        connectedPageId: params.connectedPageId,
+        provider: params.provider,
+        actionType: params.actionType,
+        status: 'PENDING',
+        reason: params.reason,
+        ruleTriggered: params.ruleTriggered,
+      },
+      select: { id: true },
+    });
+
+    console.log(`📝 [Action Log] Created: ${params.actionType} - PENDING | Log ID: ${log.id}`);
+
+    return log.id;
+  } catch (error: any) {
+    if (error?.code === 'P2002') {
+      console.log(`[Moderation] ${params.actionType} log already exists for comment ${params.commentDbId} — skipping duplicate`);
+      return null;
+    }
+
+    console.error(`❌ [Action Log] Failed to create:`, error?.message);
+    throw error;
+  }
+}
 
 /**
  * Auto-moderate a negative comment via the Meta Graph API.
@@ -67,27 +128,19 @@ export async function autoModerateNegativeComment({
 
     console.log(`🛑 [Moderation] DECISION: HIDE | Comment DB ID: ${commentDbId} | Provider: ${provider}`);
 
-    // Idempotency: skip if a HIDE action log already exists for this comment
-    const existingHideLog = await prisma.commentActionLog.findFirst({
-      where: { commentId: commentDbId, actionType: 'HIDE' },
-      select: { id: true },
-    });
-
-    if (existingHideLog) {
-      console.log(`[Moderation] HIDE log already exists for comment ${commentDbId} — skipping duplicate`);
-      return;
-    }
-
-    // Create PENDING action log before calling the API
-    const logId = await createActionLog({
-      commentId: commentDbId,
+    // Idempotency: atomically claim the HIDE (and log it PENDING) before calling the API
+    const logId = await claimModerationAction({
+      commentDbId,
       connectedPageId,
       provider,
       actionType: 'HIDE',
-      status: 'PENDING',
       reason: 'Auto-hide: negative sentiment detected',
       ruleTriggered: 'auto_hide_negative',
     });
+
+    if (!logId) {
+      return;
+    }
 
     // Call Meta Graph API to hide the comment
     const hideUrl = `${META_GRAPH_BASE}/${commentMetaId}`;
@@ -115,6 +168,8 @@ export async function autoModerateNegativeComment({
           data: {
             hiddenAt: new Date(),
             automationStatus: 'moderated',
+            needsReview: false,
+            lastError: null,
           },
         });
 
@@ -128,8 +183,9 @@ export async function autoModerateNegativeComment({
 
         console.error(`❌ [Moderation] HIDE failed | Comment DB ID: ${commentDbId} | Status: ${response.status} | Error: ${errorText}`);
 
-        await prisma.comment.update({
-          where: { id: commentDbId },
+        // Guarded: never downgrade a comment a concurrent delivery already hid
+        await prisma.comment.updateMany({
+          where: { id: commentDbId, hiddenAt: null },
           data: {
             needsReview: true,
             automationStatus: 'failed',
@@ -148,8 +204,9 @@ export async function autoModerateNegativeComment({
 
       console.error(`❌ [Moderation] HIDE exception | Comment DB ID: ${commentDbId} | Error: ${errorMessage}`);
 
-      await prisma.comment.update({
-        where: { id: commentDbId },
+      // Guarded: never downgrade a comment a concurrent delivery already hid
+      await prisma.comment.updateMany({
+        where: { id: commentDbId, hiddenAt: null },
         data: {
           needsReview: true,
           automationStatus: 'failed',
@@ -170,26 +227,19 @@ export async function autoModerateNegativeComment({
   // === DELETE MODE ===
   console.log(`🛑 [Moderation] DECISION: DELETE | Comment DB ID: ${commentDbId} | Provider: ${provider}`);
 
-  // Idempotency: skip if a DELETE action log already exists for this comment
-  const existingDeleteLog = await prisma.commentActionLog.findFirst({
-    where: { commentId: commentDbId, actionType: 'DELETE' },
-    select: { id: true },
-  });
-
-  if (existingDeleteLog) {
-    console.log(`[Moderation] DELETE log already exists for comment ${commentDbId} — skipping duplicate`);
-    return;
-  }
-
-  const deleteLogId = await createActionLog({
-    commentId: commentDbId,
+  // Idempotency: atomically claim the DELETE (and log it PENDING) before calling the API
+  const deleteLogId = await claimModerationAction({
+    commentDbId,
     connectedPageId,
     provider,
     actionType: 'DELETE',
-    status: 'PENDING',
     reason: 'Auto-delete: negative sentiment detected',
     ruleTriggered: 'auto_delete_negative',
   });
+
+  if (!deleteLogId) {
+    return;
+  }
 
   const deleteUrl = `${META_GRAPH_BASE}/${commentMetaId}?access_token=${encodeURIComponent(pageAccessToken)}`;
 
@@ -229,8 +279,9 @@ export async function autoModerateNegativeComment({
 
       console.error(`❌ [Moderation] DELETE failed | Comment DB ID: ${commentDbId} | Status: ${response.status} | Error: ${errorText}`);
 
-      await prisma.comment.update({
-        where: { id: commentDbId },
+      // Guarded: never downgrade a comment a concurrent delivery already deleted
+      await prisma.comment.updateMany({
+        where: { id: commentDbId, deletedAt: null },
         data: {
           needsReview: true,
           automationStatus: 'failed',
@@ -249,8 +300,9 @@ export async function autoModerateNegativeComment({
 
     console.error(`❌ [Moderation] DELETE exception | Comment DB ID: ${commentDbId} | Error: ${errorMessage}`);
 
-    await prisma.comment.update({
-      where: { id: commentDbId },
+    // Guarded: never downgrade a comment a concurrent delivery already deleted
+    await prisma.comment.updateMany({
+      where: { id: commentDbId, deletedAt: null },
       data: {
         needsReview: true,
         automationStatus: 'failed',

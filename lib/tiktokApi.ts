@@ -172,6 +172,55 @@ async function setTikTokPageReconnect(openId: string | null, needsReconnect: boo
 }
 
 /**
+ * Refresh-endpoint codes that genuinely mean the grant is dead and only a user
+ * re-auth can fix it. Mirrors isTikTokAdsAuthError in lib/tiktokAdsApi.ts — the
+ * refresh endpoint is on the same business-api host and shares its code space:
+ *   40002 authorization canceled · 40102 token expired · 40104 token empty
+ *   40105 invalid/revoked token  · 40106 core user invalid
+ *
+ * Everything else is transient — notably the rate limits 40100/40016/40133
+ * ("requests made too frequently"), which a webhook burst on one video makes
+ * likely on exactly this path. Flagging reconnect on a throttle is a false
+ * positive, not fail-closed safety: it logs out an account whose credentials
+ * are perfectly valid.
+ */
+const TIKTOK_AUTH_ERROR_CODES = [40002, 40102, 40104, 40105, 40106];
+
+function isTikTokAuthErrorCode(code: unknown): boolean {
+  return typeof code === 'number' && TIKTOK_AUTH_ERROR_CODES.includes(code);
+}
+
+/**
+ * Detects a refresh that a concurrent invocation won while ours was in flight,
+ * and returns its access token. Two independent signals, because TikTok does
+ * not always rotate the refresh token:
+ *   - identity: a stored refresh_token other than the one we consumed proves a
+ *     concurrent refresh committed, whatever expires_at says;
+ *   - expiry: a changed, still-valid expires_at means the same.
+ * Returns null when the row still shows the state we read going in.
+ */
+async function readConcurrentTikTokRefresh(
+  accountId: string,
+  consumed: { refresh_token: string | null; expires_at: number | null },
+): Promise<string | null> {
+  const fresh = await prisma.account.findUnique({
+    where: { id: accountId },
+    select: { access_token: true, refresh_token: true, expires_at: true },
+  });
+
+  if (!fresh?.access_token) return null;
+  if (fresh.refresh_token !== consumed.refresh_token) return fresh.access_token;
+  if (
+    fresh.expires_at !== null &&
+    fresh.expires_at !== consumed.expires_at &&
+    fresh.expires_at - Math.floor(Date.now() / 1000) >= 60
+  ) {
+    return fresh.access_token;
+  }
+  return null;
+}
+
+/**
  * Returns a valid access token for the given Account row, refreshing it first
  * if it has expired (or will expire in the next 60 seconds).
  *
@@ -223,6 +272,42 @@ export async function getValidTikTokAccessToken(accountId: string): Promise<stri
     const data = await res.json();
 
     if (data.code !== 0 || !data.data?.access_token) {
+      // A concurrent invocation may have just refreshed and rotated the refresh
+      // token out from under us, which makes our call fail spuriously. Re-read
+      // before flagging: if it already committed, use its token — flagging
+      // reconnect here would undo the winner's needsReconnect=false.
+      const won = await readConcurrentTikTokRefresh(accountId, account);
+      if (won) return won;
+
+      if (!isTikTokAuthErrorCode(data.code)) {
+        // Rate-limited or a malformed body — the stored grant is not proven
+        // dead, so keep the account connected and let the next call retry.
+        console.warn('[TikTok] Token refresh failed transiently — not flagging reconnect:', data);
+        return account.access_token ?? null;
+      }
+
+      // A genuine auth failure, but a concurrent winner's rejection typically
+      // comes back faster than its own DB write lands: wait, bounded, before
+      // taking the destructive action.
+      for (const delayMs of [300, 700]) {
+        await new Promise((r) => setTimeout(r, delayMs));
+        const late = await readConcurrentTikTokRefresh(accountId, account);
+        if (late) return late;
+      }
+
+      // Last-millisecond guard. The row lock this takes serialises us behind an
+      // in-flight winner: if it commits, expires_at no longer matches and the
+      // count is 0, so we never clobber its needsReconnect=false. The write is
+      // a no-op — the where clause guarantees the value is already there.
+      const stillStale = await prisma.account.updateMany({
+        where: { id: accountId, expires_at: account.expires_at },
+        data: { expires_at: account.expires_at },
+      });
+      if (stillStale.count === 0) {
+        const winner = await readConcurrentTikTokRefresh(accountId, account);
+        if (winner) return winner;
+      }
+
       console.error('[TikTok] Token refresh failed:', data);
       await setTikTokPageReconnect(account.providerAccountId, true);
       return account.access_token ?? null;

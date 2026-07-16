@@ -1,6 +1,6 @@
 import { NextResponse, after } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getValidTikTokAccessToken, fetchTikTokComments } from '@/lib/tiktokApi';
+import { getValidTikTokAccessToken, fetchTikTokComments, type TikTokComment } from '@/lib/tiktokApi';
 import * as Sentry from '@sentry/nextjs';
 
 export const dynamic = 'force-dynamic';
@@ -23,9 +23,12 @@ export const maxDuration = 60;
  * auto-reply to a potentially hours-old comment). Replies are inserted as
  * 'ignored'.
  *
- * Known limitation: videoIds are discovered from prior comments, so a video
- * whose entire comment history arrived during a webhook outage can't be found
- * here (there is no video-list scope wired up). Logged below rather than hidden.
+ * Known limitations (logged below rather than hidden):
+ *  - videoIds are discovered from prior comments, so a video whose entire
+ *    comment history arrived during a webhook outage can't be found here (there
+ *    is no video-list scope wired up).
+ *  - fetchTikTokComments sends no cursor/max_count, so only the API's first page
+ *    of comments per video is examined; anything past it is not backfilled.
  */
 
 const MAX_VIDEOS_PER_PAGE = 15;
@@ -92,10 +95,27 @@ export async function GET(request: Request) {
             continue;
           }
 
-          const rows = comments
+          // comment/list nests replies inside each top-level comment
+          // (include_replies=true) — only the top level was mapped, so a missed
+          // reply was never backfilled. parent_comment_id is absent on nested
+          // items, so it is taken from the parent. Harmless no-op if the API
+          // ever returns replies flat instead.
+          const flattened: TikTokComment[] = [];
+          for (const c of comments) {
+            flattened.push(c);
+            for (const reply of c.reply_list ?? []) {
+              flattened.push({ ...reply, parent_comment_id: reply.parent_comment_id || c.comment_id });
+            }
+          }
+
+          const rows = flattened
             .filter((c) => c.comment_id && !c.owner && (c.text ?? '').trim().length > 0)
             .map((c) => {
               const isReply = !!c.parent_comment_id;
+              // status:'ALL' includes comments already hidden on TikTok — insert
+              // them as hidden/ignored, or a comment the user already moderated
+              // resurfaces in the dashboard as a live, actionable one.
+              const isHidden = c.status === 'HIDDEN';
               return {
                 pageId: page.id,
                 commentId: c.comment_id,
@@ -107,9 +127,10 @@ export async function GET(request: Request) {
                 isReply,
                 parentCommentId: c.parent_comment_id || null,
                 source: 'tiktok_organic',
+                hiddenAt: isHidden ? new Date() : null,
                 // Top-level comments queue for sentiment/surfacing; replies are
                 // captured but kept out of the reply pipeline.
-                status: isReply ? 'ignored' : 'pending',
+                status: isReply || isHidden ? 'ignored' : 'pending',
               };
             });
 

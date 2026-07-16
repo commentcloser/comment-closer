@@ -5,6 +5,13 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 /**
+ * Graph error codes that genuinely mean the user token is dead. Everything else
+ * (5xx, rate limit #4/#17/#32 — which are also type OAuthException) is transient
+ * and must NOT raise a reconnect warning.
+ */
+const AUTH_ERROR_CODES = new Set([102, 190, 463, 467]);
+
+/**
  * Proactively refresh Meta (Facebook) long-lived user tokens (INTEG-1).
  *
  * Long-lived user tokens last ~60 days. They were only ever refreshed on user
@@ -47,14 +54,45 @@ export async function GET(request: Request) {
         const data = await res.json();
         if (data.access_token) {
           await prisma.account.update({ where: { id: account.id }, data: { access_token: data.access_token } });
+          // A working exchange proves the token is live — clear a stale warning
+          // left by an earlier transient failure (nothing else ever cleared it).
+          await prisma.connectedPage.updateMany({
+            where: {
+              userId: account.userId,
+              provider: { in: ['facebook', 'instagram'] },
+              disconnectedAt: null,
+              needsReconnect: true,
+            },
+            data: { needsReconnect: false },
+          });
           refreshed++;
           continue;
         }
       }
 
-      // Exchange failed — the token is likely expired/revoked. Flag the user's
-      // active Meta pages so the dashboard prompts a reconnect.
-      const detail = res.ok ? 'no access_token in response' : (await res.text()).slice(0, 200);
+      // Exchange failed. Only flag on a definitive auth error: a transient Graph
+      // 5xx / rate-limit (this loop hammers one app-scoped endpoint for every
+      // account) would otherwise put a permanent false 'Reconnect' warning on
+      // every page of a user whose token is perfectly fine.
+      // A 200 carrying no access_token is a permanent condition, not a transient
+      // one, and nothing else retries or surfaces it — keep flagging it as before.
+      const body = res.ok ? '' : await res.text();
+      let isAuthError = res.ok;
+      if (!res.ok) {
+        try {
+          const code = Number(JSON.parse(body)?.error?.code);
+          isAuthError = AUTH_ERROR_CODES.has(code);
+        } catch {
+          // Non-JSON error body (e.g. gateway HTML on a 5xx) — treat as transient
+        }
+      }
+
+      const detail = res.ok ? 'no access_token in response' : body.slice(0, 200);
+      if (!isAuthError) {
+        console.warn(`[Meta Token Cron] Transient refresh failure for user ${account.userId} (${res.status}) — not flagging: ${detail}`);
+        continue;
+      }
+
       console.warn(`[Meta Token Cron] Refresh failed for user ${account.userId}: ${detail}`);
       const upd = await prisma.connectedPage.updateMany({
         where: { userId: account.userId, provider: { in: ['facebook', 'instagram'] }, disconnectedAt: null },

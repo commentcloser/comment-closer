@@ -712,7 +712,7 @@ function PagesPageContent() {
                   autoNegativeAction: negativeModeToSave,
                   autoModerateReplies: settingsModerateReplies,
                   customReplyPrompt: settingsCustomPrompt.trim() || null,
-                  webSourceUrl: settingsWebSourceUrl.trim() || null,
+                  webSourceUrl: urlToSave,
                   webSourceEnabled: settingsWebSourceEnabled,
                   replyDelaySeconds: settingsReplyDelay,
                   replyUserCooldownMinutes: settingsCooldownMinutes,
@@ -731,7 +731,14 @@ function PagesPageContent() {
           )
         );
         setPageToSettings(null);
+      } else {
+        // Keep the modal open on failure: silently swallowing this made users
+        // believe a moderation toggle had saved when it hadn't.
+        const errorData = await res.json().catch(() => null);
+        alert(errorData?.error || 'Failed to save settings');
       }
+    } catch {
+      alert('Error saving settings');
     } finally {
       setSavingSettings(false);
     }
@@ -2501,13 +2508,19 @@ function PagesPageContent() {
                         <input
                           type="number"
                           min={5}
-                          max={120}
+                          max={30}
                           value={customDelayInput}
                           onChange={(e) => {
-                            setCustomDelayInput(e.target.value);
                             const val = parseInt(e.target.value);
                             if (val && val > 0) {
-                              setSettingsReplyDelay(Math.min(120, val) * 60);
+                              // The API clamps replyDelaySeconds to 1800s, so cap the input at
+                              // 30 min too — otherwise the UI shows a longer review window than
+                              // is actually applied before the reply gets posted.
+                              const capped = Math.min(30, val);
+                              setCustomDelayInput(String(capped));
+                              setSettingsReplyDelay(capped * 60);
+                            } else {
+                              setCustomDelayInput(e.target.value);
                             }
                           }}
                           className="w-16 px-2 py-2 font-mono text-[14px] text-center rounded-btn border border-line bg-surface text-ink transition-colors focus:outline-none focus:border-accent focus:ring-2 focus:ring-ring"

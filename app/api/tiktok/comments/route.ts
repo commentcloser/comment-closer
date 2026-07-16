@@ -17,7 +17,12 @@ export async function GET(request: NextRequest) {
   // internalPageId = ConnectedPage.id (internal DB id) — legacy param
   const internalPageId = searchParams.get('pageId');
   const cursor = searchParams.get('cursor');
-  const limit = Math.min(Number(searchParams.get('limit') || 30), 50);
+  // Non-numeric/negative limits would reach Prisma as take: NaN (throws) or a
+  // negative take (silently returns the oldest rows), so fall back to the default.
+  const limitParam = Number(searchParams.get('limit') || 30);
+  const limit = Number.isFinite(limitParam) && limitParam >= 1
+    ? Math.min(Math.floor(limitParam), 50)
+    : 30;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = {
@@ -44,12 +49,28 @@ export async function GET(request: NextRequest) {
   }
 
   if (cursor) {
-    where.createdAt = { lt: new Date(cursor) };
+    // Compound cursor "<iso>_<id>". createdAt comes from TikTok's create_time in
+    // whole seconds, so a burst on one video shares a single timestamp and a plain
+    // `lt` on createdAt skips every comment tied with the page boundary. Bare-ISO
+    // cursors from older clients keep the previous (untiebroken) behaviour.
+    const sep = cursor.indexOf('_');
+    const cursorDate = new Date(sep === -1 ? cursor : cursor.slice(0, sep));
+    const cursorId = sep === -1 ? null : cursor.slice(sep + 1);
+    if (!Number.isNaN(cursorDate.getTime())) {
+      if (cursorId) {
+        where.OR = [
+          { createdAt: { lt: cursorDate } },
+          { createdAt: cursorDate, id: { lt: cursorId } },
+        ];
+      } else {
+        where.createdAt = { lt: cursorDate };
+      }
+    }
   }
 
   const comments = await prisma.comment.findMany({
     where,
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: limit,
     select: {
       id: true,
@@ -99,7 +120,8 @@ export async function GET(request: NextRequest) {
     automationStatus: c.automationStatus ?? null,
   }));
 
-  const nextCursor = comments.length === limit ? comments[comments.length - 1]?.createdAt?.toISOString() : null;
+  const last = comments.length === limit ? comments[comments.length - 1] : undefined;
+  const nextCursor = last ? `${last.createdAt.toISOString()}_${last.id}` : null;
 
   return NextResponse.json({
     comments: normalized,

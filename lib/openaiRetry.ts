@@ -1,7 +1,10 @@
+const MAX_BACKOFF_MS = 8000;
+
 /**
  * Retry wrapper for OpenAI calls. Retries on 429 (rate limit) and transient 5xx
- * with exponential backoff, honoring a Retry-After header when present. A single
- * rate-limit spike should not fail a whole batch of comments.
+ * with exponential backoff, honoring a Retry-After header when present (capped
+ * at MAX_BACKOFF_MS). A single rate-limit spike should not fail a whole batch
+ * of comments.
  */
 export async function withOpenAIRetry<T>(
   fn: () => Promise<T>,
@@ -26,10 +29,13 @@ export async function withOpenAIRetry<T>(
 
       const retryAfterRaw = err?.headers?.['retry-after'] ?? err?.response?.headers?.['retry-after'];
       const retryAfter = Number(retryAfterRaw);
+      // Clamp Retry-After the same as the exponential branch: a 429 with
+      // Retry-After: 60 would otherwise sleep past the route's maxDuration and
+      // get the whole batch killed mid-loop.
       const backoffMs =
         Number.isFinite(retryAfter) && retryAfter > 0
-          ? retryAfter * 1000
-          : Math.min(1000 * 2 ** i, 8000);
+          ? Math.min(retryAfter * 1000, MAX_BACKOFF_MS)
+          : Math.min(1000 * 2 ** i, MAX_BACKOFF_MS);
 
       console.warn(
         `[OpenAI retry] ${opts?.label || 'call'} attempt ${i + 1}/${attempts} failed (${status ?? err?.code}); retrying in ${backoffMs}ms`

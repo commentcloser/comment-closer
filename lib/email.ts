@@ -41,6 +41,18 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
   return { success: true, id: data?.id };
 }
 
+// Display names are user-controlled (registration only checks type + length), so
+// they must be escaped before landing in email HTML — otherwise an attacker can
+// inject links/markup into a genuine Comment Closer email sent to any address.
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function buildEmail(content: string, title: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -105,7 +117,7 @@ function buildEmail(content: string, title: string): string {
 export async function sendVerificationEmail(email: string, token: string, name?: string, locale?: string) {
   const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || 'https://commentcloser.com';
   const url = `${baseUrl}/verify-email?token=${token}`;
-  const firstName = name ? name.split(' ')[0] : null;
+  const firstName = name ? escapeHtml(name.split(' ')[0]) : null;
   const el = locale === 'el';
 
   if (!process.env.RESEND_API_KEY) {
@@ -171,7 +183,7 @@ export async function sendVerificationEmail(email: string, token: string, name?:
 export async function sendWelcomeEmail(email: string, name?: string, locale?: string) {
   const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || 'https://commentcloser.com';
   const url = `${baseUrl}/dashboard`;
-  const firstName = name ? name.split(' ')[0] : null;
+  const firstName = name ? escapeHtml(name.split(' ')[0]) : null;
   const el = locale === 'el';
 
   if (!process.env.RESEND_API_KEY) {
@@ -216,7 +228,7 @@ export async function sendWelcomeEmail(email: string, name?: string, locale?: st
 export async function sendPasswordResetEmail(email: string, token: string, name?: string, locale?: string) {
   const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || 'https://commentcloser.com';
   const url = `${baseUrl}/reset-password?token=${token}`;
-  const firstName = name ? name.split(' ')[0] : null;
+  const firstName = name ? escapeHtml(name.split(' ')[0]) : null;
   const el = locale === 'el';
 
   if (!process.env.RESEND_API_KEY) {

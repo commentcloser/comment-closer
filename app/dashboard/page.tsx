@@ -110,6 +110,9 @@ export default function DashboardPage() {
 
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const inboxReqSeqRef = useRef(0);
+  const fetchInboxRef = useRef<(isBackground?: boolean, page?: number) => void>(() => {});
+  const replyingCommentIdRef = useRef<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -156,6 +159,7 @@ export default function DashboardPage() {
 
   // Fetch inbox comments
   const fetchInbox = useCallback(async (isBackground = false, page?: number) => {
+    const seq = ++inboxReqSeqRef.current;
     try {
       if (!isBackground) setInboxLoading(true);
       const p = page ?? currentPage;
@@ -170,8 +174,15 @@ export default function DashboardPage() {
       const res = await fetch(`/api/comments/all?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
+        // Drop responses a newer request has already superseded (fast typing / pagination can land out of order)
+        if (seq !== inboxReqSeqRef.current) return;
         setComments(data.comments || []);
-        setMetrics(data.metrics || { total: 0, pending: 0, needsReview: 0, replied: 0, hidden: 0, deleted: 0, positive: 0, neutral: 0, negative: 0 });
+        setMetrics(prev => {
+          const m: InboxMetrics = data.metrics || { total: 0, pending: 0, needsReview: 0, replied: 0, hidden: 0, deleted: 0, positive: 0, neutral: 0, negative: 0 };
+          // Sentiment counts belong to fetchSentiment — this endpoint always returns all-time
+          // values, so keep the chart's period-filtered numbers instead of reverting them
+          return { ...m, positive: prev.positive, neutral: prev.neutral, negative: prev.negative };
+        });
         setInboxPages(data.pages || []);
         setTotalComments(data.total || 0);
       }
@@ -206,25 +217,36 @@ export default function DashboardPage() {
     }
   }, [sentimentPeriod, connectedPages.length, fetchSentiment]);
 
-  // Initial fetch + refetch on filter change
+  // Keep the latest fetchInbox reachable from timers without making it an effect dep
+  useEffect(() => { fetchInboxRef.current = fetchInbox; }, [fetchInbox]);
+
+  // Which reply form is open right now, readable from in-flight async callbacks
+  useEffect(() => { replyingCommentIdRef.current = replyingCommentId; }, [replyingCommentId]);
+
+  // Initial fetch + refetch on filter change.
+  // Keyed on the filter values, not fetchInbox identity: searchQuery is owned by the debounced
+  // effect below, and pagination already fetches explicitly, so neither belongs here.
   useEffect(() => {
     if (!loadingPages && connectedPages.length > 0) {
-      fetchInbox();
+      fetchInboxRef.current();
     }
-  }, [loadingPages, connectedPages.length, fetchInbox]);
+  }, [loadingPages, connectedPages.length, filterPageId, filterPlatform, filterStatus]);
 
   // Polling
   useEffect(() => {
     if (connectedPages.length === 0) return;
-    pollIntervalRef.current = setInterval(() => fetchInbox(true), 30000);
+    pollIntervalRef.current = setInterval(() => { fetchInbox(true); fetchSentiment(); }, 30000);
     return () => { if (pollIntervalRef.current) clearInterval(pollIntervalRef.current); };
-  }, [connectedPages.length, fetchInbox]);
+  }, [connectedPages.length, fetchInbox, fetchSentiment]);
 
-  // Debounced search
+  // Debounced search — always lands on page 1, keeping an old offset would hide the matches
   useEffect(() => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     searchTimeoutRef.current = setTimeout(() => {
-      if (connectedPages.length > 0) fetchInbox();
+      if (connectedPages.length > 0) {
+        setCurrentPage(1);
+        fetchInboxRef.current(false, 1);
+      }
     }, 400);
     return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
   }, [searchQuery]);
@@ -267,7 +289,9 @@ export default function DashboardPage() {
       const res = await fetch(`/api/comments/${commentId}/suggest-reply`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
-        if (data.reply) setReplyText(data.reply);
+        // Only fill the box if this comment's form is still the open one — the user may have
+        // switched to another comment while the suggestion was generating
+        if (data.reply && replyingCommentIdRef.current === commentId) setReplyText(data.reply);
       }
     } finally { setSuggestLoading(false); }
   };
@@ -368,7 +392,12 @@ export default function DashboardPage() {
       if (res.ok) {
         setReviewTexts(prev => { const next = { ...prev }; delete next[commentId]; return next; });
         fetchInbox(true);
+      } else {
+        const data = await res.json().catch(() => null);
+        alert(data?.error || (action === 'approve' ? 'Failed to approve reply' : 'Failed to reject reply'));
       }
+    } catch (error: any) {
+      alert(error?.message || (action === 'approve' ? 'Failed to approve reply' : 'Failed to reject reply'));
     } finally { setReviewLoading(null); }
   };
 
