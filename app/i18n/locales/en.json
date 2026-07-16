@@ -778,7 +778,8 @@
       "analytics": "Analytics",
       "billing": "Billing & Plan",
       "settings": "Settings",
-      "connectPageFirst": "Connect a page first"
+      "connectPageFirst": "Connect a page first",
+      "connectFacebookInstagram": "Connect Facebook & Instagram"
     },
     "settingsPage": {
       "metaAccount": "Meta Account",
@@ -1062,10 +1063,10 @@
       "manageConnectedAccounts": "Manage your connected accounts",
       "addFacebookPage": "Add Facebook Page",
       "addInstagramAccount": "Add Instagram Account",
-      "pagesAvailable": "{{count}} page available",
-      "pagesAvailable_plural": "{{count}} pages available",
-      "accountsAvailable": "{{count}} account available",
-      "accountsAvailable_plural": "{{count}} accounts available",
+      "pagesAvailable_one": "{{count}} page available",
+      "pagesAvailable_other": "{{count}} pages available",
+      "accountsAvailable_one": "{{count}} account available",
+      "accountsAvailable_other": "{{count}} accounts available",
       "allPagesConnected": "All pages connected",
       "allAccountsConnected": "All accounts connected",
       "allFacebookPagesActivated": "All Facebook Pages Activated",
@@ -1169,7 +1170,13 @@
       "unsavedChangesMessage": "You have unsaved changes. Save or discard?",
       "discard": "Discard",
       "manualReview": "Manual Review",
-      "manualReviewDesc": "Review AI replies before they are sent"
+      "manualReviewDesc": "Review AI replies before they are sent",
+      "connectTikTokTitle": "Reactivate TikTok Account",
+      "moderateReplies": "Moderate Replies",
+      "moderateRepliesDesc": "Auto-hide/delete negative replies on comments",
+      "maxReplyLengthLabel": "Max Reply Length",
+      "maxReplyLengthDesc": "Maximum characters for AI-generated replies",
+      "maxReplyLengthTikTokDesc": "TikTok limits replies to 150 characters"
     },
     "inbox": {
       "title": "Comments Inbox",
@@ -1217,7 +1224,20 @@
       "approveAndSend": "Approve & Send",
       "replaceWarning": "This will delete the current reply and post a new one.",
       "newReplyText": "New reply text",
-      "replaceReply": "Replace Reply"
+      "replaceReply": "Replace Reply",
+      "sentimentAnalysis": "Sentiment Analysis",
+      "periodAll": "All",
+      "analyzed": "analyzed",
+      "positive": "Positive",
+      "neutral": "Neutral",
+      "negative": "Negative",
+      "noSentimentData": "No sentiment data yet",
+      "clearFilters": "Clear",
+      "aiSuggest": "AI Suggest",
+      "viewPost": "View Post",
+      "unhide": "Unhide",
+      "deleteReply": "Delete Reply",
+      "confirmDeleteReply": "Are you sure you want to delete this reply? The comment will become unanswered."
     },
     "comments": {
       "billingRequired": "Activate your plan to use AI features. Go to Billing & Plan?",
@@ -1328,7 +1348,14 @@
       "showingResults": "Showing {{count}} of {{total}} comments",
       "clearFilters": "Clear all filters",
       "noFilterResults": "No comments match your filters",
-      "noFilterResultsDesc": "Try adjusting your search or filter criteria"
+      "noFilterResultsDesc": "Try adjusting your search or filter criteria",
+      "aiSuggest": "AI Suggest",
+      "ignoredReply": "Ignored reply",
+      "positive": "Positive",
+      "negative": "Negative",
+      "neutral": "Neutral",
+      "deleteReply": "Delete Reply",
+      "confirmDeleteReply": "Are you sure you want to delete this reply? The comment will become unanswered."
     },
     "status": {
       "title": "System Status",

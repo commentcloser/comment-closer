@@ -778,7 +778,8 @@
       "analytics": "Αναλυτικά",
       "billing": "Συνδρομή & Χρεώσεις",
       "settings": "Ρυθμίσεις",
-      "connectPageFirst": "Συνδέστε μια σελίδα πρώτα"
+      "connectPageFirst": "Συνδέστε μια σελίδα πρώτα",
+      "connectFacebookInstagram": "Σύνδεση Facebook & Instagram"
     },
     "settingsPage": {
       "metaAccount": "Λογαριασμός Meta",
@@ -1062,10 +1063,10 @@
       "manageConnectedAccounts": "Διαχειριστείτε τους συνδεδεμένους λογαριασμούς σας",
       "addFacebookPage": "Προσθήκη Σελίδας Facebook",
       "addInstagramAccount": "Προσθήκη Λογαριασμού Instagram",
-      "pagesAvailable": "{{count}} διαθέσιμη σελίδα",
-      "pagesAvailable_plural": "{{count}} διαθέσιμες σελίδες",
-      "accountsAvailable": "{{count}} διαθέσιμος λογαριασμός",
-      "accountsAvailable_plural": "{{count}} διαθέσιμοι λογαριασμοί",
+      "pagesAvailable_one": "{{count}} διαθέσιμη σελίδα",
+      "pagesAvailable_other": "{{count}} διαθέσιμες σελίδες",
+      "accountsAvailable_one": "{{count}} διαθέσιμος λογαριασμός",
+      "accountsAvailable_other": "{{count}} διαθέσιμοι λογαριασμοί",
       "allPagesConnected": "Όλες οι σελίδες είναι συνδεδεμένες",
       "allAccountsConnected": "Όλοι οι λογαριασμοί είναι συνδεδεμένοι",
       "allFacebookPagesActivated": "Όλες οι Σελίδες Facebook Ενεργοποιήθηκαν",
@@ -1169,7 +1170,13 @@
       "unsavedChangesMessage": "Έχετε μη αποθηκευμένες αλλαγές. Αποθήκευση ή απόρριψη;",
       "discard": "Απόρριψη",
       "manualReview": "Χειροκίνητος Έλεγχος",
-      "manualReviewDesc": "Ελέγξτε τις απαντήσεις AI πριν σταλούν"
+      "manualReviewDesc": "Ελέγξτε τις απαντήσεις AI πριν σταλούν",
+      "connectTikTokTitle": "Επανενεργοποίηση Λογαριασμού TikTok",
+      "moderateReplies": "Έλεγχος Απαντήσεων",
+      "moderateRepliesDesc": "Αυτόματη απόκρυψη/διαγραφή αρνητικών απαντήσεων σε σχόλια",
+      "maxReplyLengthLabel": "Μέγιστο Μήκος Απάντησης",
+      "maxReplyLengthDesc": "Μέγιστοι χαρακτήρες για απαντήσεις που δημιουργεί το AI",
+      "maxReplyLengthTikTokDesc": "Το TikTok περιορίζει τις απαντήσεις στους 150 χαρακτήρες"
     },
     "inbox": {
       "title": "Εισερχόμενα Σχολίων",
@@ -1217,7 +1224,20 @@
       "approveAndSend": "Έγκριση & Αποστολή",
       "replaceWarning": "Αυτό θα διαγράψει την τρέχουσα απάντηση και θα δημοσιεύσει μια νέα.",
       "newReplyText": "Νέο κείμενο απάντησης",
-      "replaceReply": "Αντικατάσταση Απάντησης"
+      "replaceReply": "Αντικατάσταση Απάντησης",
+      "sentimentAnalysis": "Ανάλυση Συναισθήματος",
+      "periodAll": "Όλα",
+      "analyzed": "αναλύθηκαν",
+      "positive": "Θετικά",
+      "neutral": "Ουδέτερα",
+      "negative": "Αρνητικά",
+      "noSentimentData": "Δεν υπάρχουν ακόμη δεδομένα συναισθήματος",
+      "clearFilters": "Καθαρισμός",
+      "aiSuggest": "Πρόταση AI",
+      "viewPost": "Προβολή Δημοσίευσης",
+      "unhide": "Εμφάνιση",
+      "deleteReply": "Διαγραφή Απάντησης",
+      "confirmDeleteReply": "Είστε σίγουροι ότι θέλετε να διαγράψετε αυτή την απάντηση; Το σχόλιο θα μείνει αναπάντητο."
     },
     "comments": {
       "billingRequired": "Ενεργοποίησε το plan σου για να χρησιμοποιήσεις AI features. Μετάβαση στο Συνδρομή & Χρεώσεις;",
@@ -1328,7 +1348,14 @@
       "showingResults": "Εμφάνιση {{count}} από {{total}} σχόλια",
       "clearFilters": "Καθαρισμός φίλτρων",
       "noFilterResults": "Κανένα σχόλιο δεν ταιριάζει με τα φίλτρα",
-      "noFilterResultsDesc": "Δοκιμάστε να τροποποιήσετε την αναζήτηση ή τα κριτήρια φίλτρων"
+      "noFilterResultsDesc": "Δοκιμάστε να τροποποιήσετε την αναζήτηση ή τα κριτήρια φίλτρων",
+      "aiSuggest": "Πρόταση AI",
+      "ignoredReply": "Αγνοημένη απάντηση",
+      "positive": "Θετικό",
+      "negative": "Αρνητικό",
+      "neutral": "Ουδέτερο",
+      "deleteReply": "Διαγραφή Απάντησης",
+      "confirmDeleteReply": "Είστε σίγουροι ότι θέλετε να διαγράψετε αυτή την απάντηση; Το σχόλιο θα μείνει αναπάντητο."
     },
     "status": {
       "title": "Κατάσταση Συστήματος",
