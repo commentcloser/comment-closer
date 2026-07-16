@@ -132,8 +132,12 @@ export async function GET(request: NextRequest) {
     if (statusFilter) {
       switch (statusFilter) {
         case 'pending':
-          // Match the pending metric — in-flight (ai_generating) comments are pending too
+          // Match the pending metric — in-flight (ai_generating) comments are pending too.
+          // needsReview rows are excluded so this stays disjoint from needs_review: the
+          // dashboard sums the two counts, and a failed auto-hide (needsReview on a still
+          // 'pending' row) would otherwise be counted twice.
           where.status = { in: ['pending', 'ai_generating'] };
+          where.needsReview = false;
           where.hiddenAt = null;
           where.deletedAt = null;
           break;
@@ -234,9 +238,11 @@ export async function GET(request: NextRequest) {
         where: metricsWhere,
         _count: true,
       }),
-      // Pending: explicitly exclude hidden/deleted to match filter behaviour
+      // Pending: explicitly exclude hidden/deleted to match filter behaviour, and
+      // exclude needsReview so this partitions cleanly against the needsReview count
+      // below — the dashboard renders pending + needsReview as one total.
       prisma.comment.count({
-        where: { ...visibleMetricsWhere, status: { in: ['pending', 'ai_generating'] } },
+        where: { ...visibleMetricsWhere, status: { in: ['pending', 'ai_generating'] }, needsReview: false },
       }),
       // Needs review: same predicate as the needs_review filter — no status gate
       prisma.comment.count({
