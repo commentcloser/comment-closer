@@ -107,11 +107,15 @@ export async function GET(request: Request) {
         recovered++;
 
         if (sentiment === 'negative') {
+          // Delegate the enabled/mode policy to autoModerateNegativeComment:
+          // it no-ops when moderation is off, and — unlike a local
+          // `autoHideNegativeEnabled` gate — still acts in 'delete' mode, where
+          // the settings UI stores autoHideNegativeEnabled=false. A local
+          // `&& autoHideNegativeEnabled` gate here silently disabled delete
+          // mode for every backfilled comment.
           if (
             (cp.provider === 'facebook' || cp.provider === 'instagram') &&
             cp.pageAccessToken &&
-            cp.autoModerationEnabled &&
-            cp.autoHideNegativeEnabled &&
             // Nested replies have their own moderation opt-in
             (!comment.isReply || cp.autoModerateReplies)
           ) {
@@ -126,10 +130,10 @@ export async function GET(request: Request) {
               autoHideNegativeEnabled: cp.autoHideNegativeEnabled,
               sentiment,
             });
-          } else {
-            // TikTok (or moderation off): just take it out of the pending queue.
-            await prisma.comment.update({ where: { id: comment.id }, data: { status: 'ignored' } });
           }
+          // Take negatives out of the pending queue either way — mirrors the
+          // webhook flow (which sets 'ignored' after its moderation call).
+          await prisma.comment.update({ where: { id: comment.id }, data: { status: 'ignored' } });
         }
       }
 

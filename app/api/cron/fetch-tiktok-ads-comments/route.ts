@@ -381,7 +381,12 @@ async function processAdsComment(
   await prisma.comment.update({ where: { id: saved.id }, data: { sentiment } });
 
   if (sentiment === 'negative') {
-    if (advertiser.autoModerationEnabled && advertiser.autoHideNegativeEnabled) {
+    // 'delete' mode is stored by the settings UI as autoHideNegativeEnabled=false,
+    // so treat it as enabled here too (TikTok can only hide, so it degrades to hide).
+    if (
+      advertiser.autoModerationEnabled &&
+      (advertiser.autoHideNegativeEnabled || advertiser.autoNegativeAction === 'delete')
+    ) {
       try {
         await hideTikTokAdsComment(accessToken, advertiser.pageId, commentId, true);
         await prisma.comment.update({

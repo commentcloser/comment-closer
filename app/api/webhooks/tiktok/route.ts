@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
 
     const wasAutoModerated =
       connectedPage.autoModerationEnabled &&
-      connectedPage.autoHideNegativeEnabled &&
+      (connectedPage.autoHideNegativeEnabled || connectedPage.autoNegativeAction === 'delete') &&
       existingComment?.sentiment === 'negative';
 
     await prisma.comment.updateMany({
@@ -332,9 +332,15 @@ export async function POST(request: NextRequest) {
 
   await prisma.comment.update({ where: { id: savedComment.id }, data: { sentiment } });
 
-  // Auto-moderation (TikTok only supports hiding viewer comments, not deleting them)
+  // Auto-moderation (TikTok only supports hiding viewer comments, not deleting them).
+  // 'delete' mode counts as enabled too: the settings UI stores that mode as
+  // autoHideNegativeEnabled=false, so gating on the flag alone would silently
+  // disable moderation for delete-mode pages (they degrade to hide on TikTok).
   if (sentiment === 'negative') {
-    if (connectedPage.autoModerationEnabled && connectedPage.autoHideNegativeEnabled) {
+    const negativeActionEnabled =
+      connectedPage.autoModerationEnabled &&
+      (connectedPage.autoHideNegativeEnabled || connectedPage.autoNegativeAction === 'delete');
+    if (negativeActionEnabled) {
       try {
         await autoHideTikTokCommentWithRetry(accessToken, userOpenId, videoId, commentId);
         await prisma.comment.update({
