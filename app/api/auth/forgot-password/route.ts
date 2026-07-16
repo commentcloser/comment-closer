@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { randomBytes } from 'crypto';
 import { sendPasswordResetEmail } from '@/lib/email';
-import { isRateLimited, recordFailedAttempt, getClientIp } from '@/lib/rateLimit';
-import { normalizeEmail } from '@/lib/validators';
+import { consumeRateLimit, getClientIp } from '@/lib/rateLimit';
+import { normalizeEmail, canonicalizeEmailForAbuse } from '@/lib/validators';
 
 export const runtime = 'nodejs';
 
@@ -27,12 +27,17 @@ export async function POST(request: NextRequest) {
 
     // Throttle reset requests per email AND per IP to limit enumeration/spam
     // (an attacker can otherwise fan out across many emails from one IP).
+    // Consume a token atomically up front (single round-trip, burst-safe): a
+    // parallel burst is serialized by the row lock instead of all reading the
+    // pre-attack state. Key the per-address limiter on the abuse-canonical form
+    // so plus-addressing/dots can't multiply the allowance for one inbox.
     const ip = getClientIp(request);
-    if ((await isRateLimited(`forgot-ip:${ip}`)).limited || (await isRateLimited(`forgot:${normalizedEmail}`)).limited) {
+    if (
+      (await consumeRateLimit(`forgot-ip:${ip}`)).limited ||
+      (await consumeRateLimit(`forgot:${canonicalizeEmailForAbuse(normalizedEmail)}`)).limited
+    ) {
       return NextResponse.json(genericBody);
     }
-    await recordFailedAttempt(`forgot-ip:${ip}`);
-    await recordFailedAttempt(`forgot:${normalizedEmail}`);
 
     const user = await prisma.user.findUnique({
       where: { email: normalizedEmail },

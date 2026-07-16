@@ -3,8 +3,8 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { sendVerificationEmail } from '@/lib/email';
-import { isValidEmail, normalizeEmail, validatePassword } from '@/lib/validators';
-import { isRateLimited, recordFailedAttempt, getClientIp } from '@/lib/rateLimit';
+import { isValidEmail, normalizeEmail, validatePassword, canonicalizeEmailForAbuse } from '@/lib/validators';
+import { consumeRateLimit, getClientIp } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 
@@ -39,16 +39,25 @@ export async function POST(request: NextRequest) {
 
     const normalizedEmail = normalizeEmail(email);
 
-    // IP-based throttle so one IP can't mass-create accounts / spam the Resend
-    // quota with verification emails to arbitrary addresses (AUTH-3).
+    // Throttle per IP AND per canonical target address so one IP can't
+    // mass-create accounts and — critically — so plus-/dot-addressed variants
+    // of a single victim mailbox (victim+1@gmail.com, v.ictim@gmail.com, ...)
+    // can't be used to email-bomb that inbox and burn the Resend quota (AUTH-3).
+    // The address key uses canonicalizeEmailForAbuse (folds +tags, Gmail dots,
+    // googlemail.com) so those variants collapse to one limiter bucket; storage
+    // still uses normalizeEmail so legitimately distinct accounts aren't merged.
+    // consumeRateLimit is atomic (single round-trip) so a parallel burst can't
+    // drive through a check-then-act gap; both keys are consumed every attempt.
     const ip = getClientIp(request);
-    if ((await isRateLimited(`register-ip:${ip}`)).limited) {
+    const abuseEmail = canonicalizeEmailForAbuse(email);
+    const ipLimited = (await consumeRateLimit(`register-ip:${ip}`)).limited;
+    const emailLimited = (await consumeRateLimit(`register:${abuseEmail}`)).limited;
+    if (ipLimited || emailLimited) {
       return NextResponse.json(
         { success: false, message: 'Too many attempts. Please try again in a few minutes.' },
         { status: 429 }
       );
     }
-    await recordFailedAttempt(`register-ip:${ip}`);
 
     const passwordCheck = validatePassword(password);
     if (!passwordCheck.valid) {

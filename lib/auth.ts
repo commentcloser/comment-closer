@@ -8,7 +8,7 @@ import type { Session, User, Account, Profile } from 'next-auth';
 import { prisma } from './prisma';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
-import { isRateLimited, recordFailedAttempt, resetRateLimit } from './rateLimit';
+import { consumeRateLimit, resetRateLimit, getClientIp } from './rateLimit';
 
 export const authOptions = {
   // Adapter is needed for OAuth providers to store accounts in database
@@ -24,7 +24,7 @@ export const authOptions = {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         try {
           if (!credentials?.email || !credentials?.password) {
             return null;
@@ -33,12 +33,25 @@ export const authOptions = {
           const email = (credentials.email as string).toLowerCase().trim();
           const password = credentials.password as string;
 
-          const rateLimitKey = `login:${email}`;
+          // Scope the hard lockout to (email + client IP), NOT email alone. An
+          // email-only key is armable by any anonymous caller who merely knows a
+          // victim's address, letting a stranger lock the victim (or the admin)
+          // out of the product indefinitely — the victim's correct password is
+          // then rejected before bcrypt and cannot self-heal. With the composite
+          // key an attacker can only ever block (victim-email, attacker-IP),
+          // which nobody legitimately uses, while a real brute-forcer from their
+          // own IP is still throttled after MAX_ATTEMPTS.
+          const ip = request ? getClientIp(request) : 'unknown';
+          const rateLimitKey = `login:${email}:${ip}`;
 
           // Enforce the rate limit on the server. The login page also pre-checks
           // via /api/auth/rate-limit, but a direct POST to the credentials
           // callback would otherwise bypass throttling and allow brute force.
-          if ((await isRateLimited(rateLimitKey)).limited) {
+          // Consume atomically up front: this both reads the current verdict and
+          // charges the attempt in one round-trip, so a parallel burst cannot
+          // slip past a check-then-act gap. The attempt that reaches
+          // MAX_ATTEMPTS is itself rejected here.
+          if ((await consumeRateLimit(rateLimitKey)).limited) {
             return null;
           }
 
@@ -47,14 +60,12 @@ export const authOptions = {
           });
 
           if (!user || !user.password) {
-            await recordFailedAttempt(rateLimitKey);
             return null;
           }
 
           const isPasswordValid = await bcrypt.compare(password, user.password);
 
           if (!isPasswordValid) {
-            await recordFailedAttempt(rateLimitKey);
             return null;
           }
 

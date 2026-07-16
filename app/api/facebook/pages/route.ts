@@ -15,6 +15,12 @@ const { auth } = NextAuth(authOptions);
 // per-lambda, so a PATCH handled by one instance cannot invalidate a copy held
 // by another one, and a just-saved toggle would snap back for 5 minutes.
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Max length for the user-supplied custom system prompt. It is injected verbatim
+// into the OpenAI system prompt on every reply generation, so it must be bounded
+// server-side to prevent per-request input-token cost amplification. Comfortably
+// covers any legitimate settings-textarea prompt while blocking multi-KB/MB abuse.
+const MAX_CUSTOM_REPLY_PROMPT_LENGTH = 2000;
 const pagesCache = new Map<
   string,
   { data: { pages: any[]; instagramPages: any[] }; tokenFingerprint: string; timestamp: number }
@@ -1206,9 +1212,22 @@ export async function PATCH(request: NextRequest) {
         updateData.autoModerateReplies = Boolean(autoModerateReplies);
       }
       if (customReplyPrompt !== undefined) {
-        updateData.customReplyPrompt = customReplyPrompt === '' || customReplyPrompt === null
-          ? null
-          : String(customReplyPrompt).trim();
+        if (customReplyPrompt === '' || customReplyPrompt === null) {
+          updateData.customReplyPrompt = null;
+        } else {
+          const trimmed = String(customReplyPrompt).trim();
+          // Cap length: this value is injected verbatim as the OpenAI system
+          // prompt on every reply/suggest-reply/webhook/cron call, so an
+          // unbounded value amplifies per-request input-token cost by orders of
+          // magnitude. Reject oversized input (fail closed) rather than storing it.
+          if (trimmed.length > MAX_CUSTOM_REPLY_PROMPT_LENGTH) {
+            return NextResponse.json(
+              { error: `Custom reply prompt must be ${MAX_CUSTOM_REPLY_PROMPT_LENGTH} characters or fewer` },
+              { status: 400 }
+            );
+          }
+          updateData.customReplyPrompt = trimmed;
+        }
       }
       if (webSourceUrl !== undefined) {
         if (webSourceUrl === '' || webSourceUrl === null) {

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 
 // Pure helpers only — the OpenAI client is lazily constructed inside
 // generateAIReply, so importing the module needs no key and no network.
-import { shouldAutoReply, isPricingQuestion } from './aiReplyEngine';
+import { shouldAutoReply, isPricingQuestion, cleanReplyText } from './aiReplyEngine';
 // The sentiment pre-filter short-circuits before the client is ever built, so
 // this needs no key either.
 import { analyzeCommentSentiment } from './openai';
@@ -81,6 +81,69 @@ describe('shouldAutoReply — sentiment gating is unchanged', () => {
 
   it('does not reply when sentiment is missing', () => {
     expect(shouldAutoReply(null, allOn, 'Anything')).toBe(false);
+  });
+});
+
+describe('cleanReplyText — output validator (prompt-injection defense)', () => {
+  // The anonymous-commenter attack: a crafted comment steers the model into
+  // emitting a phishing URL, which cleanReplyText must strip before it is posted
+  // publicly under the customer's brand. This is the guard that holds regardless
+  // of model behaviour.
+  it('strips the phishing URL from the audit payload the model was tricked into echoing', () => {
+    const injected =
+      'URGENT from us: our checkout was compromised. Do NOT place orders. Claim your refund at refund-claims.xyz';
+    const out = cleanReplyText(injected, 200);
+    expect(out).not.toContain('refund-claims.xyz');
+    expect(out).not.toContain('refund-claims');
+  });
+
+  it('strips scheme URLs, www URLs, bare domains, and @handles on the default path (no allowlist)', () => {
+    expect(cleanReplyText('Grab it at https://evil.example/claim now', 200)).not.toContain('evil.example');
+    expect(cleanReplyText('See www.evil-domain.xyz today', 200)).not.toContain('evil-domain');
+    expect(cleanReplyText('Refunds at refund-claims.example this week', 200)).not.toContain('refund-claims.example');
+    expect(cleanReplyText('DM @totally_fake_support for a refund', 200)).not.toContain('@totally_fake_support');
+  });
+
+  // A fixed TLD allowlist failed open on exactly the free TLDs phishing prefers.
+  // The stripper must be TLD-generic.
+  it('strips bare domains on any TLD, including the free ones phishing abuses', () => {
+    for (const tld of ['tk', 'ml', 'ga', 'cf', 'gq', 'zip', 'lol']) {
+      const out = cleanReplyText(`Claim your refund at refund-claims.${tld} today`, 200);
+      expect(out).not.toContain(`refund-claims.${tld}`);
+    }
+  });
+
+  it('does not mistake ordinary prose (abbreviations, decimals) for a domain', () => {
+    for (const normal of ['We have colors, e.g. red and blue.', 'Only 4.99 today!', 'Open at 9 a.m. sharp.', 'Ships to the U.S. soon.']) {
+      expect(cleanReplyText(normal, 200)).toBe(normal);
+    }
+  });
+
+  it('strips a markdown link target but keeps its visible label', () => {
+    const out = cleanReplyText('Thank you so much [click here](http://phish.xyz/x)!', 200);
+    expect(out).toContain('click here');
+    expect(out).not.toContain('phish.xyz');
+  });
+
+  it('leaves a normal on-brand reply completely untouched', () => {
+    const normal = 'Thank you so much, we are so glad you love it!';
+    expect(cleanReplyText(normal, 200)).toBe(normal);
+  });
+
+  it("preserves the page's own configured URL when it is allowlisted (web fallback copy)", () => {
+    const fallback = 'You can find up-to-date prices at https://shop.gr, or send us a message.';
+    const out = cleanReplyText(fallback, 200, 'https://shop.gr');
+    expect(out).toContain('https://shop.gr');
+  });
+
+  it('still strips a foreign phishing domain even when a different page URL is allowlisted', () => {
+    const out = cleanReplyText(
+      'Info at https://shop.gr but claim your refund at refund-claims.example',
+      200,
+      'https://shop.gr'
+    );
+    expect(out).toContain('shop.gr');
+    expect(out).not.toContain('refund-claims.example');
   });
 });
 
