@@ -115,6 +115,28 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * Meta reports webhook times as unix SECONDS (the FB handler multiplies
+ * created_time by 1000). Feeding seconds straight to `new Date()` dates the
+ * comment to 1970, which silently defeats the decision engine's cooldown and
+ * first-comment rules, so normalize seconds/ms/ISO and fall back to now for
+ * anything unparseable.
+ */
+function parseWebhookTimestamp(value: unknown): Date {
+  const isNumeric = typeof value === 'number' || (typeof value === 'string' && /^\d+$/.test(value.trim()));
+  if (isNumeric) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return new Date();
+    // Below 1e12 the value can only be seconds — as ms it would be back in 2001.
+    return new Date(n < 1e12 ? n * 1000 : n);
+  }
+  if (typeof value === 'string') {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return new Date();
+}
+
 async function handleCommentChange(commentData: any, connectedPage: any) {
   try {
     const commentId = commentData.id;
@@ -122,7 +144,7 @@ async function handleCommentChange(commentData: any, connectedPage: any) {
     const text = commentData.text || '';
     const hasAuthor = !!(commentData.from?.username || commentData.from?.id);
     const username = commentData.from?.username || commentData.from?.id || 'Unknown';
-    const timestamp = commentData.timestamp ? new Date(commentData.timestamp) : new Date();
+    const timestamp = parseWebhookTimestamp(commentData.timestamp);
     const mediaProductType = commentData.media?.media_product_type;
 
     if (!commentId || !mediaId) return;

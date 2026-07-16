@@ -412,12 +412,17 @@ export async function POST(request: NextRequest) {
         );
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : String(err);
-        await prisma.comment.update({
-          where: { id: savedComment.id },
+        // needsReview: no cron retries a failed hide (backfill-sentiment only picks up
+        // sentiment:null rows), so the negative comment stays public until a human acts.
+        // Same marker the Meta moderation path sets, and guarded the same way: never
+        // downgrade a comment something else (a concurrent set_to_hidden delivery, a
+        // manual hide from the dashboard) already hid.
+        await prisma.comment.updateMany({
+          where: { id: savedComment.id, hiddenAt: null },
           data: {
             status: 'pending',
-            hiddenAt: null,
             automationStatus: 'failed',
+            needsReview: true,
             lastError: `TikTok auto-hide failed: ${errorMessage}`,
           },
         });

@@ -6,6 +6,7 @@ import { graphFetch } from '@/lib/graphFetch';
 import { subscribeInstagramToWebhooks } from '@/lib/instagramWebhooks';
 import { subscribePageToWebhooks } from '@/lib/facebookWebhooks';
 import { validateWebSourceUrl, isValidKeywordList } from '@/lib/validators';
+import { createHash } from 'crypto';
 
 const { auth } = NextAuth(authOptions);
 
@@ -14,7 +15,18 @@ const { auth } = NextAuth(authOptions);
 // per-lambda, so a PATCH handled by one instance cannot invalidate a copy held
 // by another one, and a just-saved toggle would snap back for 5 minutes.
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-const pagesCache = new Map<string, { data: { pages: any[]; instagramPages: any[] }; timestamp: number }>();
+const pagesCache = new Map<
+  string,
+  { data: { pages: any[]; instagramPages: any[] }; tokenFingerprint: string; timestamp: number }
+>();
+
+// A cached discovery is only valid for the token it was made with. Reconnecting the Meta
+// account stores a NEW token via a route that cannot reach this per-lambda Map, so without
+// this the onboarding reconnect retry keeps getting the old (usually empty) page list for
+// 5 minutes and granting access looks like it did nothing. Hash it — no raw token is kept.
+function tokenFingerprint(token: string): string {
+  return createHash('sha256').update(token, 'utf8').digest('hex');
+}
 
 // Fields returned to the browser. pageAccessToken is deliberately NOT selected —
 // page tokens are long-lived and must never leave the server. (SEC)
@@ -164,9 +176,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Check cache after we've confirmed the account still exists
+    // Keyed by user only, so the POST/PATCH/DELETE invalidations below still match; the
+    // token is compared separately so a reconnect can never serve the pre-reconnect list.
     const cacheKey = `pages_${session.user.id}`;
     const cached = pagesCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    if (
+      cached &&
+      cached.tokenFingerprint === tokenFingerprint(account.access_token) &&
+      Date.now() - cached.timestamp < CACHE_DURATION
+    ) {
       // Cached Graph discovery only — connectedPages is always read fresh above.
       return NextResponse.json({
         connectedPages: withFreshImages(connectedPages),
@@ -612,6 +630,9 @@ export async function GET(request: NextRequest) {
     // Store the Graph discovery in cache before returning (settings are never cached)
     pagesCache.set(cacheKey, {
       data: { pages: facebookPagesResponse, instagramPages: instagramPagesResponse },
+      // Fingerprint the token the discovery was actually made with. exchangeToken has
+      // already persisted it, so the next request's DB token matches and still hits.
+      tokenFingerprint: tokenFingerprint(accessToken),
       timestamp: Date.now()
     });
 
