@@ -129,10 +129,16 @@ export async function POST(
     }
 
     // Update comment
+    // scheduledPostAt:null cancels a queued auto-reply (it is the cron's claim
+    // field, and post-scheduled-replies filters on neither hiddenAt nor
+    // deletedAt): without it a reply still inside the replyDelaySeconds window
+    // would fire publicly at the comment the owner just hid. Same contract as
+    // the TikTok Ads hide route.
     await prisma.comment.update({
       where: { id: commentDbId },
       data: {
         hiddenAt: new Date(),
+        scheduledPostAt: null,
         needsReview: false,
         lastError: null,
       },

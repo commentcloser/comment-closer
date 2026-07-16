@@ -248,8 +248,12 @@ export async function GET(request: NextRequest) {
       prisma.comment.count({
         where: { ...visibleMetricsWhere, needsReview: true },
       }),
+      // Hidden: deleted supersedes hidden (matching the UI, which drops the Unhide
+      // button once deletedAt is set), so these two counts partition cleanly — the
+      // dashboard renders hidden + deleted as one total and a hidden-then-deleted
+      // row would otherwise be counted twice.
       prisma.comment.count({
-        where: { ...metricsWhere, hiddenAt: { not: null } },
+        where: { ...metricsWhere, hiddenAt: { not: null }, deletedAt: null },
       }),
       prisma.comment.count({
         where: { ...metricsWhere, deletedAt: { not: null } },

@@ -96,6 +96,10 @@ async function autoHideNegativeTikTokComment(
  * those, moderates recovered negatives (all providers), and — once attempts are exhausted
  * — moves the comment to a terminal 'ai_failed' state so it stops being retried.
  *
+ * It also picks up negatives whose sentiment WAS written but whose moderation
+ * never ran, because the webhooks commit sentiment before moderating and a
+ * timed-out delivery strands the comment in between (AI-1). See the query.
+ *
  * NOTE: recovered positive/neutral comments get their sentiment but are NOT
  * auto-replied here (that needs the webhook reply pipeline extracted into a
  * shared module); they're simply un-stuck and visible/actionable in the dashboard.
@@ -125,16 +129,40 @@ export async function GET(request: Request) {
       const stuck = await prisma.comment.findMany({
         where: {
           status: 'pending',
-          sentiment: null,
           message: { not: '' },
           attemptCount: { lt: MAX_ATTEMPTS },
           createdAt: { lt: staleCutoff },
+          OR: [
+            // No sentiment yet — the original stuck case (AI-2).
+            { sentiment: null },
+            // Sentiment written, then killed before moderation ran (AI-1). The
+            // webhooks commit `sentiment` and only then moderate, so a delivery
+            // that hits maxDuration mid-comment strands a negative at 'pending'
+            // with its sentiment set — publicly visible, and a `sentiment: null`
+            // predicate alone can never see it again. Narrowly scoped so we only
+            // take rows moderation genuinely never touched:
+            //   automationStatus is written on every autoModerateNegativeComment
+            //   outcome (and by the TikTok path below), so null means it never
+            //   completed — this also leaves a needsReview'd failed hide alone;
+            //   no HIDE/DELETE log means it never even claimed the action, so
+            //   re-running it will really act instead of bailing on the claim and
+            //   letting us mark a still-visible comment 'ignored'.
+            // Positive/neutral rows are deliberately NOT recovered here: they are
+            // indistinguishable from a comment the decision engine legitimately
+            // skipped, which also rests at 'pending' with a sentiment.
+            {
+              sentiment: 'negative',
+              automationStatus: null,
+              actionLogs: { none: { actionType: { in: ['HIDE', 'DELETE'] } } },
+            },
+          ],
         },
         select: {
           id: true,
           commentId: true,
           postId: true,
           message: true,
+          sentiment: true,
           attemptCount: true,
           isReply: true,
           connectedPage: {
@@ -155,6 +183,7 @@ export async function GET(request: Request) {
       });
 
       let recovered = 0;
+      let remoderated = 0;
       let circuitBroke = 0;
 
       for (const comment of stuck) {
@@ -164,11 +193,16 @@ export async function GET(request: Request) {
         });
 
         const cp = comment.connectedPage;
-        const sentiment = await analyzeCommentSentiment(comment.message, {
-          userId: cp.userId,
-          connectedPageId: cp.id,
-          source: 'backfill_cron',
-        });
+        // A row picked up for its missed moderation already has its sentiment —
+        // re-analysing it would just pay OpenAI twice for the same answer.
+        const existingSentiment = comment.sentiment as 'positive' | 'neutral' | 'negative' | null;
+        const sentiment =
+          existingSentiment ??
+          (await analyzeCommentSentiment(comment.message, {
+            userId: cp.userId,
+            connectedPageId: cp.id,
+            source: 'backfill_cron',
+          }));
 
         if (!sentiment) {
           // Still failing. Circuit-break once attempts are exhausted (AI-8).
@@ -182,8 +216,12 @@ export async function GET(request: Request) {
           continue;
         }
 
-        await prisma.comment.update({ where: { id: comment.id }, data: { sentiment } });
-        recovered++;
+        if (existingSentiment) {
+          remoderated++;
+        } else {
+          await prisma.comment.update({ where: { id: comment.id }, data: { sentiment } });
+          recovered++;
+        }
 
         if (sentiment === 'negative') {
           let tiktokOutcome: 'moderated' | 'failed' | 'disabled' | null = null;
@@ -228,7 +266,7 @@ export async function GET(request: Request) {
         }
       }
 
-      console.log(`[Backfill Sentiment] processed ${stuck.length}: recovered ${recovered}, circuit-broke ${circuitBroke}`);
+      console.log(`[Backfill Sentiment] processed ${stuck.length}: recovered ${recovered}, re-moderated ${remoderated}, circuit-broke ${circuitBroke}`);
     } catch (err) {
       console.error('[Backfill Sentiment] error:', err);
       Sentry.captureException(err);

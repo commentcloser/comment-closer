@@ -148,8 +148,12 @@ export async function GET(request: NextRequest) {
               createdAt: { gte: twentyFourHoursAgo },
             },
           }),
+          // Same predicate as the inbox's needs_review filter/metric — without the
+          // hidden/deleted gate a deleted row keeps its needsReview flag (the FB
+          // delete route is the one terminal action that never clears it) and this
+          // card would disagree with the inbox forever, with no action to clear it.
           prisma.comment.count({
-            where: { pageId: { in: pageIds }, needsReview: true },
+            where: { pageId: { in: pageIds }, needsReview: true, hiddenAt: null, deletedAt: null },
           }),
         ])
       : [0, 0, 0, 0, 0, 0];

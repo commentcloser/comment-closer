@@ -22,6 +22,9 @@ import {
 } from './aiConfig';
 import { recordAiUsage, type AiUsageContext } from './aiUsage';
 import { withOpenAIRetry } from './openaiRetry';
+// Same list and same normalizer the sentiment pre-filter uses, imported rather
+// than duplicated so the two sides cannot drift apart again.
+import { BARE_NEGATIONS, normalizeShortToken } from './openai';
 
 // Lazy initialization to avoid build-time errors
 let openai: OpenAI | null = null;
@@ -762,9 +765,6 @@ export async function generateAIReply(
   }
 }
 
-// Kept in sync with the bare negations in lib/openai.ts's shortNeutral list.
-const BARE_NEGATIONS = ['no', 'nope', 'όχι', 'oxi', 'οχι'];
-
 /**
  * Check if auto-reply should be generated for a comment
  * 
@@ -798,7 +798,7 @@ export function shouldAutoReply(
   // to another commenter. Neutral is auto-reply-eligible though, so without this
   // guard the same comment now earns a warm public reply under a customer's "No".
   // It carries no sentiment either way: classify it, never answer it.
-  if (commentText && BARE_NEGATIONS.includes(commentText.trim().toLowerCase().replace(/[!.]+$/, ''))) {
+  if (commentText && BARE_NEGATIONS.includes(normalizeShortToken(commentText))) {
     return false;
   }
   

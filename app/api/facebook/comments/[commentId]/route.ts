@@ -39,6 +39,10 @@ export async function GET(
 
     const dbReplies = await prisma.comment.findMany({
       where: {
+        // Scope to the page whose ownership was just proven: pageId is unique per
+        // [userId, pageId, provider], so two tenants can hold rows for the same real
+        // page and an unscoped parentCommentId match would return the other's.
+        pageId: comment.pageId,
         parentCommentId: comment.commentId,
         isReply: true,
         NOT: {
@@ -319,9 +323,11 @@ export async function DELETE(
     }
 
     // Soft-delete: keep comment in DB with deletedAt so it stays visible on dashboard (like auto-deleted)
+    // Deleting resolves the review: a deleted row renders no action buttons, so a leftover
+    // needsReview could never be cleared again and would inflate the status counter forever.
     await prisma.comment.update({
       where: { id: commentId },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), needsReview: false, lastError: null },
     });
 
     return NextResponse.json({

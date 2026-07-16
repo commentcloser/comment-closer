@@ -237,6 +237,25 @@ export async function POST(request: NextRequest) {
       (connectedPage.autoHideNegativeEnabled || connectedPage.autoNegativeAction === 'delete') &&
       existingComment?.sentiment === 'negative';
 
+    // Syncing hiddenAt is not enough: post-scheduled-replies filters on neither
+    // hiddenAt nor deletedAt, so a reply still inside the replyDelaySeconds window
+    // would fire publicly under the comment the creator just hid. Cancel only the
+    // in-flight automation states — a terminal 'replied'/'ignored'/'ai_failed' row
+    // must never be rewritten. Runs before the hiddenAt sync so the wasAutoModerated
+    // status clobber below cannot hide an armed row from this filter. set_to_public
+    // does not resurrect the reply, matching the Facebook webhook and failing safe.
+    const cancelled = await prisma.comment.updateMany({
+      where: {
+        pageId: connectedPage.id,
+        commentId,
+        status: { in: ['pending', 'ai_generating', 'ai_generated'] },
+      },
+      data: { status: 'ignored', scheduledPostAt: null },
+    });
+    if (cancelled.count > 0) {
+      console.log(`[TikTok Webhook] Cancelled in-flight automation for ${commentId} (${cancelled.count} row(s))`);
+    }
+
     await prisma.comment.updateMany({
       where: { pageId: connectedPage.id, commentId },
       data: {

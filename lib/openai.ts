@@ -19,6 +19,26 @@ function getOpenAIClient(): OpenAI | null {
 }
 
 /**
+ * Trims, lowercases and drops trailing '!'/'.' so "No!", "no." and "No" all
+ * reduce to the same token. Exported so the auto-reply bare-negation guard in
+ * lib/aiReplyEngine.ts normalizes IDENTICALLY: when only one side stripped
+ * punctuation, "No!" missed the neutral pre-filter here, reached the LLM,
+ * classified negative, and got permanently deleted on delete-mode pages.
+ */
+export function normalizeShortToken(text: string): string {
+  return text.trim().toLowerCase().replace(/[!.]+$/, '');
+}
+
+/**
+ * Bare negations. As an answer to another commenter they carry no sentiment
+ * about the brand, so they classify neutral (never negative — a delete-mode
+ * page would permanently delete them). Exported and spread into shortNeutral
+ * below so lib/aiReplyEngine.ts's guard shares this exact list rather than a
+ * hand-maintained copy that can silently drift out of sync.
+ */
+export const BARE_NEGATIONS = ['no', 'nope', 'όχι', 'oxi', 'οχι'];
+
+/**
  * Analyzes the sentiment of a comment using OpenAI's ChatGPT API
  * @param text - The comment text to analyze
  * @returns "positive", "neutral", "negative", or null if analysis fails
@@ -92,9 +112,13 @@ export async function analyzeCommentSentiment(
   // another commenter they carry no sentiment about the brand)
   const shortNeutral = [
     'ok', 'k', 'hmm', 'hm', 'eh', 'meh', 'maybe', 'idk', 'dunno', 'what', 'where', 'when',
-    'how', 'why', 'who', 'which', 'no', 'nope', 'όχι', 'oxi', 'οχι'
+    'how', 'why', 'who', 'which', ...BARE_NEGATIONS
   ];
-  if (cleanText.length <= 8 && shortNeutral.includes(cleanText)) {
+  // Matched on the normalized token, not cleanText: an exact match let "No!" and
+  // "no." fall through to the LLM, which classifies an emphatic bare negation
+  // negative — the very deletion this list exists to prevent.
+  const shortToken = normalizeShortToken(text);
+  if (shortToken.length <= 8 && shortNeutral.includes(shortToken)) {
     return 'neutral';
   }
 

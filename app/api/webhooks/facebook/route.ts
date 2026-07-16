@@ -81,6 +81,14 @@ export async function POST(request: NextRequest) {
         // outright. Ingest EVERY comment first (DB-only, fast), then do the AI
         // work: a timeout can now only cost the AI stage, and the rows are left
         // 'pending' where backfill-sentiment recovers them. (AI-1)
+        // Exact contract, because the AI pass commits `sentiment` before it
+        // moderates: comments the loop never reached (sentiment null) and the
+        // in-flight one if it was negative (backfill-sentiment also claims
+        // 'pending' negatives that no moderation ever touched) are recovered. A
+        // timed-out in-flight POSITIVE/NEUTRAL is not — it is indistinguishable
+        // from one the decision engine legitimately skipped — so the residue of
+        // a timeout is at most one missed auto-reply, never an unmoderated
+        // negative left publicly visible.
         const ingested: { ctx: FeedCommentContext; connectedPage: any }[] = [];
 
         for (const entry of body.entry || []) {

@@ -77,7 +77,7 @@ export async function POST(
       );
     }
 
-    const provider = comment.connectedPage.provider as 'facebook' | 'instagram' | 'tiktok';
+    const provider = comment.connectedPage.provider as 'facebook' | 'instagram' | 'tiktok' | 'tiktok_ads';
 
     if (provider === 'tiktok') {
       if (comment.isReply) {
@@ -164,6 +164,23 @@ export async function POST(
           { status: 502 },
         );
       }
+    }
+
+    if (provider === 'tiktok_ads') {
+      // The TikTok Ads comment API exposes no reply-delete primitive, and the
+      // advertiser token below lives in the same pageAccessToken column Meta
+      // pages use — falling through would send it to graph.facebook.com.
+      return NextResponse.json(
+        { error: 'Deleting a reply is not supported for TikTok Ads' },
+        { status: 400 }
+      );
+    }
+
+    // Allowlist, not blocklist: ConnectedPage.provider is a plain String column,
+    // so any provider added later would otherwise silently reach Meta with that
+    // provider's token in hand.
+    if (provider !== 'facebook' && provider !== 'instagram') {
+      return NextResponse.json({ error: 'Unsupported provider' }, { status: 400 });
     }
 
     if (!comment.connectedPage.pageAccessToken) {

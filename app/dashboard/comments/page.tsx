@@ -2615,8 +2615,9 @@ function CommentsPageContent() {
                               </button>
                               )}
 
-                              {/* Edit Reply (replace already-sent reply) */}
-                              {comment.replied && (
+                              {/* Edit Reply (replace already-sent reply) — not for TikTok Ads, whose
+                                  comment API has no reply-edit primitive */}
+                              {comment.replied && comment.provider !== 'tiktok_ads' && (
                                 <button
                                   onClick={() => { setReplacingComment(comment); setReplaceReplyText(comment.replyMessage || comment.aiGeneratedReply || ''); }}
                                   className="size-8 rounded-btn flex items-center justify-center text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
