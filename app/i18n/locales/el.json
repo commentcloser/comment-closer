@@ -1174,6 +1174,9 @@
       "connectTikTokTitle": "Επανενεργοποίηση Λογαριασμού TikTok",
       "moderateReplies": "Έλεγχος Απαντήσεων",
       "moderateRepliesDesc": "Αυτόματη απόκρυψη/διαγραφή αρνητικών απαντήσεων σε σχόλια",
+      "replyLanguageLabel": "Γλώσσα Απάντησης",
+      "replyLanguageDesc": "Η γλώσσα στην οποία απαντά το AI. Το «Αυτόματο» ταιριάζει τη γλώσσα κάθε σχολίου.",
+      "replyLanguageAuto": "Αυτόματο (ίδια με το σχόλιο)",
       "maxReplyLengthLabel": "Μέγιστο Μήκος Απάντησης",
       "maxReplyLengthDesc": "Μέγιστοι χαρακτήρες για απαντήσεις που δημιουργεί το AI",
       "maxReplyLengthTikTokDesc": "Το TikTok περιορίζει τις απαντήσεις στους 150 χαρακτήρες"

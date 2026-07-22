@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import type { Comment } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { analyzeCommentSentiment } from '@/lib/openai';
-import { generateAIReply, shouldAutoReply, detectCommentLanguage } from '@/lib/aiReplyEngine';
+import { generateAIReply, shouldAutoReply } from '@/lib/aiReplyEngine';
 import { shouldGenerateReply, logReplyDecision } from '@/lib/replyDecisionEngine';
 import { logSkipDecision, logReplyAttempt, logReplySuccess, logReplyFailure } from '@/lib/actionLogger';
 import { autoModerateNegativeComment } from '@/lib/commentModerator';
@@ -714,15 +714,11 @@ async function generateAndPostAutoReply(
       console.log(`[FB Webhook] ⚠️  No page access token - skipping post caption`);
     }
     
-    // Detect language if set to auto
-    let language = connectedPage.replyLanguage || 'auto';
-    if (language === 'auto') {
-      const detectedLang = detectCommentLanguage(commentText);
-      console.log(`[FB Webhook] 🌍 Language auto-detected: ${detectedLang}`);
-      language = detectedLang;
-    } else {
-      console.log(`[FB Webhook] 🌍 Language forced: ${language}`);
-    }
+    // 'auto' passes straight through to the engine, which tells the model to
+    // match the comment's language (works for ANY language). A specific code
+    // (e.g. 'es') is turned into its language name in the prompt there.
+    const language = connectedPage.replyLanguage || 'auto';
+    console.log(`[FB Webhook] 🌍 Reply language: ${language}`);
     
     // Generate AI reply
     console.log(`[FB Webhook] 🤖 Calling AI generation engine...`);
