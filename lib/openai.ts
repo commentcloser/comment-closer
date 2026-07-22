@@ -38,6 +38,26 @@ export function normalizeShortToken(text: string): string {
  */
 export const BARE_NEGATIONS = ['no', 'nope', 'όχι', 'oxi', 'οχι'];
 
+/** Unambiguous "laughing" emoji — on a brand's ad these read as mockery.
+ * (😅 is deliberately excluded: it's nervous/relief more than laughter.) */
+export const LAUGH_EMOJIS = ['😂', '🤣', '😆', '😹'];
+
+/**
+ * True when a comment is nothing but laughing emoji. On a brand's ad/post these
+ * are almost always ridicule, but with no text to anchor on the model tends to
+ * read them as amusement (neutral/positive). The operator wants them treated as
+ * negative, so we short-circuit this one case deterministically. Mixed
+ * text+emoji still goes to the model, guided by the prompt instruction.
+ */
+export function isLaughOnlyComment(text: string): boolean {
+  // Strip whitespace + emoji variation-selector / zero-width-joiner, then remove
+  // every laugh emoji; if nothing meaningful is left, it was laughs only.
+  let s = text.trim().replace(/[\uFE0F\u200D\s]/g, '');
+  if (!s) return false;
+  for (const e of LAUGH_EMOJIS) s = s.split(e).join('');
+  return s.length === 0;
+}
+
 /**
  * Analyzes the sentiment of a comment using OpenAI's ChatGPT API
  * @param text - The comment text to analyze
@@ -76,6 +96,13 @@ export async function analyzeCommentSentiment(
     return 'neutral';
   }
 
+  // Laughing-emoji-only comments (😂🤣) on a brand's ad are mockery, but with no
+  // text to anchor on the model reads them as amusement → neutral/positive.
+  // Force negative; comments that also have text go to the model (guided below).
+  if (isLaughOnlyComment(text)) {
+    return 'negative';
+  }
+
   // Everything else → the model.
   const model = AI_SENTIMENT_MODEL;
 
@@ -86,7 +113,7 @@ export async function analyzeCommentSentiment(
         {
           role: 'system',
           content:
-            'You are a sentiment analyzer. Classify the following comment as positive, neutral, or negative. IMPORTANT: If the comment appears to be written in Greeklish (Greek words using Latin/English letters), first interpret it as Greek before analyzing sentiment. Reply with ONLY one word: positive, neutral, or negative. Do not include any punctuation or additional text.',
+            'You are a sentiment analyzer for comments on a brand\'s advertisements and posts. Classify the following comment as positive, neutral, or negative. IMPORTANT: If the comment appears to be written in Greeklish (Greek words using Latin/English letters), first interpret it as Greek before analyzing sentiment. Laughter aimed at the brand or product — laughing/mocking emoji (😂 🤣 😆) or laughter text ("haha", "lol", "χαχα", "jaja") — is ridicule: classify it as negative, unless the rest of the comment is clearly positive (e.g. "haha love this!"). Reply with ONLY one word: positive, neutral, or negative. Do not include any punctuation or additional text.',
         },
         {
           role: 'user',
