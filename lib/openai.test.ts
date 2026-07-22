@@ -10,7 +10,7 @@ vi.mock('openai', () => ({
 }));
 vi.mock('./aiUsage', () => ({ recordAiUsage: vi.fn(), normalizeUsage: vi.fn() }));
 
-import { analyzeCommentSentiment, normalizeShortToken, BARE_NEGATIONS } from './openai';
+import { analyzeCommentSentiment, normalizeShortToken, BARE_NEGATIONS, isLaughOnlyComment } from './openai';
 
 function modelReturns(word: string) {
   createMock.mockResolvedValue({
@@ -64,6 +64,33 @@ describe('analyzeCommentSentiment — model-first classification', () => {
   it('empty input returns null without a model call', async () => {
     expect(await analyzeCommentSentiment('   ')).toBeNull();
     expect(createMock).not.toHaveBeenCalled();
+  });
+
+  it('classifies laughing-emoji-only comments as negative WITHOUT a model call', async () => {
+    for (const text of ['😂😂😂', '🤣', '😂🤣😆', '  😹😹  ']) {
+      createMock.mockReset();
+      const result = await analyzeCommentSentiment(text);
+      expect(result, `"${text}" should be negative (mockery)`).toBe('negative');
+      expect(createMock, `"${text}" must not reach the model`).not.toHaveBeenCalled();
+    }
+  });
+
+  it('a laugh emoji WITH text still goes to the model (context decides)', async () => {
+    modelReturns('positive');
+    const result = await analyzeCommentSentiment('😂 love this, so funny!');
+    expect(createMock).toHaveBeenCalledTimes(1);
+    expect(result).toBe('positive');
+  });
+});
+
+describe('isLaughOnlyComment', () => {
+  it('true for laughing emoji only', () => {
+    for (const t of ['😂', '🤣🤣', '😂😆😹', '  😂  ']) expect(isLaughOnlyComment(t), t).toBe(true);
+  });
+  it('false when any non-laugh content is present', () => {
+    for (const t of ['😂 lol', '😂👍', '🤢🤢', '👍', 'haha', '😅', '', '   ']) {
+      expect(isLaughOnlyComment(t), t).toBe(false);
+    }
   });
 });
 
