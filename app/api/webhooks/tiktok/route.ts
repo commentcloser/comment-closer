@@ -374,6 +374,33 @@ export async function POST(request: NextRequest) {
           where: { id: savedComment.id },
           data: { sentiment, status: 'ignored' },
         });
+
+        // Moderate negative REPLIES too when the page opts in via
+        // autoModerateReplies (the same gate Meta uses). TikTok can only hide.
+        if (
+          sentiment === 'negative' &&
+          !savedComment.hiddenAt &&
+          connectedPage.autoModerationEnabled &&
+          connectedPage.autoModerateReplies &&
+          (connectedPage.autoHideNegativeEnabled || connectedPage.autoNegativeAction === 'delete')
+        ) {
+          try {
+            await autoHideTikTokCommentWithRetry(accessToken, userOpenId, videoId, commentId);
+            await prisma.comment.update({
+              where: { id: savedComment.id },
+              data: { hiddenAt: new Date(), automationStatus: 'moderated', lastError: null },
+            });
+            console.log(`[TikTok Webhook] Negative REPLY auto-hidden ${commentId}`);
+          } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            // Never downgrade a comment a concurrent delivery / manual hide already hid.
+            await prisma.comment.updateMany({
+              where: { id: savedComment.id, hiddenAt: null },
+              data: { automationStatus: 'failed', needsReview: true, lastError: `TikTok auto-hide reply failed: ${errorMessage}` },
+            });
+            console.error('[TikTok Webhook] Failed to auto-hide negative reply:', errorMessage);
+          }
+        }
       }
     }
     return NextResponse.json({ received: true }, { status: 200 });
