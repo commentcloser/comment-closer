@@ -7,6 +7,7 @@
  */
 
 import OpenAI from 'openai';
+import { languagePromptName } from './languages';
 import {
   PromptVariables,
   getTemplateForSentiment,
@@ -438,7 +439,7 @@ async function generateReplyWithExtractedPrice(
     `Comment: ${asUntrustedData(commentText)}`,
     `From: ${asUntrustedData(authorName)}`,
     `Extracted price (use exactly): ${extractedPrice}`,
-    language !== 'auto' ? `Language: ${language}.` : "Match the comment's language.",
+    languagePromptName(language) ? `Language: ${languagePromptName(language)}.` : "Match the comment's language.",
     'Return ONLY the reply text, no quotes or extra explanation.',
   ].join('\n');
 
@@ -529,7 +530,7 @@ async function generateWebSearchReply(
     `Comment to reply to: ${asUntrustedData(commentText)}`,
     `From: ${asUntrustedData(authorName)}`,
     adCreativeText ? `The ad the comment was posted on says: "${adCreativeText.substring(0, 300)}"` : null,
-    language !== 'auto' ? `Language: ${language}.` : "Match the comment's language.",
+    languagePromptName(language) ? `Language: ${languagePromptName(language)}.` : "Match the comment's language.",
     'Return ONLY the reply text, no quotes or extra explanation.',
   ].filter(Boolean).join('\n');
 
@@ -760,7 +761,7 @@ export async function generateAIReply(
       `Reply to this comment: ${asUntrustedData(config.commentText)}`,
       `From: ${asUntrustedData(config.authorName)}`,
       `Max length: ${config.maxLength} characters.`,
-      config.language !== 'auto' ? `Language: ${config.language}.` : "Match the comment's language.",
+      languagePromptName(config.language) ? `Language: ${languagePromptName(config.language)}.` : "Match the comment's language.",
     ];
     if (config.postCaption) {
       parts.push(`Post context: "${config.postCaption.substring(0, 150)}${config.postCaption.length > 150 ? '...' : ''}"`);

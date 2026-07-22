@@ -6,6 +6,7 @@ import { graphFetch } from '@/lib/graphFetch';
 import { subscribeInstagramToWebhooks } from '@/lib/instagramWebhooks';
 import { subscribePageToWebhooks } from '@/lib/facebookWebhooks';
 import { validateWebSourceUrl, isValidKeywordList } from '@/lib/validators';
+import { isValidReplyLanguage } from '@/lib/languages';
 import { createHash } from 'crypto';
 
 const { auth } = NextAuth(authOptions);
@@ -50,6 +51,7 @@ const CONNECTED_PAGE_SELECT = {
   autoHideNegativeEnabled: true,
   autoNegativeAction: true,
   autoModerateReplies: true,
+  replyLanguage: true,
   customReplyPrompt: true,
   webSourceUrl: true,
   webSourceEnabled: true,
@@ -1170,6 +1172,7 @@ export async function PATCH(request: NextRequest) {
       replyAllowlistEnabled,
       manualReviewEnabled,
       autoModerateReplies,
+      replyLanguage,
     } = body;
 
     if (!pageId) {
@@ -1210,6 +1213,10 @@ export async function PATCH(request: NextRequest) {
       }
       if (autoModerateReplies !== undefined) {
         updateData.autoModerateReplies = Boolean(autoModerateReplies);
+      }
+      if (replyLanguage !== undefined) {
+        // 'auto' or an ISO 639-1 code we offer; anything else falls back to auto.
+        updateData.replyLanguage = isValidReplyLanguage(replyLanguage) ? replyLanguage : 'auto';
       }
       if (customReplyPrompt !== undefined) {
         if (customReplyPrompt === '' || customReplyPrompt === null) {
@@ -1334,6 +1341,7 @@ export async function PATCH(request: NextRequest) {
           autoHideNegativeEnabled: true,
           autoNegativeAction: true,
           autoModerateReplies: true,
+          replyLanguage: true,
           customReplyPrompt: true,
           webSourceUrl: true,
           webSourceEnabled: true,

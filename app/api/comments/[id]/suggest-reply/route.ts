@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireCommentOwner } from '@/lib/commentAuth';
-import { generateAIReply, detectCommentLanguage } from '@/lib/aiReplyEngine';
+import { generateAIReply } from '@/lib/aiReplyEngine';
 import { getTikTokAdsAccessToken, fetchTikTokAdsAdDetails, type TikTokAdDetails } from '@/lib/tiktokAdsApi';
 import { consumeRateLimit } from '@/lib/rateLimit';
 
@@ -66,10 +66,9 @@ export async function POST(
     }
 
     const page = comment.connectedPage;
-    let language = page.replyLanguage || 'auto';
-    if (language === 'auto') {
-      language = detectCommentLanguage(comment.message || '');
-    }
+    // 'auto' passes through to the engine (model matches the comment's
+    // language); a specific code is turned into its name in the prompt there.
+    const language = page.replyLanguage || 'auto';
 
     // TikTok Ads comments: resolve the ad's name/creative/landing page so the
     // suggestion knows which product the commenter means. Best-effort.

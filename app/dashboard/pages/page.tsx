@@ -10,6 +10,7 @@ import { TikTokIcon } from '@/components/icons/TikTokIcon';
 import { TikTokAdsIcon } from '@/components/icons/TikTokAdsIcon';
 import { TikTokAvatar } from '@/components/ui/TikTokAvatar';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
+import { LANGUAGES } from '@/lib/languages';
 
 interface FacebookPage {
   id: string;
@@ -44,6 +45,7 @@ interface ConnectedPage {
   autoHideNegativeEnabled?: boolean;
   autoNegativeAction?: 'hide' | 'delete';
   autoModerateReplies?: boolean;
+  replyLanguage?: string;
   customReplyPrompt?: string | null;
   webSourceUrl?: string | null;
   webSourceEnabled?: boolean;
@@ -120,6 +122,7 @@ function PagesPageContent() {
   const [settingsBlocklistKeywords, setSettingsBlocklistKeywords] = useState<string>('');
   const [settingsAllowlistKeywords, setSettingsAllowlistKeywords] = useState<string>('');
   const [settingsAllowlistEnabled, setSettingsAllowlistEnabled] = useState<boolean>(false);
+  const [settingsReplyLanguage, setSettingsReplyLanguage] = useState<string>('auto');
   const [initialSettingsSnapshot, setInitialSettingsSnapshot] = useState<{
     autoReply: boolean;
     manualReview: boolean;
@@ -130,6 +133,7 @@ function PagesPageContent() {
     negativeMode: 'hide' | 'delete';
     negativeEnabled: boolean;
     moderateReplies: boolean;
+    replyLanguage: string;
     cooldownMinutes: number;
     onlyFirstComment: boolean;
     minCommentLength: number;
@@ -584,6 +588,7 @@ function PagesPageContent() {
       settingsNegativeMode !== initialSettingsSnapshot.negativeMode ||
       settingsNegativeEnabled !== initialSettingsSnapshot.negativeEnabled ||
       settingsModerateReplies !== initialSettingsSnapshot.moderateReplies ||
+      settingsReplyLanguage !== initialSettingsSnapshot.replyLanguage ||
       settingsCooldownMinutes !== initialSettingsSnapshot.cooldownMinutes ||
       settingsOnlyFirstComment !== initialSettingsSnapshot.onlyFirstComment ||
       settingsMinCommentLength !== initialSettingsSnapshot.minCommentLength ||
@@ -592,7 +597,7 @@ function PagesPageContent() {
       settingsAllowlistKeywords.trim() !== initialSettingsSnapshot.allowlistKeywords ||
       settingsAllowlistEnabled !== initialSettingsSnapshot.allowlistEnabled
     );
-  }, [initialSettingsSnapshot, settingsAutoReply, settingsManualReview, settingsReplyDelay, settingsCustomPrompt, settingsWebSourceUrl, settingsWebSourceEnabled, settingsNegativeMode, settingsNegativeEnabled, settingsModerateReplies, settingsCooldownMinutes, settingsOnlyFirstComment, settingsMinCommentLength, settingsMaxReplyLength, settingsBlocklistKeywords, settingsAllowlistKeywords, settingsAllowlistEnabled]);
+  }, [initialSettingsSnapshot, settingsAutoReply, settingsManualReview, settingsReplyDelay, settingsCustomPrompt, settingsWebSourceUrl, settingsWebSourceEnabled, settingsNegativeMode, settingsNegativeEnabled, settingsModerateReplies, settingsReplyLanguage, settingsCooldownMinutes, settingsOnlyFirstComment, settingsMinCommentLength, settingsMaxReplyLength, settingsBlocklistKeywords, settingsAllowlistKeywords, settingsAllowlistEnabled]);
 
   // An empty custom-delay box has no number to save — block the save rather than
   // write a value the user can no longer see.
@@ -655,6 +660,7 @@ function PagesPageContent() {
     setSettingsBlocklistKeywords(blocklistKeywords);
     setSettingsAllowlistKeywords(allowlistKeywords);
     setSettingsAllowlistEnabled(allowlistEnabled);
+    setSettingsReplyLanguage(cp.replyLanguage ?? 'auto');
     setInitialSettingsSnapshot({
       autoReply,
       manualReview,
@@ -665,6 +671,7 @@ function PagesPageContent() {
       negativeMode,
       negativeEnabled,
       moderateReplies: cp.autoModerateReplies ?? false,
+      replyLanguage: cp.replyLanguage ?? 'auto',
       cooldownMinutes,
       onlyFirstComment,
       minCommentLength,
@@ -707,6 +714,7 @@ function PagesPageContent() {
           autoHideNegativeEnabled: negativeModeToSave === 'hide',
           autoNegativeAction: negativeModeToSave,
           autoModerateReplies: settingsModerateReplies,
+          replyLanguage: settingsReplyLanguage,
           customReplyPrompt: settingsCustomPrompt.trim() || null,
           webSourceUrl: urlToSave,
           webSourceEnabled: settingsWebSourceEnabled,
@@ -736,6 +744,7 @@ function PagesPageContent() {
                   autoHideNegativeEnabled: negativeModeToSave === 'hide',
                   autoNegativeAction: negativeModeToSave,
                   autoModerateReplies: settingsModerateReplies,
+                  replyLanguage: settingsReplyLanguage,
                   customReplyPrompt: settingsCustomPrompt.trim() || null,
                   webSourceUrl: urlToSave,
                   webSourceEnabled: settingsWebSourceEnabled,
@@ -2671,6 +2680,28 @@ function PagesPageContent() {
                         className="w-16 px-2 py-1.5 font-mono text-[14px] text-center rounded-btn border border-line bg-surface text-ink transition-colors focus:outline-none focus:border-accent focus:ring-2 focus:ring-ring"
                       />
                       <span className="text-[12px] text-ink-muted">{t('dashboard.pages.characters')}</span>
+                    </div>
+                  </div>
+
+                  {/* Reply language */}
+                  <div className="flex items-center justify-between py-3 border-t border-line">
+                    <div className="pr-3">
+                      <p className="text-[14px] font-medium text-ink">{t('dashboard.pages.replyLanguageLabel', 'Reply Language')}</p>
+                      <p className="text-[12px] text-ink-muted mt-0.5">
+                        {t('dashboard.pages.replyLanguageDesc', 'Language the AI replies in. Auto matches each comment’s language.')}
+                      </p>
+                    </div>
+                    <div className="flex items-center flex-shrink-0">
+                      <select
+                        value={settingsReplyLanguage}
+                        onChange={(e) => setSettingsReplyLanguage(e.target.value)}
+                        className="max-w-[190px] px-2 py-1.5 text-[14px] rounded-btn border border-line bg-surface text-ink transition-colors focus:outline-none focus:border-accent focus:ring-2 focus:ring-ring cursor-pointer"
+                      >
+                        <option value="auto">{t('dashboard.pages.replyLanguageAuto', 'Auto (match comment)')}</option>
+                        {LANGUAGES.map((l) => (
+                          <option key={l.code} value={l.code}>{l.name}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 

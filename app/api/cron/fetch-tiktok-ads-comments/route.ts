@@ -1,7 +1,7 @@
 import { NextResponse, after } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { analyzeCommentSentiment } from '@/lib/openai';
-import { generateAIReply, shouldAutoReply, detectCommentLanguage } from '@/lib/aiReplyEngine';
+import { generateAIReply, shouldAutoReply } from '@/lib/aiReplyEngine';
 import { shouldGenerateReply, logReplyDecision } from '@/lib/replyDecisionEngine';
 import { logSkipDecision, logReplyAttempt, logReplySuccess, logReplyFailure } from '@/lib/actionLogger';
 import {
@@ -650,8 +650,9 @@ async function generateAndPostAdsReply(opts: {
     if (claimed.count === 0) return;
 
 
-    let language = advertiser.replyLanguage || 'auto';
-    if (language === 'auto') language = detectCommentLanguage(commentText);
+    // 'auto' passes through to the engine (model matches the comment's
+    // language); a specific code is turned into its name in the prompt there.
+    const language = advertiser.replyLanguage || 'auto';
 
     const maxLength = Math.min(advertiser.maxReplyLength || 150, 150);
 

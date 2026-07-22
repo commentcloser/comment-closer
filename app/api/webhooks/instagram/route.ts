@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { analyzeCommentSentiment } from '@/lib/openai';
-import { generateAIReply, shouldAutoReply, detectCommentLanguage } from '@/lib/aiReplyEngine';
+import { generateAIReply, shouldAutoReply } from '@/lib/aiReplyEngine';
 import { shouldGenerateReply, logReplyDecision } from '@/lib/replyDecisionEngine';
 import { logSkipDecision, logReplyAttempt, logReplySuccess, logReplyFailure } from '@/lib/actionLogger';
 import { autoModerateNegativeComment } from '@/lib/commentModerator';
@@ -535,11 +535,9 @@ async function generateAndPostAutoReply(
       }
     }
     
-    // Detect language if set to auto
-    let language = connectedPage.replyLanguage || 'auto';
-    if (language === 'auto') {
-      language = detectCommentLanguage(commentText);
-    }
+    // 'auto' passes through to the engine (model matches the comment's
+    // language); a specific code is turned into its name in the prompt there.
+    const language = connectedPage.replyLanguage || 'auto';
     
     // Generate AI reply
     const aiResult = await generateAIReply({

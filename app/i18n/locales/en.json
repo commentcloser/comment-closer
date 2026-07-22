@@ -1174,6 +1174,9 @@
       "connectTikTokTitle": "Reactivate TikTok Account",
       "moderateReplies": "Moderate Replies",
       "moderateRepliesDesc": "Auto-hide/delete negative replies on comments",
+      "replyLanguageLabel": "Reply Language",
+      "replyLanguageDesc": "Language the AI replies in. Auto matches each comment’s language.",
+      "replyLanguageAuto": "Auto (match comment)",
       "maxReplyLengthLabel": "Max Reply Length",
       "maxReplyLengthDesc": "Maximum characters for AI-generated replies",
       "maxReplyLengthTikTokDesc": "TikTok limits replies to 150 characters"
