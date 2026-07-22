@@ -172,7 +172,11 @@ export async function GET(request: NextRequest) {
       }
 
       const info = advertiserInfoMap.get(advertiserId);
-      const pageName = info?.name || `TikTok Ads · ${advertiserId}`;
+      // A real advertiser name from the API (not the id placeholder). The
+      // /advertiser/info scope is usually missing, so this is null and we must
+      // NOT overwrite a name the operator set manually via the rename route.
+      const realName = info?.name && !info.name.startsWith('TikTok Ads · ') ? info.name : null;
+      const pageName = realName || `TikTok Ads · ${advertiserId}`;
 
       await prisma.account.upsert({
         where: {
@@ -205,7 +209,9 @@ export async function GET(request: NextRequest) {
           },
         },
         update: {
-          pageName,
+          // Only overwrite the name when the API returned a real one — otherwise
+          // preserve a manually-set label (or the existing placeholder).
+          ...(realName ? { pageName: realName } : {}),
           pageAccessToken: accessToken,
           disconnectedAt: null,
           needsReconnect: false,
