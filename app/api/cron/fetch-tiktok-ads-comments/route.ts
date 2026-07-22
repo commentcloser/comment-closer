@@ -379,12 +379,15 @@ async function processAdsComment(
   const videoId = comment.tiktok_item_id;
   const adId = comment.ad_id;
 
-  // Comments authored by the advertiser itself must never be auto-replied to.
-  // Display name is the only discriminator TikTok gives us here — the comment's
-  // identity_id/identity_type describe the AD's posting identity, not the
-  // commenter — and display names are not unique. So flag it and mark the row
-  // 'ignored' below rather than dropping it: a fan or impersonator using the
-  // brand name used to vanish before storage, unseen and unmoderated.
+  // A comment whose author display name equals this account's label is likely
+  // the advertiser itself (or an impersonator using the brand name) — we must
+  // never auto-REPLY to it. Display name is the only discriminator TikTok gives
+  // us: identity_id/identity_type describe the AD's posting identity, not the
+  // commenter, and display names are not unique. NOTE: pageName is operator-set
+  // (the rename feature), so we deliberately do NOT let it exempt a comment from
+  // negative moderation — a same-named account posting something negative must
+  // still be hidden/deleted like any other. The reply-only skip lives further
+  // down, AFTER the negative-moderation branch, so negatives are handled first.
   const looksSelfAuthored =
     !!authorName && !!advertiser.pageName && authorName.toLowerCase() === advertiser.pageName.toLowerCase();
 
@@ -442,13 +445,6 @@ async function processAdsComment(
       source: 'tiktok_ads',
     },
   });
-
-  if (looksSelfAuthored) {
-    if (saved.status === 'pending') {
-      await prisma.comment.update({ where: { id: saved.id }, data: { status: 'ignored' } });
-    }
-    return;
-  }
 
   if (isReply) {
     // Reuse a sentiment we already paid for — a re-read must not re-analyse.
@@ -535,6 +531,19 @@ async function processAdsComment(
         });
       }
     } else {
+      await prisma.comment.update({ where: { id: saved.id }, data: { status: 'ignored' } });
+    }
+    return;
+  }
+
+  // Reply-only self-authored skip: reached only for non-negative comments (the
+  // negative branch above already returned). We never auto-reply to a comment
+  // whose author name matches this account's label, but — unlike the old early
+  // gate — negatives were still moderated first, so an operator renaming an
+  // account to a brand name can no longer silently exempt a same-named
+  // customer's negative comment from being hidden/deleted.
+  if (looksSelfAuthored) {
+    if (saved.status === 'pending') {
       await prisma.comment.update({ where: { id: saved.id }, data: { status: 'ignored' } });
     }
     return;

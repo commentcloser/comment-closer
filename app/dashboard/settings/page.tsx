@@ -60,6 +60,9 @@ function SettingsPageContent() {
   const [tiktokAdsAccounts, setTiktokAdsAccounts] = useState<{ id: string; pageId: string; pageName: string; autoReplyEnabled: boolean; disconnectedAt: string | null; needsReconnect: boolean }[]>([]);
   const [loadingTiktokAds, setLoadingTiktokAds] = useState(true);
   const [disconnectingTiktokAds, setDisconnectingTiktokAds] = useState<string | null>(null);
+  const [editingAdsNameId, setEditingAdsNameId] = useState<string | null>(null);
+  const [adsNameInput, setAdsNameInput] = useState('');
+  const [savingAdsName, setSavingAdsName] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -287,6 +290,30 @@ function SettingsPageContent() {
       setError('Failed to load account information');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveAdsName = async (accountId: string) => {
+    const name = adsNameInput.trim();
+    if (!name) return;
+    setSavingAdsName(true);
+    try {
+      const res = await fetch('/api/tiktok-ads/rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pageId: accountId, name }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTiktokAdsAccounts(prev => prev.map(a => (a.id === accountId ? { ...a, pageName: data.pageName ?? name } : a)));
+        setEditingAdsNameId(null);
+      } else {
+        setError(t('dashboard.settingsPage.errorRename', 'Failed to rename account'));
+      }
+    } catch {
+      setError(t('dashboard.settingsPage.errorRename', 'Failed to rename account'));
+    } finally {
+      setSavingAdsName(false);
     }
   };
 
@@ -981,7 +1008,34 @@ function SettingsPageContent() {
                           <div className="flex-shrink-0"><TikTokAdsIcon size="md" /></div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="text-[14px] font-medium text-ink truncate">{account.pageName}</h3>
+                              {editingAdsNameId === account.id ? (
+                                <span className="flex items-center gap-1.5">
+                                  <input
+                                    type="text"
+                                    autoFocus
+                                    value={adsNameInput}
+                                    maxLength={60}
+                                    onChange={(e) => setAdsNameInput(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') saveAdsName(account.id); if (e.key === 'Escape') setEditingAdsNameId(null); }}
+                                    placeholder={t('dashboard.settingsPage.adsNamePlaceholder', 'e.g. Bralift')}
+                                    className="w-40 px-2 py-1 text-[14px] rounded-btn border border-line bg-surface text-ink focus:outline-none focus:border-accent focus:ring-2 focus:ring-ring"
+                                  />
+                                  <button type="button" onClick={() => saveAdsName(account.id)} disabled={savingAdsName || !adsNameInput.trim()} className="text-[13px] font-medium text-accent hover:underline disabled:opacity-50">{t('dashboard.settingsPage.save', 'Save')}</button>
+                                  <button type="button" onClick={() => setEditingAdsNameId(null)} className="text-[13px] text-ink-muted hover:underline">{t('dashboard.settingsPage.cancel', 'Cancel')}</button>
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1.5 min-w-0">
+                                  <h3 className="text-[14px] font-medium text-ink truncate">{account.pageName}</h3>
+                                  <button
+                                    type="button"
+                                    onClick={() => { setEditingAdsNameId(account.id); setAdsNameInput(account.pageName.startsWith('TikTok Ads · ') ? '' : account.pageName); }}
+                                    title={t('dashboard.settingsPage.rename', 'Rename')}
+                                    className="flex-shrink-0 text-ink-muted hover:text-accent transition-colors"
+                                  >
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                  </button>
+                                </span>
+                              )}
                               {account.needsReconnect && !isPaused && (
                                 <span className="inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] bg-danger-wash text-danger">
                                   <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
