@@ -92,6 +92,7 @@ export async function GET(request: Request) {
       autoModerationEnabled: true,
       autoHideNegativeEnabled: true,
       autoNegativeAction: true,
+      autoModerateReplies: true,
     },
   });
 
@@ -143,6 +144,7 @@ async function processAdvertiser(advertiser: {
   autoModerationEnabled: boolean;
   autoHideNegativeEnabled: boolean;
   autoNegativeAction: string;
+  autoModerateReplies: boolean;
 }): Promise<number> {
   const accessToken = await getTikTokAdsAccessToken(advertiser.pageId);
   if (!accessToken) {
@@ -361,6 +363,7 @@ async function processAdsComment(
     autoModerationEnabled: boolean;
     autoHideNegativeEnabled: boolean;
     autoNegativeAction: string;
+    autoModerateReplies: boolean;
   },
   accessToken: string,
   resolvedIdentity: { identity_id: string; identity_type: string } | null,
@@ -449,10 +452,38 @@ async function processAdsComment(
 
   if (isReply) {
     // Reuse a sentiment we already paid for — a re-read must not re-analyse.
-    if (message.trim().length >= 2 && !saved.sentiment) {
-      const sentiment = await analyzeCommentSentiment(message, { userId: advertiser.userId, connectedPageId: advertiser.id, source: 'tiktok_ads_cron' });
+    let sentiment = saved.sentiment;
+    if (!sentiment && message.trim().length >= 2) {
+      sentiment = await analyzeCommentSentiment(message, { userId: advertiser.userId, connectedPageId: advertiser.id, source: 'tiktok_ads_cron' });
       if (sentiment) {
         await prisma.comment.update({ where: { id: saved.id }, data: { sentiment, status: 'ignored' } });
+      }
+    }
+
+    // Moderate negative REPLIES too, but only when the page opts in via
+    // autoModerateReplies (the same gate Meta uses). TikTok can only hide, never
+    // delete, so 'delete'-mode pages degrade to hide here as well.
+    if (
+      sentiment === 'negative' &&
+      !saved.hiddenAt &&
+      advertiser.autoModerationEnabled &&
+      advertiser.autoModerateReplies &&
+      (advertiser.autoHideNegativeEnabled || advertiser.autoNegativeAction === 'delete')
+    ) {
+      try {
+        await hideTikTokAdsComment(accessToken, advertiser.pageId, commentId, true);
+        await prisma.comment.update({
+          where: { id: saved.id },
+          data: { status: 'ignored', hiddenAt: new Date(), automationStatus: 'moderated' },
+        });
+        console.log(`[TikTok Ads Cron] Auto-hidden negative REPLY ${commentId}`);
+      } catch (err) {
+        console.error(`[TikTok Ads Cron] Auto-hide reply failed for ${commentId}:`, err);
+        // Never downgrade a comment a manual dashboard hide already hid.
+        await prisma.comment.updateMany({
+          where: { id: saved.id, hiddenAt: null },
+          data: { automationStatus: 'failed', needsReview: true, lastError: String(err) },
+        });
       }
     }
     return;
